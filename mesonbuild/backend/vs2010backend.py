@@ -63,7 +63,7 @@ class Vs2010Backend(backends.Backend):
         self.platform_toolset = None
         self.vs_version = '2010'
 
-    def object_filename_from_source(self, target, source):
+    def object_filename_from_source(self, target, source, is_unity=False):
         basename = os.path.basename(source.fname)
         filename_without_extension = '.'.join(basename.split('.')[:-1])
         if basename in self.sources_conflicts[target.get_id()]:
