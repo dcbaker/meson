@@ -24,7 +24,7 @@ from .. import mlog
 from .. import coredata
 from . import compilers
 from ..mesonlib import (
-    EnvironmentException, version_compare, Popen_safe, listify,
+    EnvironmentException, MesonException, version_compare, Popen_safe, listify,
     for_windows, for_darwin, for_cygwin, for_haiku, for_openbsd,
 )
 
@@ -56,6 +56,116 @@ class CCompiler(Compiler):
     program_dirs_cache = {}
     find_library_cache = {}
     internal_libs = gnu_compiler_internal_libs
+
+    # These functions are based on the following code:
+    # https://git.savannah.gnu.org/gitweb/?p=autoconf-archive.git;a=blob_plain;f=m4/ax_gcc_func_attribute.m4,
+    # which is licensed under the following terms:
+    #
+    #   Copyright (c) 2013 Gabriele Svelto <gabriele.svelto@gmail.com>
+    #
+    #   Copying and distribution of this file, with or without modification, are
+    #   permitted in any medium without royalty provided the copyright notice
+    #   and this notice are preserved.  This file is offered as-is, without any
+    #   warranty.
+    __FUNC_ATTRIBUTES = {
+        'alias': '''
+            int foo(void) { return 0; }
+            int bar(void) __attribute__((alias("foo")));''',
+        'aligned':
+            'int foo(void) __attribute__((aligned(32)));',
+        'alloc_size':
+            'void *foo(int a) __attribute__((alloc_size(1)));',
+        'always_inline':
+            'inline __attribute__((always_inline)) int foo(void) { return 0; }',
+        'artificial':
+            'inline __attribute__((artificial)) int foo(void) { return 0; }',
+        'cold':
+            'int foo(void) __attribute__((cold));',
+        'const':
+            'int foo(void) __attribute__((const));',
+        'constructor':
+            'int foo(void) __attribute__((constructor));',
+        'constructor_priority':
+            'int foo( void ) __attribute__((__constructor__(65535/2)));',
+        'deprecated':
+            'int foo(void) __attribute__((deprecated("")));',
+        'destructor':
+            'int foo(void) __attribute__((destructor));',
+        'dllexport':
+            '__attribute__((dllexport)) int foo(void) { return 0; }',
+        'dllimport':
+            'int foo(void) __attribute__((dllimport));',
+        'error':
+            'int foo(void) __attribute__((error("")));',
+        'externally_visible':
+            'int foo(void) __attribute__((externally_visible));',
+        'fallthrough': '''
+            int foo( void ) {
+              switch (0) {
+                case 1: __attribute__((fallthrough));
+                case 2: break;
+              }
+              return 0;
+            };''',
+        'flatten':
+            'int foo(void) __attribute__((flatten));',
+        'format':
+            'int foo(const char * p, ...) __attribute__((format(printf, 1, 2)));',
+        'format_arg':
+            'char * foo(const char * p) __attribute__((format_arg(1)));',
+        'gnu_inline':
+            'inline __attribute__((gnu_inline)) int foo(void) { return 0; }',
+        'hot':
+            'int foo(void) __attribute__((hot));',
+        'ifunc':
+            ('int my_foo(void) { return 0; }'
+             'static int (*resolve_foo(void))(void) { return my_foo; }'
+             'int foo(void) __attribute__((ifunc("resolve_foo")));'),
+        'leaf':
+            '__attribute__((leaf)) int foo(void) { return 0; }',
+        'malloc':
+            'int *foo(void) __attribute__((malloc));',
+        'noclone':
+            'int foo(void) __attribute__((noclone));',
+        'noinline':
+            '__attribute__((noinline)) int foo(void) { return 0; }',
+        'nonnull':
+            'int foo(char * p) __attribute__((nonnull(1)));',
+        'noreturn':
+            'int foo(void) __attribute__((noreturn));',
+        'nothrow':
+            'int foo(void) __attribute__((nothrow));',
+        'optimize':
+            '__attribute__((optimize(3))) int foo(void) { return 0; }',
+        'packed':
+            'struct __attribute__((packed)) foo { int bar; };',
+        'pure':
+            'int foo(void) __attribute__((pure));',
+        'returns_nonnull':
+            'int *foo(void) __attribute__((returns_nonnull));',
+        'unused':
+            'int foo(void) __attribute__((unused));',
+        'used':
+            'int foo(void) __attribute__((used));',
+        'visibility': '''
+            int foo_def(void) __attribute__((visibility(("default"))));
+            int foo_hid(void) __attribute__((visibility(("hidden"))));
+            int foo_int(void) __attribute__((visibility(("internal"))));
+            int foo_pro(void) __attribute__((visibility(("protected"))));''',
+        'warning':
+            'int foo(void) __attribute__((warning("")));',
+        'warn_unused_result':
+            'int foo(void) __attribute__((warn_unused_result));',
+        'weak':
+            'int foo(void) __attribute__((weak));',
+        'weakref': '''
+            static int foo(void) { return 0; }
+            static int var(void) __attribute__((weakref("foo")));''',
+    }
+
+    @classmethod
+    def attribute_check_func(cls, name):
+        return cls.__FUNC_ATTRIBUTES[name]
 
     def __init__(self, exelist, version, is_cross, exe_wrapper=None, **kwargs):
         # If a child ObjC or CPP class has already set it, don't set it ourselves
@@ -1045,6 +1155,15 @@ class CCompiler(Compiler):
             m = pattern.match(ret)
         return ret
 
+    def has_func_attribute(self, name, env):
+        # Clang and GCC both return warnings if the __attribute__ is undefined,
+        # so set -Werror
+        try:
+            return self.compiles(self.attribute_check_func(name), env, extra_args='-Werror')
+        except KeyError:
+            raise MesonException('Unknown function attribute "{}"'.format(name))
+
+
 class ClangCCompiler(ClangCompiler, CCompiler):
     def __init__(self, exelist, version, clang_type, is_cross, exe_wrapper=None, **kwargs):
         CCompiler.__init__(self, exelist, version, is_cross, exe_wrapper, **kwargs)
@@ -1489,6 +1608,12 @@ class VisualStudioCCompiler(CCompiler):
         else:
             assert(buildtype == 'custom')
             raise EnvironmentException('Requested C runtime based on buildtype, but buildtype is "custom".')
+
+    def has_func_attribute(self, name, env):
+        # MSVC doesn't have __attribute__ like Clang and GCC do, so just return
+        # false without compiling anything
+        return False
+
 
 class ArmCCompiler(ArmCompiler, CCompiler):
     def __init__(self, exelist, version, is_cross, exe_wrapper=None, **kwargs):

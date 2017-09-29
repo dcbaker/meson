@@ -33,6 +33,27 @@ from .compilers import (
 )
 
 class CPPCompiler(CCompiler):
+
+    __FUNC_ATTRIBUTES = {
+        # Alias must be applied to the mangled name in C++
+        'alias':
+            ('extern "C" {'
+             'int foo(void) { return 0; }'
+             '}'
+             'int bar(void) __attribute__((alias("foo")));'
+             ),
+        'ifunc':
+            ('extern "C" {'
+             'int my_foo(void) { return 0; }'
+             'static int (*resolve_foo(void))(void) { return my_foo; }'
+             '}'
+             'int foo(void) __attribute__((ifunc("resolve_foo")));'),
+    }
+
+    @classmethod
+    def attribute_check_func(cls, name):
+        return cls.__FUNC_ATTRIBUTES.get(name, super().attribute_check_func(name))
+
     def __init__(self, exelist, version, is_cross, exe_wrap, **kwargs):
         # If a child ObjCPP class has already set it, don't set it ourselves
         if not hasattr(self, 'language'):
