@@ -1,0 +1,6 @@
+# This is a comment
+
+other = ../main.c \
+	$()
+
+SOURCES := ../twelve.c four.c sub/six.c $(OTHER)
