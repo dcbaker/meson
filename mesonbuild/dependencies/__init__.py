@@ -20,7 +20,7 @@ from .base import (  # noqa: F401
     _packages_accept_language
 )
 from .dev import GMockDependency, GTestDependency, LLVMDependency, ValgrindDependency
-from .misc import (BoostDependency, MPIDependency, Python3Dependency, ThreadDependency, PcapDependency, LibWmfDependency)
+from .misc import (BoostDependency, MPIDependency, Python3Dependency, ThreadDependency, LibWmfDependency)
 from .platform import AppleFrameworks
 from .ui import GLDependency, GnuStepDependency, Qt4Dependency, Qt5Dependency, SDL2Dependency, WxDependency, VulkanDependency
 
@@ -39,7 +39,7 @@ packages.update({
     'mpi': MPIDependency,
     'python3': Python3Dependency,
     'threads': ThreadDependency,
-    'pcap': PcapDependency,
+    'pcap': DependencyFactory('pcap', _ALL_METHODS, config_tools=['pcap-config']),
     'cups': DependencyFactory('cups', _ALL_METHODS, config_tools=['cups-config']),
     'libwmf': LibWmfDependency,
 

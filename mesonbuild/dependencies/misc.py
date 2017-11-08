@@ -687,48 +687,6 @@ class Python3Dependency(ExternalDependency):
             return super().get_pkgconfig_variable(variable_name)
 
 
-class PcapDependency(ExternalDependency):
-    def __init__(self, environment, kwargs):
-        super().__init__('pcap', environment, None, kwargs)
-        kwargs['required'] = False
-        if DependencyMethods.PKGCONFIG in self.methods:
-            try:
-                pcdep = PkgConfigDependency('pcap', environment, kwargs)
-                if pcdep.found():
-                    self.type_name = 'pkgconfig'
-                    self.is_found = True
-                    self.compile_args = pcdep.get_compile_args()
-                    self.link_args = pcdep.get_link_args()
-                    self.version = pcdep.get_version()
-                    return
-            except Exception as e:
-                mlog.debug('Pcap not found via pkgconfig. Trying next, error was:', str(e))
-        if DependencyMethods.CONFIG_TOOL in self.methods:
-            try:
-                ctdep = ConfigToolDependency.factory(
-                    'pcap', environment, None, kwargs, ['pcap-config'], 'pcap-config')
-                if ctdep.found():
-                    self.config = ctdep.config
-                    self.type_name = 'config-tool'
-                    self.compile_args = ctdep.get_config_value(['--cflags'], 'compile_args')
-                    self.link_args = ctdep.get_config_value(['--libs'], 'link_args')
-                    self.version = self.get_pcap_lib_version()
-                    self.is_found = True
-                    return
-            except Exception as e:
-                mlog.debug('Pcap not found via pcap-config. Trying next, error was:', str(e))
-
-    def get_methods(self):
-        if mesonlib.is_osx():
-            return [DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL, DependencyMethods.EXTRAFRAMEWORK]
-        else:
-            return [DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL]
-
-    def get_pcap_lib_version(self):
-        return self.compiler.get_return_value('pcap_lib_version', 'string',
-                                              '#include <pcap.h>', self.env, [], [self])
-
-
 class LibWmfDependency(ExternalDependency):
     def __init__(self, environment, kwargs):
         super().__init__('libwmf', environment, None, kwargs)
