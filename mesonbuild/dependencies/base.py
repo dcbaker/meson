@@ -745,6 +745,83 @@ class ExtraFrameworkDependency(ExternalDependency):
         return 'unknown'
 
 
+class DependencyFactory:
+
+    class NotFound(Exception): pass
+
+    def __init__(self, name, methods, *, pkgconfig_name=None,
+                 framework_name=None, config_tools=None):
+        self.name = name
+        self.methods = methods
+        self.pkgconfig_name = pkgconfig_name or name
+        self.framework_name = framework_name or name
+        assert not (DependencyMethods.CONFIG_TOOL in self.methods and not config_tools)
+        self.config_tools = config_tools
+
+    def get_methods(self):
+        for each in self.methods:
+            if each is DependencyMethods.EXTRAFRAMEWORK and not mesonlib.is_osx():
+                continue
+            yield each
+
+    def get_pkgconfig(self, environment, kwargs):
+        dep = PkgConfigDependency(self.pkgconfig_name, environment, kwargs)
+        if dep.found():
+            return dep
+        raise self.NotFound
+
+    def set_configtool_values(self, dep):
+        """Method for configuring config tool arguments.
+
+        It may be necessary to override this method in a subclass.
+        """
+        dep.compile_args = dep.get_config_value(['--cflags'], 'compile_args')
+        dep.link_args = dep.get_config_value(['--libs'], 'link_args')
+
+    def get_configtool(self, environment, kwargs):
+        dep = ConfigToolDependency.factory(
+            self.name, environment, None, kwargs, self.config_tools,
+            self.config_tools[0])
+        if dep.found():
+            self.set_configtool_values(dep)
+            return dep
+        raise self.NotFound
+
+    def get_extraframework(self, environment, kwargs):
+        dep = ExtraFrameworkDependency(
+            self.framework_name, False, None, environment, None, kwargs)
+        if dep.found():
+            return dep
+        raise self.NotFound
+
+    def __call__(self, environment, kwargs):
+        if DependencyMethods.PKGCONFIG in self.methods:
+            try:
+                return self.get_pkgconfig(environment, kwargs)
+            except Exception as e:
+                msg = '{} not found via pkgconfig. Trying next'.format(self.name)
+                if not isinstance(e, self.NotFound):
+                    msg += ', error was: {}'.format(e)
+                mlog.debug(msg)
+        if DependencyMethods.CONFIG_TOOL in self.methods:
+            try:
+                return self.get_configtool(environment, kwargs)
+            except Exception as e:
+                msg = '{} not found via config-tool. Trying next'.format(self.name)
+                if not isinstance(e, self.NotFound):
+                    msg += ', error was: {}'.format(e)
+                mlog.debug(msg)
+        if DependencyMethods.EXTRAFRAMEWORK in self.methods:
+            try:
+                return self.get_extraframework(environment, kwargs)
+            except Exception as e:
+                msg = '{} not found via extraconfig. Trying next'.format(self.name)
+                if not isinstance(e, self.NotFound):
+                    msg += ', error was: {}'.format(e)
+                mlog.debug(msg)
+        mlog.log('Dependency', mlog.bold(self.name), 'found:', mlog.red('NO'))
+
+
 def get_dep_identifier(name, kwargs, want_cross):
     # Need immutable objects since the identifier will be used as a dict key
     version_reqs = listify(kwargs.get('version', []))
