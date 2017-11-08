@@ -14,13 +14,18 @@
 
 from .base import (  # noqa: F401
     Dependency, DependencyException, DependencyMethods, ExternalProgram,
-    ExternalDependency, ExternalLibrary, ExtraFrameworkDependency, InternalDependency,
-    PkgConfigDependency, find_external_dependency, get_dep_identifier, packages, _packages_accept_language)
+    ExternalDependency, ExternalLibrary, ExtraFrameworkDependency,
+    InternalDependency, PkgConfigDependency, DependencyFactory,
+    find_external_dependency, get_dep_identifier, packages,
+    _packages_accept_language
+)
 from .dev import GMockDependency, GTestDependency, LLVMDependency, ValgrindDependency
-from .misc import (BoostDependency, MPIDependency, Python3Dependency, ThreadDependency, PcapDependency, CupsDependency, LibWmfDependency)
+from .misc import (BoostDependency, MPIDependency, Python3Dependency, ThreadDependency, PcapDependency, LibWmfDependency)
 from .platform import AppleFrameworks
 from .ui import GLDependency, GnuStepDependency, Qt4Dependency, Qt5Dependency, SDL2Dependency, WxDependency, VulkanDependency
 
+_ALL_METHODS = [DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL,
+                DependencyMethods.EXTRAFRAMEWORK]
 
 packages.update({
     # From dev:
@@ -35,7 +40,7 @@ packages.update({
     'python3': Python3Dependency,
     'threads': ThreadDependency,
     'pcap': PcapDependency,
-    'cups': CupsDependency,
+    'cups': DependencyFactory('cups', _ALL_METHODS, config_tools=['cups-config']),
     'libwmf': LibWmfDependency,
 
     # From platform:
