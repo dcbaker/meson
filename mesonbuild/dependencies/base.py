@@ -192,7 +192,18 @@ class ConfigToolDependency(ExternalDependency):
     def __init__(self, name, environment, language, kwargs):
         super().__init__('config-tool', environment, language, kwargs)
         self.name = name
-        self.tools = listify(kwargs.get('tools', self.tools))
+        if environment.is_cross_build():
+            bins = environment.cross_info.config['binaries']
+            if self.tool_name in bins:
+                self.tools = listify(bins[self.tool_name])
+            else:
+                if kwargs.get('required'):
+                    raise DependencyException(
+                        'Cross build missing required binary {}'.format(self.tool_name))
+                mlog.log('Cross Dependency {} found:'.format(self.name), mlog.red('NO'))
+                return
+        else:
+            self.tools = listify(kwargs.get('tools', self.tools))
 
         req_version = kwargs.get('version', None)
         tool, version = self.find_config(req_version)
