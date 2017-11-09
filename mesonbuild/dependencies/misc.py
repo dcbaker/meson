@@ -687,44 +687,6 @@ class Python3Dependency(ExternalDependency):
             return super().get_pkgconfig_variable(variable_name)
 
 
-class LibWmfDependency(ExternalDependency):
-    def __init__(self, environment, kwargs):
-        super().__init__('libwmf', environment, None, kwargs)
-        if DependencyMethods.PKGCONFIG in self.methods:
-            try:
-                kwargs['required'] = False
-                pcdep = PkgConfigDependency('libwmf', environment, kwargs)
-                if pcdep.found():
-                    self.type_name = 'pkgconfig'
-                    self.is_found = True
-                    self.compile_args = pcdep.get_compile_args()
-                    self.link_args = pcdep.get_link_args()
-                    self.version = pcdep.get_version()
-                    return
-            except Exception as e:
-                mlog.debug('LibWmf not found via pkgconfig. Trying next, error was:', str(e))
-        if DependencyMethods.CONFIG_TOOL in self.methods:
-            try:
-                ctdep = ConfigToolDependency.factory(
-                    'libwmf', environment, None, kwargs, ['libwmf-config'], 'libwmf-config')
-                if ctdep.found():
-                    self.config = ctdep.config
-                    self.type_name = 'config-too'
-                    self.version = ctdep.version
-                    self.compile_args = ctdep.get_config_value(['--cflags'], 'compile_args')
-                    self.link_args = ctdep.get_config_value(['--libs'], 'link_args')
-                    self.is_found = True
-                    return
-            except Exception as e:
-                mlog.debug('cups not found via libwmf-config. Trying next, error was:', str(e))
-
-    def get_methods(self):
-        if mesonlib.is_osx():
-            return [DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL, DependencyMethods.EXTRAFRAMEWORK]
-        else:
-            return [DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL]
-
-
 # Generated with boost_names.py
 BOOST_LIBS = [
     'boost_atomic',
