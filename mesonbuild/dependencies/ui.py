@@ -368,57 +368,6 @@ class Qt5Dependency(QtBaseDependency):
         return core.get_pkgconfig_variable('host_bins')
 
 
-# There are three different ways of depending on SDL2:
-# sdl2-config, pkg-config and OSX framework
-class SDL2Dependency(ExternalDependency):
-    def __init__(self, environment, kwargs):
-        super().__init__('sdl2', environment, None, kwargs)
-        kwargs['required'] = False
-        if DependencyMethods.PKGCONFIG in self.methods:
-            try:
-                pcdep = PkgConfigDependency('sdl2', environment, kwargs)
-                if pcdep.found():
-                    self.type_name = 'pkgconfig'
-                    self.is_found = True
-                    self.compile_args = pcdep.get_compile_args()
-                    self.link_args = pcdep.get_link_args()
-                    self.version = pcdep.get_version()
-                    return
-            except Exception as e:
-                mlog.debug('SDL 2 not found via pkgconfig. Trying next, error was:', str(e))
-        if DependencyMethods.CONFIG_TOOL in self.methods:
-            try:
-                ctdep = ConfigToolDependency.factory(
-                    'sdl2', environment, None, kwargs, ['sdl2-config'], 'sdl2-config')
-                if ctdep.found():
-                    self.type_name = 'config-tool'
-                    self.config = ctdep.config
-                    self.version = ctdep.version
-                    self.compile_args = ctdep.get_config_value(['--cflags'], 'compile_args')
-                    self.links_args = ctdep.get_config_value(['--libs'], 'link_args')
-                    self.is_found = True
-                    return
-            except Exception as e:
-                mlog.debug('SDL 2 not found via sdl2-config. Trying next, error was:', str(e))
-        if DependencyMethods.EXTRAFRAMEWORK in self.methods:
-            if mesonlib.is_osx():
-                fwdep = ExtraFrameworkDependency('sdl2', False, None, self.env,
-                                                 self.language, kwargs)
-                if fwdep.found():
-                    self.is_found = True
-                    self.compile_args = fwdep.get_compile_args()
-                    self.link_args = fwdep.get_link_args()
-                    self.version = '2'  # FIXME
-                    return
-            mlog.log('Dependency', mlog.bold('sdl2'), 'found:', mlog.red('NO'))
-
-    def get_methods(self):
-        if mesonlib.is_osx():
-            return [DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL, DependencyMethods.EXTRAFRAMEWORK]
-        else:
-            return [DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL]
-
-
 class WxDependency(ConfigToolDependency):
 
     tools = ['wx-config-3.0', 'wx-config']

@@ -22,7 +22,7 @@ from .base import (  # noqa: F401
 from .dev import GMockDependency, GTestDependency, LLVMDependency, ValgrindDependency
 from .misc import (BoostDependency, MPIDependency, Python3Dependency, ThreadDependency)
 from .platform import AppleFrameworks
-from .ui import GLDependency, GnuStepDependency, Qt4Dependency, Qt5Dependency, SDL2Dependency, WxDependency, VulkanDependency
+from .ui import GLDependency, GnuStepDependency, Qt4Dependency, Qt5Dependency, WxDependency, VulkanDependency
 
 _ALL_METHODS = [DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL,
                 DependencyMethods.EXTRAFRAMEWORK]
@@ -52,7 +52,7 @@ packages.update({
     'gnustep': GnuStepDependency,
     'qt4': Qt4Dependency,
     'qt5': Qt5Dependency,
-    'sdl2': SDL2Dependency,
+    'sdl2': DependencyFactory('sdl2', _ALL_METHODS, config_tools=['sdl2-config']),
     'wxwidgets': WxDependency,
     'vulkan': VulkanDependency,
 })
