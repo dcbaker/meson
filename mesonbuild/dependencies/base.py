@@ -869,7 +869,7 @@ class DependencyFactory:
                     msg += ', error was: {}'.format(e)
                 mlog.debug(msg)
         mlog.log('Dependency', mlog.bold(self.name), 'found:', mlog.red('NO'))
-        return ExternalDependency(self.name, env, None, kwargs)
+        return ExternalDependency(self.name, environment, None, kwargs)
 
 
 def get_dep_identifier(name, kwargs, want_cross):
