@@ -765,12 +765,13 @@ class ExtraFrameworkDependency(ExternalDependency):
 class DependencyFactory:
 
     def __init__(self, name, methods, *, pkgconfig_name=None,
-                 framework_name=None, config_tools=None, system_method=None,
-                 sysconfig_method=None):
+                 framework_name=None, framework_paths=None, config_tools=None,
+                 system_method=None, sysconfig_method=None):
         self.name = name
         self.methods = methods
         self.pkgconfig_name = pkgconfig_name or name
         self.framework_name = framework_name or name
+        self.framework_paths = framework_paths
         self.get_system = system_method
         self.get_sysconfig = sysconfig_method
         assert not (DependencyMethods.CONFIG_TOOL in self.methods and not config_tools)
