@@ -765,12 +765,14 @@ class ExtraFrameworkDependency(ExternalDependency):
 class DependencyFactory:
 
     def __init__(self, name, methods, *, pkgconfig_name=None,
-                 framework_name=None, config_tools=None, system_method=None):
+                 framework_name=None, config_tools=None, system_method=None,
+                 sysconfig_method=None):
         self.name = name
         self.methods = methods
         self.pkgconfig_name = pkgconfig_name or name
         self.framework_name = framework_name or name
-        self.system_method = system_method
+        self.get_system = system_method
+        self.get_sysconfig = sysconfig_method
         assert not (DependencyMethods.CONFIG_TOOL in self.methods and not config_tools)
         self.config_tools = config_tools
 
@@ -837,9 +839,17 @@ class DependencyFactory:
                 mlog.debug(msg)
         if DependencyMethods.SYSTEM in self.methods:
             try:
-                return self.system_method(environment, kwargs)
+                return self.get_system(environment, kwargs)
             except Exception as e:
                 msg = '{} not found via system. Trying next'.format(self.name)
+                if not isinstance(e, FactoryNotFound):
+                    msg += ', error was: {}'.format(e)
+                mlog.debug(msg)
+        if DependencyMethods.SYSCONFIG in self.methods:
+            try:
+                return self.get_system(environment, kwargs)
+            except Exception as e:
+                msg = '{} not found via sysconfig. Trying next'.format(self.name)
                 if not isinstance(e, FactoryNotFound):
                     msg += ', error was: {}'.format(e)
                 mlog.debug(msg)
