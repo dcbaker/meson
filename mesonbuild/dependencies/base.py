@@ -39,6 +39,12 @@ class DependencyException(MesonException):
     '''Exceptions raised while trying to find dependencies'''
 
 
+class FactoryNotFound(Exception):
+    """Exception to be raised in DependencyFactory to notify that a specific
+    method has failed to find the dependency.
+    """
+
+
 class DependencyMethods(Enum):
     # Auto means to use whatever dependency checking mechanisms in whatever order meson thinks is best.
     AUTO = 'auto'
@@ -758,14 +764,13 @@ class ExtraFrameworkDependency(ExternalDependency):
 
 class DependencyFactory:
 
-    class NotFound(Exception): pass
-
     def __init__(self, name, methods, *, pkgconfig_name=None,
-                 framework_name=None, config_tools=None):
+                 framework_name=None, config_tools=None, system_method=None):
         self.name = name
         self.methods = methods
         self.pkgconfig_name = pkgconfig_name or name
         self.framework_name = framework_name or name
+        self.system_method = system_method
         assert not (DependencyMethods.CONFIG_TOOL in self.methods and not config_tools)
         self.config_tools = config_tools
 
@@ -779,7 +784,7 @@ class DependencyFactory:
         dep = PkgConfigDependency(self.pkgconfig_name, environment, kwargs)
         if dep.found():
             return dep
-        raise self.NotFound
+        raise FactoryNotFound
 
     def set_configtool_values(self, dep):
         """Method for configuring config tool arguments.
@@ -796,14 +801,14 @@ class DependencyFactory:
         if dep.found():
             self.set_configtool_values(dep)
             return dep
-        raise self.NotFound
+        raise FactoryNotFound
 
     def get_extraframework(self, environment, kwargs):
         dep = ExtraFrameworkDependency(
             self.framework_name, False, None, environment, None, kwargs)
         if dep.found():
             return dep
-        raise self.NotFound
+        raise FactoryNotFound
 
     def __call__(self, environment, kwargs):
         if DependencyMethods.PKGCONFIG in self.methods:
@@ -811,7 +816,7 @@ class DependencyFactory:
                 return self.get_pkgconfig(environment, kwargs)
             except Exception as e:
                 msg = '{} not found via pkgconfig. Trying next'.format(self.name)
-                if not isinstance(e, self.NotFound):
+                if not isinstance(e, FactoryNotFound):
                     msg += ', error was: {}'.format(e)
                 mlog.debug(msg)
         if DependencyMethods.CONFIG_TOOL in self.methods:
@@ -819,7 +824,7 @@ class DependencyFactory:
                 return self.get_configtool(environment, kwargs)
             except Exception as e:
                 msg = '{} not found via config-tool. Trying next'.format(self.name)
-                if not isinstance(e, self.NotFound):
+                if not isinstance(e, FactoryNotFound):
                     msg += ', error was: {}'.format(e)
                 mlog.debug(msg)
         if DependencyMethods.EXTRAFRAMEWORK in self.methods:
@@ -827,7 +832,15 @@ class DependencyFactory:
                 return self.get_extraframework(environment, kwargs)
             except Exception as e:
                 msg = '{} not found via extraconfig. Trying next'.format(self.name)
-                if not isinstance(e, self.NotFound):
+                if not isinstance(e, FactoryNotFound):
+                    msg += ', error was: {}'.format(e)
+                mlog.debug(msg)
+        if DependencyMethods.SYSTEM in self.methods:
+            try:
+                return self.system_method(environment, kwargs)
+            except Exception as e:
+                msg = '{} not found via system. Trying next'.format(self.name)
+                if not isinstance(e, FactoryNotFound):
                     msg += ', error was: {}'.format(e)
                 mlog.debug(msg)
         mlog.log('Dependency', mlog.bold(self.name), 'found:', mlog.red('NO'))
