@@ -733,7 +733,7 @@ class ExtraFrameworkDependency(ExternalDependency):
         if path is None:
             paths = ['/System/Library/Frameworks', '/Library/Frameworks']
         else:
-            paths = [path]
+            paths = listify(path)
         for p in paths:
             for d in os.listdir(p):
                 fullpath = os.path.join(p, d)

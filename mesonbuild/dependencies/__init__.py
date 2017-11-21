@@ -44,7 +44,7 @@ packages.update({
     'python3': DependencyFactory(
         'python3', [DependencyMethods.PKGCONFIG, DependencyMethods.EXTRAFRAMEWORK, DependencyMethods.SYSCONFIG],
         framework_name='python',  # the macOS Python 3 framework does not have a version number in its name.
-        framework_paths=['/Library/Frameworks'],  # There is a Python in /System, but that is python 2 only
+        framework_paths='/Library/Frameworks',  # There is a Python in /System, but that is python 2 only
         sysconfig_method=python3_sysconfig),
     'threads': ThreadDependency,
     'pcap': DependencyFactory('pcap', _ALL_METHODS, config_tools=['pcap-config']),
