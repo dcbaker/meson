@@ -815,6 +815,9 @@ class DependencyFactory:
         raise FactoryNotFound
 
     def __call__(self, environment, kwargs):
+        # XXX: is it safe to modify kwargs, or should this be copied first?
+        kwargs.pop('methods')
+        kwargs.pop('required')
         if DependencyMethods.PKGCONFIG in self.methods:
             try:
                 return self.get_pkgconfig(environment, kwargs)
