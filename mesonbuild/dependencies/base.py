@@ -816,10 +816,14 @@ class DependencyFactory:
 
     def __call__(self, environment, kwargs):
         # XXX: is it safe to modify kwargs, or should this be copied first?
-        if 'methods' in kwargs:
-            del kwargs['methods']
-        if 'required' in kwargs:
-            del kwargs['required']
+        kwargs['required'] = False
+        if kwargs['method']:
+            method = kwargs.pop('method')
+            if method not in self.get_methods():
+                raise DependencyException(
+                    'Unknown dependency method for {}: "{}", known methods are: "{}"'.format(
+                        self.name, method, ', '.join(self.get_methods())))
+
         if DependencyMethods.PKGCONFIG in self.methods:
             try:
                 return self.get_pkgconfig(environment, kwargs)
