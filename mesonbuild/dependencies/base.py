@@ -810,7 +810,8 @@ class DependencyFactory:
 
     def get_extraframework(self, environment, kwargs):
         dep = ExtraFrameworkDependency(
-            self.framework_name, False, None, environment, None, kwargs)
+            self.framework_name, False, self.framework_paths, environment,
+            None, kwargs)
         if dep.found():
             return dep
         raise FactoryNotFound
