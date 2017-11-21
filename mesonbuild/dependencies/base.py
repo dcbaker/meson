@@ -780,6 +780,8 @@ class DependencyFactory:
         for each in self.methods:
             if each is DependencyMethods.EXTRAFRAMEWORK and not mesonlib.is_osx():
                 continue
+            if each is DependencyMethods.SYSCONFIG and not mesonlib.is_windows():
+                continue
             yield each
 
     def get_pkgconfig(self, environment, kwargs):
