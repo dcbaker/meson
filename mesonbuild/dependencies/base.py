@@ -823,8 +823,11 @@ class DependencyFactory:
                 raise DependencyException(
                     'Unknown dependency method for {}: "{}", known methods are: "{}"'.format(
                         self.name, method, ', '.join(str(m) for m in self.get_methods())))
+            methods = [method]
+        else:
+            methods = self.get_methods()
 
-        if DependencyMethods.PKGCONFIG in self.methods:
+        if DependencyMethods.PKGCONFIG in methods:
             try:
                 return self.get_pkgconfig(environment, kwargs)
             except Exception as e:
@@ -832,7 +835,7 @@ class DependencyFactory:
                 if not isinstance(e, FactoryNotFound):
                     msg += ', error was: {}'.format(e)
                 mlog.debug(msg)
-        if DependencyMethods.CONFIG_TOOL in self.methods:
+        if DependencyMethods.CONFIG_TOOL in methods:
             try:
                 return self.get_configtool(environment, kwargs)
             except Exception as e:
@@ -840,7 +843,7 @@ class DependencyFactory:
                 if not isinstance(e, FactoryNotFound):
                     msg += ', error was: {}'.format(e)
                 mlog.debug(msg)
-        if DependencyMethods.EXTRAFRAMEWORK in self.methods:
+        if DependencyMethods.EXTRAFRAMEWORK in methods:
             try:
                 return self.get_extraframework(environment, kwargs)
             except Exception as e:
@@ -848,7 +851,7 @@ class DependencyFactory:
                 if not isinstance(e, FactoryNotFound):
                     msg += ', error was: {}'.format(e)
                 mlog.debug(msg)
-        if DependencyMethods.SYSTEM in self.methods:
+        if DependencyMethods.SYSTEM in methods:
             try:
                 return self.get_system(environment, kwargs)
             except Exception as e:
@@ -856,7 +859,7 @@ class DependencyFactory:
                 if not isinstance(e, FactoryNotFound):
                     msg += ', error was: {}'.format(e)
                 mlog.debug(msg)
-        if DependencyMethods.SYSCONFIG in self.methods:
+        if DependencyMethods.SYSCONFIG in methods:
             try:
                 return self.get_system(environment, kwargs)
             except Exception as e:
