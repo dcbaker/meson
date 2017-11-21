@@ -22,7 +22,10 @@ from .base import (  # noqa: F401
 from .dev import GMockDependency, GTestDependency, LLVMDependency, ValgrindDependency
 from .misc import (BoostDependency, MPIDependency, Python3Dependency, ThreadDependency)
 from .platform import AppleFrameworks
-from .ui import GLDependency, GnuStepDependency, Qt4Dependency, Qt5Dependency, WxDependency, VulkanDependency
+from .ui import (
+    GLDependency, GnuStepDependency, Qt4Dependency, Qt5Dependency,
+    WxDependency, vulkan_dependency,
+)
 
 _ALL_METHODS = [DependencyMethods.PKGCONFIG, DependencyMethods.CONFIG_TOOL,
                 DependencyMethods.EXTRAFRAMEWORK]
@@ -54,7 +57,9 @@ packages.update({
     'qt5': Qt5Dependency,
     'sdl2': DependencyFactory('sdl2', _ALL_METHODS, config_tools=['sdl2-config']),
     'wxwidgets': WxDependency,
-    'vulkan': VulkanDependency,
+    'vulkan': DependencyFactory(
+        'vulkan', [DependencyMethods.PKGCONFIG, DependencyMethods.SYSTEM],
+        system_method=vulkan_dependency),
 })
 _packages_accept_language.update({
     'mpi',
