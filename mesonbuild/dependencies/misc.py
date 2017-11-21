@@ -599,92 +599,43 @@ class ThreadDependency(ExternalDependency):
         return 'unknown'
 
 
-class Python3Dependency(ExternalDependency):
-    def __init__(self, environment, kwargs):
-        super().__init__('python3', environment, None, kwargs)
-        self.name = 'python3'
-        # We can only be sure that it is Python 3 at this point
-        self.version = '3'
-        self.pkgdep = None
-        if DependencyMethods.PKGCONFIG in self.methods:
-            try:
-                self.pkgdep = PkgConfigDependency('python3', environment, kwargs)
-                if self.pkgdep.found():
-                    self.compile_args = self.pkgdep.get_compile_args()
-                    self.link_args = self.pkgdep.get_link_args()
-                    self.version = self.pkgdep.get_version()
-                    self.is_found = True
-                    return
-                else:
-                    self.pkgdep = None
-            except Exception:
-                pass
-        if not self.is_found:
-            if mesonlib.is_windows() and DependencyMethods.SYSCONFIG in self.methods:
-                self._find_libpy3_windows(environment)
-            elif mesonlib.is_osx() and DependencyMethods.EXTRAFRAMEWORK in self.methods:
-                # In OSX the Python 3 framework does not have a version
-                # number in its name.
-                fw = ExtraFrameworkDependency('python', False, None, self.env,
-                                              self.language, kwargs)
-                if fw.found():
-                    self.compile_args = fw.get_compile_args()
-                    self.link_args = fw.get_link_args()
-                    self.is_found = True
-        if self.is_found:
-            mlog.log('Dependency', mlog.bold(self.name), 'found:', mlog.green('YES'))
-        else:
-            mlog.log('Dependency', mlog.bold(self.name), 'found:', mlog.red('NO'))
-
-    def _find_libpy3_windows(self, env):
-        '''
-        Find python3 libraries on Windows and also verify that the arch matches
-        what we are building for.
-        '''
-        pyarch = sysconfig.get_platform()
-        arch = detect_cpu_family(env.coredata.compilers)
-        if arch == 'x86':
-            arch = '32'
-        elif arch == 'x86_64':
-            arch = '64'
-        else:
-            # We can't cross-compile Python 3 dependencies on Windows yet
-            mlog.log('Unknown architecture {!r} for'.format(arch),
-                     mlog.bold(self.name))
-            self.is_found = False
-            return
-        # Pyarch ends in '32' or '64'
-        if arch != pyarch[-2:]:
-            mlog.log('Need', mlog.bold(self.name),
-                     'for {}-bit, but found {}-bit'.format(arch, pyarch[-2:]))
-            self.is_found = False
-            return
-        inc = sysconfig.get_path('include')
-        platinc = sysconfig.get_path('platinclude')
-        self.compile_args = ['-I' + inc]
-        if inc != platinc:
-            self.compile_args.append('-I' + platinc)
-        # Nothing exposes this directly that I coulf find
-        basedir = sysconfig.get_config_var('base')
-        vernum = sysconfig.get_config_var('py_version_nodot')
-        self.link_args = ['-L{}/libs'.format(basedir),
-                          '-lpython{}'.format(vernum)]
-        self.version = sysconfig.get_config_var('py_version_short')
-        self.is_found = True
-
-    def get_methods(self):
-        if mesonlib.is_windows():
-            return [DependencyMethods.PKGCONFIG, DependencyMethods.SYSCONFIG]
-        elif mesonlib.is_osx():
-            return [DependencyMethods.PKGCONFIG, DependencyMethods.EXTRAFRAMEWORK]
-        else:
-            return [DependencyMethods.PKGCONFIG]
-
-    def get_pkgconfig_variable(self, variable_name):
-        if self.pkgdep:
-            return self.pkgdep.get_pkgconfig_variable(variable_name)
-        else:
-            return super().get_pkgconfig_variable(variable_name)
+def python3_sysconfig(env, kwargs):
+    '''
+    Find python3 libraries on Windows and also verify that the arch matches
+    what we are building for.
+    '''
+    dependency = ExternalDependency('python 3', env, None, kwargs)
+    pyarch = sysconfig.get_platform()
+    arch = detect_cpu_family(env.coredata.compilers)
+    if arch == 'x86':
+        arch = '32'
+    elif arch == 'x86_64':
+        arch = '64'
+    else:
+        # We can't cross-compile Python 3 dependencies on Windows yet
+        mlog.log('Unknown architecture {!r} for'.format(arch),
+                 mlog.bold(dependency.name))
+        dependency.is_found = False
+        raise FactoryNotFound
+    # Pyarch ends in '32' or '64'
+    if arch != pyarch[-2:]:
+        mlog.log('Need', mlog.bold(dependency.name),
+                 'for {}-bit, but found {}-bit'.format(arch, pyarch[-2:]))
+        dependency.is_found = False
+        raise FactoryNotFound
+    inc = sysconfig.get_path('include')
+    platinc = sysconfig.get_path('platinclude')
+    dependency.compile_args = ['-I' + inc]
+    if inc != platinc:
+        dependency.compile_args.append('-I' + platinc)
+    # Nothing exposes this directly that I coulf find
+    basedir = sysconfig.get_config_var('base')
+    vernum = sysconfig.get_config_var('py_version_nodot')
+    dependency.link_args = ['-L{}/libs'.format(basedir),
+                      '-lpython{}'.format(vernum)]
+    dependency.version = sysconfig.get_config_var('py_version_short')
+    dependency.is_found = True
+    return dependency
 
 
 # Generated with boost_names.py

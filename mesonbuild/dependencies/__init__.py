@@ -20,7 +20,7 @@ from .base import (  # noqa: F401
     _packages_accept_language
 )
 from .dev import GMockDependency, GTestDependency, LLVMDependency, ValgrindDependency
-from .misc import (BoostDependency, MPIDependency, Python3Dependency, ThreadDependency)
+from .misc import (BoostDependency, MPIDependency, python3_sysconfig, ThreadDependency)
 from .platform import AppleFrameworks
 from .ui import (
     GLDependency, GnuStepDependency, Qt4Dependency, Qt5Dependency,
@@ -41,7 +41,10 @@ packages.update({
     # From misc:
     'boost': BoostDependency,
     'mpi': MPIDependency,
-    'python3': Python3Dependency,
+    'python3': DependencyFactory(
+        'python3', [DependencyMethods.PKGCONFIG, DependencyMethods.EXTRAFRAMEWORK, DependencyMethods.SYSCONFIG],
+        framework_name='python',  # the macOS Python 3 framework does not have a version number in its name.
+        sysconfig_method=python3_sysconfig),
     'threads': ThreadDependency,
     'pcap': DependencyFactory('pcap', _ALL_METHODS, config_tools=['pcap-config']),
     'cups': DependencyFactory('cups', _ALL_METHODS, config_tools=['cups-config']),
