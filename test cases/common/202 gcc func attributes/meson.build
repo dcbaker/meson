@@ -27,6 +27,10 @@ endif
 
 expected_result = c.get_id() != 'msvc'
 
+# Q: Why is ifunc not in this list or any of the below lists?
+# A: It's too damn hard to figure out if you actually support it, since it
+#    requires both compiler and libc support, and there isn't a good way to
+#    figure that out except by running the code we're trying to test.
 attributes = [
   'aligned',
   'alloc_size',
@@ -79,15 +83,6 @@ endif
 if host_machine.system() == 'windows'
   attributes += 'dllexport'
   attributes += 'dllimport'
-endif
-
-# Clang does support ifunc, but I can't figure out how to make a valid ifunc
-# for clang++, andditionally older versions of g++ (or possibly glib) don't
-# seem to work with C++ ifuncs. Additionally (since libc support is required)
-# ifuncs never work on windows or apple
-if not ['windows', 'darwin'].contains(host_machine.system())
-  x = c.has_function_attribute('ifunc')
-  assert(x == expected_result, 'ifunc')
 endif
 
 foreach a : attributes
