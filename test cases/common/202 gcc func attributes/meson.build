@@ -98,7 +98,7 @@ foreach a : attributes
 endforeach
 
 message('checking get_supported_function_attributes')
-if cc.get_id() != 'msvc'
+if c.get_id() != 'msvc'
   multi_expected = attributes
 else
   multi_expected = []
