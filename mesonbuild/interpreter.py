@@ -998,7 +998,9 @@ class CompilerHolder(InterpreterObject):
             raise InterpreterException('Prefix argument of sizeof must be a string.')
         extra_args = mesonlib.stringlistify(kwargs.get('args', []))
         deps = self.determine_dependencies(kwargs)
-        result = self.compiler.alignment(typename, prefix, self.environment, extra_args, deps)
+        result = self.compiler.alignment(typename, prefix, self.environment,
+                                         extra_args=extra_args,
+                                         dependencies=deps)
         mlog.log('Checking for alignment of', mlog.bold(typename, True), ':', result)
         return result
 
@@ -1023,7 +1025,8 @@ class CompilerHolder(InterpreterObject):
             raise InterpreterException('Testname argument must be a string.')
         extra_args = self.determine_args(kwargs)
         deps = self.determine_dependencies(kwargs)
-        result = self.compiler.run(code, self.environment, extra_args, deps)
+        result = self.compiler.run(code, self.environment, extra_args=extra_args,
+                                   dependencies=deps)
         if len(testname) > 0:
             if not result.compiled:
                 h = mlog.red('DID NOT COMPILE')
@@ -1079,7 +1082,9 @@ class CompilerHolder(InterpreterObject):
         extra_args = self.determine_args(kwargs)
         deps = self.determine_dependencies(kwargs)
         had = self.compiler.has_members(typename, [membername], prefix,
-                                        self.environment, extra_args, deps)
+                                        self.environment,
+                                        extra_args=extra_args,
+                                        dependencies=deps)
         if had:
             hadtxt = mlog.green('YES')
         else:
@@ -1107,7 +1112,9 @@ class CompilerHolder(InterpreterObject):
         extra_args = self.determine_args(kwargs)
         deps = self.determine_dependencies(kwargs)
         had = self.compiler.has_members(typename, membernames, prefix,
-                                        self.environment, extra_args, deps)
+                                        self.environment,
+                                        extra_args=extra_args,
+                                        dependencies=deps)
         if had:
             hadtxt = mlog.green('YES')
         else:
@@ -1134,7 +1141,9 @@ class CompilerHolder(InterpreterObject):
             raise InterpreterException('Prefix argument of has_function must be a string.')
         extra_args = self.determine_args(kwargs)
         deps = self.determine_dependencies(kwargs)
-        had = self.compiler.has_function(funcname, prefix, self.environment, extra_args, deps)
+        had = self.compiler.has_function(funcname, prefix, self.environment,
+                                         extra_args=extra_args,
+                                         dependencies=deps)
         if had:
             hadtxt = mlog.green('YES')
         else:
@@ -1159,7 +1168,8 @@ class CompilerHolder(InterpreterObject):
             raise InterpreterException('Prefix argument of has_type must be a string.')
         extra_args = self.determine_args(kwargs)
         deps = self.determine_dependencies(kwargs)
-        had = self.compiler.has_type(typename, prefix, self.environment, extra_args, deps)
+        had = self.compiler.has_type(typename, prefix, self.environment,
+                                     extra_args=extra_args, dependencies=deps)
         if had:
             hadtxt = mlog.green('YES')
         else:
@@ -1197,7 +1207,9 @@ class CompilerHolder(InterpreterObject):
             raise InterpreterException('Guess argument of compute_int must be an int.')
         extra_args = self.determine_args(kwargs)
         deps = self.determine_dependencies(kwargs)
-        res = self.compiler.compute_int(expression, low, high, guess, prefix, self.environment, extra_args, deps)
+        res = self.compiler.compute_int(expression, low, high, guess, prefix,
+                                        self.environment, extra_args=extra_args,
+                                        dependencies=deps)
         mlog.log('Computing int of "%s": %d' % (expression, res))
         return res
 
@@ -1218,7 +1230,8 @@ class CompilerHolder(InterpreterObject):
             raise InterpreterException('Prefix argument of sizeof must be a string.')
         extra_args = self.determine_args(kwargs)
         deps = self.determine_dependencies(kwargs)
-        esize = self.compiler.sizeof(element, prefix, self.environment, extra_args, deps)
+        esize = self.compiler.sizeof(element, prefix, self.environment,
+                                     extra_args=extra_args, dependencies=deps)
         mlog.log('Checking for size of "%s": %d' % (element, esize))
         return esize
 
@@ -1240,7 +1253,9 @@ class CompilerHolder(InterpreterObject):
             raise InterpreterException('Prefix argument of get_define() must be a string.')
         extra_args = self.determine_args(kwargs)
         deps = self.determine_dependencies(kwargs)
-        value = self.compiler.get_define(element, prefix, self.environment, extra_args, deps)
+        value = self.compiler.get_define(element, prefix, self.environment,
+                                         extra_args=extra_args,
+                                         dependencies=deps)
         mlog.log('Fetching value of define "%s": %s' % (element, value))
         return value
 
@@ -1265,7 +1280,9 @@ class CompilerHolder(InterpreterObject):
             raise InterpreterException('Testname argument must be a string.')
         extra_args = self.determine_args(kwargs)
         deps = self.determine_dependencies(kwargs)
-        result = self.compiler.compiles(code, self.environment, extra_args, deps)
+        result = self.compiler.compiles(code, self.environment,
+                                        extra_args=extra_args,
+                                        dependencies=deps)
         if len(testname) > 0:
             if result:
                 h = mlog.green('YES')
@@ -1295,7 +1312,9 @@ class CompilerHolder(InterpreterObject):
             raise InterpreterException('Testname argument must be a string.')
         extra_args = self.determine_args(kwargs)
         deps = self.determine_dependencies(kwargs)
-        result = self.compiler.links(code, self.environment, extra_args, deps)
+        result = self.compiler.links(code, self.environment,
+                                     extra_args=extra_args,
+                                     dependencies=deps)
         if len(testname) > 0:
             if result:
                 h = mlog.green('YES')
@@ -1322,7 +1341,9 @@ class CompilerHolder(InterpreterObject):
             raise InterpreterException('Prefix argument of has_header must be a string.')
         extra_args = self.determine_args(kwargs)
         deps = self.determine_dependencies(kwargs)
-        haz = self.compiler.check_header(hname, prefix, self.environment, extra_args, deps)
+        haz = self.compiler.check_header(hname, prefix, self.environment,
+                                         extra_args=extra_args,
+                                         dependencies=deps)
         if haz:
             h = mlog.green('YES')
         else:
@@ -1347,7 +1368,8 @@ class CompilerHolder(InterpreterObject):
             raise InterpreterException('Prefix argument of has_header must be a string.')
         extra_args = self.determine_args(kwargs)
         deps = self.determine_dependencies(kwargs)
-        haz = self.compiler.has_header(hname, prefix, self.environment, extra_args, deps)
+        haz = self.compiler.has_header(hname, prefix, self.environment,
+                                       extra_args=extra_args, dependencies=deps)
         if haz:
             h = mlog.green('YES')
         else:
@@ -1373,7 +1395,9 @@ class CompilerHolder(InterpreterObject):
             raise InterpreterException('Prefix argument of has_header_symbol must be a string.')
         extra_args = self.determine_args(kwargs)
         deps = self.determine_dependencies(kwargs)
-        haz = self.compiler.has_header_symbol(hname, symbol, prefix, self.environment, extra_args, deps)
+        haz = self.compiler.has_header_symbol(hname, symbol, prefix, self.environment,
+                                              extra_args=extra_args,
+                                              dependencies=deps)
         if haz:
             h = mlog.green('YES')
         else:
