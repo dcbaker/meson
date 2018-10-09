@@ -19,7 +19,10 @@ from ..linkers import StaticLinker
 from .. import coredata
 from .. import mlog
 from .. import mesonlib
-from ..mesonlib import EnvironmentException, MesonException, OrderedSet, version_compare, Popen_safe
+from ..mesonlib import (
+    EnvironmentException, MesonException, OrderedSet, version_compare,
+    Popen_safe, listify
+)
 
 """This file contains the data files of all compilers Meson knows
 about. To support a new compiler, add its information below.
@@ -1627,6 +1630,7 @@ class ArmclangCompiler:
 
 # Tested on linux for ICC 14.0.3, 15.0.6, 16.0.4, 17.0.1, 19.0.0
 class IntelCompiler(GnuLikeCompiler):
+
     def __init__(self, compiler_type):
         super().__init__(compiler_type)
         # As of 19.0.0 ICC doesn't have sanitizer, color, or lto support.
@@ -1658,9 +1662,10 @@ class IntelCompiler(GnuLikeCompiler):
         else:
             return ['-openmp']
 
-    def has_arguments(self, args, env, code, mode):
-        # -diag-error 10148 is required to catch invalid -W options
-        return super().has_arguments(args + ['-diag-error', '10006', '-diag-error', '10148'], env, code, mode)
+    def compiles(self, *args, **kwargs):
+        extra_args = listify(kwargs.get('extra_args') or [])
+        kwargs['extra_args'] = extra_args + ['-diag-error', '10006', '-diag-error', '10148']
+        return super().compiles(*args, **kwargs)
 
     def get_pie_args(self):
         return ['-fpie']
