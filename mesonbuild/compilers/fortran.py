@@ -192,6 +192,9 @@ end program prog
     def get_pic_args(self):
         return CCompiler.get_pic_args(self)
 
+    def get_pie_args(self):
+        return []
+
     def name_string(self):
         return CCompiler.name_string(self)
 

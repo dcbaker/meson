@@ -146,6 +146,9 @@ class DCompiler(Compiler):
             return []
         return ['-fPIC']
 
+    def get_pie_args(self):
+        return []
+
     def get_std_shared_lib_link_args(self):
         return ['-shared']
 
@@ -539,6 +542,9 @@ class LLVMDCompiler(DCompiler):
 
     def get_pic_args(self):
         return ['-relocation-model=pic']
+
+    def get_pie_args(self):
+        return []
 
     def get_crt_link_args(self, crt_val, buildtype):
         return self.get_crt_args(crt_val, buildtype)

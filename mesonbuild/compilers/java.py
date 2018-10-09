@@ -69,6 +69,9 @@ class JavaCompiler(Compiler):
     def get_pic_args(self):
         return []
 
+    def get_pie_args(self):
+        return []
+
     def name_string(self):
         return ' '.join(self.exelist)
 

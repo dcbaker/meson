@@ -274,6 +274,9 @@ class CCompiler(Compiler):
     def get_pic_args(self):
         return ['-fPIC']
 
+    def get_pie_args(self):
+        return []
+
     def name_string(self):
         return ' '.join(self.exelist)
 
@@ -1384,6 +1387,9 @@ class VisualStudioCCompiler(CCompiler):
 
     def get_pic_args(self):
         return [] # PIC is handled by the loader on Windows
+
+    def get_pie_args(self):
+        return []
 
     def gen_export_dynamic_link_args(self, env):
         return [] # Not applicable with MSVC

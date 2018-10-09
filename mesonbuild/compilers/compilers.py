@@ -1662,6 +1662,9 @@ class IntelCompiler(GnuLikeCompiler):
         # -diag-error 10148 is required to catch invalid -W options
         return super().has_arguments(args + ['-diag-error', '10006', '-diag-error', '10148'], env, code, mode)
 
+    def get_pie_args(self):
+        return ['-fpie']
+
 
 class ArmCompiler:
     # Functionality that is common to all ARM family compilers.
