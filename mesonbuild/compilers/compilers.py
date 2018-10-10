@@ -1681,7 +1681,9 @@ class IntelCompiler(GnuLikeCompiler):
         return super().compiles(*args, **kwargs)
 
     def get_pie_args(self):
-        return ['-fpie']
+        if not self.compiler_type.is_osx_compiler:
+            return ['-fpie']
+        return []
 
     def get_profile_generate_args(self):
         return '-prof-gen=threadsafe'
