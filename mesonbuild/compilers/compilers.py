@@ -484,8 +484,9 @@ def get_base_link_args(options, linker, is_shared_module):
     except KeyError:
         pass
     # These do not need a try...except
-    if not is_shared_module and option_enabled(linker.base_options, options, 'b_lundef'):
-        args.append('-Wl,--no-undefined')
+    if not is_shared_module:
+        args.append(linker.get_linker_undefined_args(
+            option_enabled(linker.base_options, options, 'b_lundef')))
     as_needed = option_enabled(linker.base_options, options, 'b_asneeded')
     bitcode = option_enabled(linker.base_options, options, 'b_bitcode')
     # Shared modules cannot be built with bitcode_bundle because
@@ -504,7 +505,7 @@ def get_base_link_args(options, linker, is_shared_module):
             pass
     except KeyError:
         pass
-    return args
+    return listify(args)
 
 class CrossNoRunException(MesonException):
     pass
@@ -1184,6 +1185,8 @@ class Compiler:
         raise EnvironmentException(
             '%s does not support get_profile_use_args ' % self.get_id())
 
+    def get_linker_undefined_args(self, not_allow):
+        return []
 
 @enum.unique
 class CompilerType(enum.Enum):
@@ -1464,6 +1467,17 @@ class GnuCompiler(GnuLikeCompiler):
 
     def openmp_flags(self):
         return ['-fopenmp']
+
+    def get_linker_undefined_args(self, not_allow):
+        if self.compiler_type.is_osx_compiler:
+            if not not_allow:
+                # OSX doesn't allow undefined by default, so it needs to be
+                # overwritten
+                return ['-Wl,-undefined,suppress']
+        else:
+            if not_allow:
+                return ['-Wl,--no-undefined']
+        return []
 
 
 class ElbrusCompiler(GnuCompiler):
