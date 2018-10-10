@@ -1691,7 +1691,11 @@ class IntelCompiler(GnuLikeCompiler):
 
     def compiles(self, *args, **kwargs):
         extra_args = listify(kwargs.get('extra_args') or [])
-        kwargs['extra_args'] = extra_args + ['-diag-error', '10006', '-diag-error', '10148']
+        kwargs['extra_args'] = extra_args + [
+            '-diag-error', '10006',  # ignoring unknown option
+            '-diag-error', '10148',  # Option not supported
+            '-diag-error', '1292',   # unknown __attribute__
+        ]
         return super().compiles(*args, **kwargs)
 
     def get_pie_args(self):
