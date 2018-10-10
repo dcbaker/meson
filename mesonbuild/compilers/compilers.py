@@ -427,9 +427,9 @@ def get_base_compile_args(options, compiler):
     try:
         pgo_val = options['b_pgo'].value
         if pgo_val == 'generate':
-            args.append('-fprofile-generate')
+            args.append(compiler.get_profile_generate_args())
         elif pgo_val == 'use':
-            args.append('-fprofile-use')
+            args.append(compiler.get_profile_use_args())
     except KeyError:
         pass
     try:
@@ -473,9 +473,9 @@ def get_base_link_args(options, linker, is_shared_module):
     try:
         pgo_val = options['b_pgo'].value
         if pgo_val == 'generate':
-            args.append('-fprofile-generate')
+            args.append(linker.get_profile_generate_args())
         elif pgo_val == 'use':
-            args.append('-fprofile-use')
+            args.append(linker.get_profile_use_args())
     except KeyError:
         pass
     try:
@@ -619,7 +619,6 @@ class CompilerArgs(list):
         to recursively search for symbols in the libraries. This is not needed
         with other linkers.
         '''
-
         # A standalone argument must never be deduplicated because it is
         # defined by what comes _after_ it. Thus dedupping this:
         # -D FOO -D BAR
@@ -1177,6 +1176,14 @@ class Compiler:
         raise EnvironmentException(
             'Language {} does not support function attributes.'.format(self.get_display_language()))
 
+    def get_profile_generate_args(self):
+        raise EnvironmentException(
+            '%s does not support get_profile_generate_args ' % self.get_id())
+
+    def get_profile_use_args(self):
+        raise EnvironmentException(
+            '%s does not support get_profile_use_args ' % self.get_id())
+
 
 @enum.unique
 class CompilerType(enum.Enum):
@@ -1395,6 +1402,12 @@ class GnuLikeCompiler(abc.ABC):
 
     def gnu_symbol_visibility_args(self, vistype):
         return gnu_symbol_visibility_args[vistype]
+
+    def get_profile_generate_args(self):
+        return '-fprofile-generate'
+
+    def get_profile_use_args(self):
+        return '-fprofile-use'
 
 
 class GnuCompiler(GnuLikeCompiler):
@@ -1669,6 +1682,12 @@ class IntelCompiler(GnuLikeCompiler):
 
     def get_pie_args(self):
         return ['-fpie']
+
+    def get_profile_generate_args(self):
+        return '-prof-gen=threadsafe'
+
+    def get_profile_use_args(self):
+        return '-prof-use'
 
 
 class ArmCompiler:
