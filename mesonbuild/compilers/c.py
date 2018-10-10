@@ -173,6 +173,8 @@ class CCompiler(Compiler):
         elif self.id == 'msvc':
             # link.exe
             return ['/FORCE:UNRESOLVED']
+        elif self.id == 'intel':
+            return ['-Wl,--allow-shlib-undefined']
         # FIXME: implement other linkers
         return []
 
