@@ -79,6 +79,7 @@ __all__ = [
     'SunFortranCompiler',
     'SwiftCompiler',
     'ValaCompiler',
+    'VisualStdioCompiler',
     'VisualStudioCCompiler',
     'VisualStudioCPPCompiler',
 ]
@@ -108,6 +109,7 @@ from .compilers import (
     CompilerArgs,
     GnuCompiler,
     IntelNixCompiler,
+    VisualStudioCompiler,
 )
 from .c import (
     CCompiler,

@@ -889,7 +889,7 @@ This is probably wrong, it should always point to the native compiler.''' % evar
             evar = 'AR'
             if evar in os.environ:
                 linkers = [shlex.split(os.environ[evar])]
-            elif isinstance(compiler, compilers.VisualStudioCCompiler):
+            elif isinstance(compiler, compilers.VisualStudioCompiler):
                 linkers = [self.vs_static_linker]
             elif isinstance(compiler, compilers.GnuCompiler):
                 # Use gcc-ar if available; needed for LTO
