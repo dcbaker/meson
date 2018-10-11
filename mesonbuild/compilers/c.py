@@ -45,6 +45,7 @@ from .compilers import (
     GnuCompiler,
     ElbrusCompiler,
     IntelNixCompiler,
+    IntelWinCompiler,
     VisualStudioCompiler,
     RunResult,
 )
@@ -1267,6 +1268,25 @@ class VisualStudioCCompiler(VisualStudioCompiler, CCompiler):
     def __init__(self, exelist, version, is_cross, exe_wrap, is_64):
         CCompiler.__init__(self, exelist, version, is_cross, exe_wrap)
         VisualStudioCompiler.__init__(self, is_64)
+
+    def get_options(self):
+        opts = CCompiler.get_options(self)
+        opts.update({'c_winlibs': coredata.UserArrayOption('c_winlibs',
+                                                           'Windows libs to link against.',
+                                                           msvc_winlibs)})
+        return opts
+
+    def get_option_link_args(self, options):
+        return options['c_winlibs'].value[:]
+
+
+class IntelWinCCompiler(IntelWinCompiler, CCompiler):
+
+    ignore_libs = gnu_compiler_internal_libs
+
+    def __init__(self, exelist, version, is_cross, exe_wrap, is_64):
+        CCompiler.__init__(self, exelist, version, is_cross, exe_wrap)
+        IntelWinCompiler.__init__(self, is_64)
 
     def get_options(self):
         opts = CCompiler.get_options(self)

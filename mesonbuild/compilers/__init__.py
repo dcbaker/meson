@@ -65,6 +65,9 @@ __all__ = [
     'IntelNixCCompiler',
     'IntelNixCPPCompiler',
     'IntelNixFortranCompiler',
+    'IntelWinCompiler',
+    'IntelWinCCompiler',
+    'IntelWinCPPCompiler',
     'JavaCompiler',
     'LLVMDCompiler',
     'MonoCompiler',
@@ -109,6 +112,7 @@ from .compilers import (
     CompilerArgs,
     GnuCompiler,
     IntelNixCompiler,
+    IntelWinCompiler,
     VisualStudioCompiler,
 )
 from .c import (
@@ -119,6 +123,7 @@ from .c import (
     GnuCCompiler,
     ElbrusCCompiler,
     IntelNixCCompiler,
+    IntelWinCCompiler,
     VisualStudioCCompiler,
 )
 from .cpp import (
@@ -129,6 +134,7 @@ from .cpp import (
     GnuCPPCompiler,
     ElbrusCPPCompiler,
     IntelNixCPPCompiler,
+    IntelWinCPPCompiler,
     VisualStudioCPPCompiler,
 )
 from .cs import MonoCompiler, VisualStudioCsCompiler

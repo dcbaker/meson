@@ -2045,7 +2045,15 @@ class VisualStudioCompiler(VisualStudioLikeCompiler):
         super().__init__(is_64)
         self.id = 'msvc'
         self.base_options = ['b_pch', 'b_ndebug', 'b_vscrt'] # FIXME add lto, pgo and the like
-        self.is_64 = is_64
+
+
+class IntelWinCompiler(VisualStudioLikeCompiler):
+
+    def __init__(self, is_64):
+        self.id = 'intel'
+        self.compiler_type = CompilerType.ICC_WIN
+        super().__init__(is_64)
+        self.base_options = ['b_pch', 'b_ndebug', 'b_vscrt'] # FIXME add lto, pgo and the like
 
 
 class ArmCompiler:

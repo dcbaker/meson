@@ -19,7 +19,7 @@ from .. import coredata
 from .. import mlog
 from ..mesonlib import MesonException, version_compare
 
-from .c import CCompiler, VisualStudioCCompiler
+from .c import CCompiler, VisualStudioCCompiler, IntelWinCCompiler
 from .compilers import (
     CompilerType,
     gnu_winlibs,
@@ -28,6 +28,7 @@ from .compilers import (
     GnuCompiler,
     ElbrusCompiler,
     IntelNixCompiler,
+    IntelWinCompiler,
     ArmCompiler,
     ArmclangCompiler,
 )
@@ -338,6 +339,41 @@ class VisualStudioCPPCompiler(VisualStudioCCompiler, CPPCompiler):
         # Visual Studio C++ compiler doesn't support -fpermissive,
         # so just use the plain C args.
         return VisualStudioCCompiler.get_compiler_check_args(self)
+
+
+class IntelWinCPPCompiler(IntelWinCCompiler, CPPCompiler):
+
+    def __init__(self, exelist, version, is_cross, exe_wrap, is_64):
+        CPPCompiler.__init__(self, exelist, version, is_cross, exe_wrap)
+        IntelWinCCompiler.__init__(self, exelist, version, is_cross, exe_wrap, is_64)
+        self.base_options = ['b_pch', 'b_vscrt'] # FIXME add lto, pgo and the like
+
+    def get_options(self):
+        opts = CPPCompiler.get_options(self)
+        opts.update({'cpp_eh': coredata.UserComboOption('cpp_eh',
+                                                        'C++ exception handling type.',
+                                                        ['none', 'a', 's', 'sc'],
+                                                        'sc'),
+                     'cpp_winlibs': coredata.UserArrayOption('cpp_winlibs',
+                                                             'Windows libs to link against.',
+                                                             msvc_winlibs)})
+        return opts
+
+    def get_option_compile_args(self, options):
+        args = []
+        std = options['cpp_eh']
+        if std.value != 'none':
+            args.append('/EH' + std.value)
+        return args
+
+    def get_option_link_args(self, options):
+        return options['cpp_winlibs'].value[:]
+
+    def get_compiler_check_args(self):
+        # XXX: is this true of ICC?
+        # Visual Studio C++ compiler doesn't support -fpermissive,
+        # so just use the plain C args.
+        return IntelWinCCompiler.get_compiler_check_args(self)
 
 
 class ArmCPPCompiler(ArmCompiler, CPPCompiler):

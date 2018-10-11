@@ -51,6 +51,8 @@ from .compilers import (
     IntelNixCCompiler,
     IntelNixCPPCompiler,
     IntelNixFortranCompiler,
+    IntelWinCCompiler,
+    IntelWinCPPCompiler,
     JavaCompiler,
     MonoCompiler,
     VisualStudioCsCompiler,
@@ -543,16 +545,27 @@ This is probably wrong, it should always point to the native compiler.''' % evar
                     found_cl = sanitize(shutil.which('cl'))
                     if found_cl in watcom_cls:
                         continue
-                arg = '/?'
+                arg = ['/?']
             elif 'armcc' in compiler[0]:
-                arg = '--vsn'
+                arg = ['--vsn']
+            elif compiler[0].startswith('icl'):
+                # ICC on windows (ICL) has paged help information. Fortunately
+                # passing it no options will print the information we want.
+                arg = []
             else:
-                arg = '--version'
+                arg = ['--version']
             try:
-                p, out, err = Popen_safe(compiler + [arg])
+                p, out, err = Popen_safe(compiler + arg)
             except OSError as e:
-                popen_exceptions[' '.join(compiler + [arg])] = e
+                popen_exceptions[' '.join(compiler + arg)] = e
                 continue
+
+            if compiler[0].startswith('icl'):
+                # Because we can't pass any arguments the output we want is
+                # in stderr and nothing is in stdout. We'll just switch
+                # them around to make everythign happy
+                err, out = out, err
+
             version = search_version(out)
             full_version = out.split('\n', 1)[0]
 
@@ -619,13 +632,14 @@ This is probably wrong, it should always point to the native compiler.''' % evar
             if '(ICC)' in out:
                 if mesonlib.for_darwin(want_cross, self):
                     compiler_type = CompilerType.ICC_OSX
-                elif mesonlib.for_windows(want_cross, self):
-                    # TODO: fix ICC on Windows
-                    compiler_type = CompilerType.ICC_WIN
                 else:
                     compiler_type = CompilerType.ICC_STANDARD
                 cls = IntelNixCCompiler if lang == 'c' else IntelNixCPPCompiler
                 return cls(ccache + compiler, version, compiler_type, is_cross, exe_wrap, full_version=full_version)
+            if 'Intel(R)' in out:
+                cls = IntelWinCCompiler if lang == 'c' else IntelWinCPPCompiler
+                is_64 = '64 Compiler' in out
+                return cls(ccache + compiler, version, is_cross, exe_wrap, is_64)
             if 'ARM' in out:
                 compiler_type = CompilerType.ARM_WIN
                 cls = ArmCCompiler if lang == 'c' else ArmCPPCompiler
@@ -889,7 +903,7 @@ This is probably wrong, it should always point to the native compiler.''' % evar
             evar = 'AR'
             if evar in os.environ:
                 linkers = [shlex.split(os.environ[evar])]
-            elif isinstance(compiler, compilers.VisualStudioCompiler):
+            elif isinstance(compiler, (compilers.VisualStudioCompiler, compilers.IntelWinCompiler)):
                 linkers = [self.vs_static_linker]
             elif isinstance(compiler, compilers.GnuCompiler):
                 # Use gcc-ar if available; needed for LTO
