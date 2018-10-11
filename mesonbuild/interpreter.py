@@ -2502,7 +2502,6 @@ external dependencies (including libraries) must go to "dependencies".''')
         else:
             default_options = {}
         self.set_options(default_options)
-        self.set_backend()
 
         if not self.is_subproject():
             self.build.project_name = proj_name
@@ -2540,6 +2539,7 @@ external dependencies (including libraries) must go to "dependencies".''')
         mlog.log('Project name:', mlog.bold(proj_name))
         mlog.log('Project version:', mlog.bold(self.project_version))
         self.add_languages(proj_langs, True)
+        self.set_backend()
         langs = self.coredata.compilers.keys()
         if 'vala' in langs:
             if 'c' not in langs:

@@ -28,6 +28,23 @@ from ..compilers import CompilerArgs
 from ..mesonlib import MesonException, File, python_command
 from ..environment import Environment
 
+def detect_toolset(build, default):
+    """Some compilers can run with msbuild."""
+    cc = build.compilers.get('c')
+    cpp = build.compilers.get('cpp')
+    if cc and cpp and cc != cpp:
+        raise MesonException('Cannot use different C and C++ compiler with msbuild.')
+
+    # TODO: There are addtiional restrictions, some versions of ICL only work with
+    # some version of VS.
+    if (cc and cc.id == 'intel') or (cpp and cpp.id == 'intel'):
+        # XXX: this is only tested with ICL 19.0, so hopefully it works beyond
+        # that
+        return 'Intel C++ Compiler {}.{}'.format(*cc.version.split('.'))
+
+    return default
+
+
 def autodetect_vs_version(build):
     vs_version = os.getenv('VisualStudioVersion', None)
     vs_install_dir = os.getenv('VSINSTALLDIR', None)
@@ -76,11 +93,11 @@ class RegenInfo:
         self.depfiles = depfiles
 
 class Vs2010Backend(backends.Backend):
-    def __init__(self, build):
+    def __init__(self, build, *, _default_toolset=None):
         super().__init__(build)
         self.name = 'vs2010'
         self.project_file_version = '10.0.30319.1'
-        self.platform_toolset = None
+        self.platform_toolset = detect_toolset(build, _default_toolset)
         self.vs_version = '2010'
         self.windows_target_platform_version = None
         self.subdirs = {}
