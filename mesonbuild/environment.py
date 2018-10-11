@@ -48,9 +48,9 @@ from .compilers import (
     ElbrusCCompiler,
     ElbrusCPPCompiler,
     ElbrusFortranCompiler,
-    IntelCCompiler,
-    IntelCPPCompiler,
-    IntelFortranCompiler,
+    IntelNixCCompiler,
+    IntelNixCPPCompiler,
+    IntelNixFortranCompiler,
     JavaCompiler,
     MonoCompiler,
     VisualStudioCsCompiler,
@@ -624,7 +624,7 @@ This is probably wrong, it should always point to the native compiler.''' % evar
                     compiler_type = CompilerType.ICC_WIN
                 else:
                     compiler_type = CompilerType.ICC_STANDARD
-                cls = IntelCCompiler if lang == 'c' else IntelCPPCompiler
+                cls = IntelNixCCompiler if lang == 'c' else IntelNixCPPCompiler
                 return cls(ccache + compiler, version, compiler_type, is_cross, exe_wrap, full_version=full_version)
             if 'ARM' in out:
                 compiler_type = CompilerType.ARM_WIN
@@ -682,7 +682,7 @@ This is probably wrong, it should always point to the native compiler.''' % evar
                     return SunFortranCompiler(compiler, version, is_cross, exe_wrap, full_version=full_version)
 
                 if 'ifort (IFORT)' in out:
-                    return IntelFortranCompiler(compiler, version, is_cross, exe_wrap, full_version=full_version)
+                    return IntelNixFortranCompiler(compiler, version, is_cross, exe_wrap, full_version=full_version)
 
                 if 'PathScale EKOPath(tm)' in err:
                     return PathScaleFortranCompiler(compiler, version, is_cross, exe_wrap, full_version=full_version)

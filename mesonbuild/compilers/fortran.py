@@ -23,7 +23,7 @@ from .compilers import (
     Compiler,
     GnuCompiler,
     ElbrusCompiler,
-    IntelCompiler,
+    IntelNixCompiler,
 )
 
 from mesonbuild.mesonlib import EnvironmentException, is_osx
@@ -326,13 +326,13 @@ class SunFortranCompiler(FortranCompiler):
         return ['-xopenmp']
 
 
-class IntelFortranCompiler(IntelCompiler, FortranCompiler):
+class IntelNixFortranCompiler(IntelNixCompiler, FortranCompiler):
     def __init__(self, exelist, version, is_cross, exe_wrapper=None, **kwags):
         self.file_suffixes = ('f90', 'f', 'for', 'ftn', 'fpp')
         FortranCompiler.__init__(self, exelist, version, is_cross, exe_wrapper, **kwags)
         # FIXME: Add support for OS X and Windows in detect_fortran_compiler so
         # we are sent the type of compiler
-        IntelCompiler.__init__(self, CompilerType.ICC_STANDARD)
+        IntelNixCompiler.__init__(self, CompilerType.ICC_STANDARD)
         self.id = 'intel'
         default_warn_args = ['-warn', 'general', '-warn', 'truncated_source']
         self.warn_args = {'1': default_warn_args,

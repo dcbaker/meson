@@ -61,10 +61,10 @@ __all__ = [
     'ElbrusFortranCompiler',
     'GnuObjCCompiler',
     'GnuObjCPPCompiler',
-    'IntelCompiler',
-    'IntelCCompiler',
-    'IntelCPPCompiler',
-    'IntelFortranCompiler',
+    'IntelNixCompiler',
+    'IntelNixCCompiler',
+    'IntelNixCPPCompiler',
+    'IntelNixFortranCompiler',
     'JavaCompiler',
     'LLVMDCompiler',
     'MonoCompiler',
@@ -107,7 +107,7 @@ from .compilers import (
     ClangCompiler,
     CompilerArgs,
     GnuCompiler,
-    IntelCompiler,
+    IntelNixCompiler,
 )
 from .c import (
     CCompiler,
@@ -116,7 +116,7 @@ from .c import (
     ClangCCompiler,
     GnuCCompiler,
     ElbrusCCompiler,
-    IntelCCompiler,
+    IntelNixCCompiler,
     VisualStudioCCompiler,
 )
 from .cpp import (
@@ -126,7 +126,7 @@ from .cpp import (
     ClangCPPCompiler,
     GnuCPPCompiler,
     ElbrusCPPCompiler,
-    IntelCPPCompiler,
+    IntelNixCPPCompiler,
     VisualStudioCPPCompiler,
 )
 from .cs import MonoCompiler, VisualStudioCsCompiler
@@ -141,7 +141,7 @@ from .fortran import (
     G95FortranCompiler,
     GnuFortranCompiler,
     ElbrusFortranCompiler,
-    IntelFortranCompiler,
+    IntelNixFortranCompiler,
     NAGFortranCompiler,
     Open64FortranCompiler,
     PathScaleFortranCompiler,

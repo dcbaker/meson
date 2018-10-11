@@ -1617,7 +1617,7 @@ class AllPlatformTests(BasePlatformTests):
         '''
         gnu = mesonbuild.compilers.GnuCompiler
         clang = mesonbuild.compilers.ClangCompiler
-        intel = mesonbuild.compilers.IntelCompiler
+        intel = mesonbuild.compilers.IntelNixCompiler
         msvc = mesonbuild.compilers.VisualStudioCCompiler
         ar = mesonbuild.linkers.ArLinker
         lib = mesonbuild.linkers.VisualStudioLinker

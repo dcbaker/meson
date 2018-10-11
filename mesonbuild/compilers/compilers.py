@@ -1685,7 +1685,15 @@ class ArmclangCompiler:
 
 
 # Tested on linux for ICC 14.0.3, 15.0.6, 16.0.4, 17.0.1, 19.0.0
-class IntelCompiler(GnuLikeCompiler):
+class IntelNixCompiler(GnuLikeCompiler):
+
+    """Mixin class for ICC on Linux and MacOS.
+
+    ICC tries to behave a lot like the most popular compiler on a given
+    platform. On Linux and MacOS it tries to behave like GCC, but on Windows it
+    tries to behave like MSVC, including command line options. Therefor we need
+    two mixin classes, one for Windows and one for Nix.
+    """
 
     def __init__(self, compiler_type):
         super().__init__(compiler_type)
