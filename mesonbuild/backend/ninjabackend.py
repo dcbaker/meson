@@ -29,7 +29,7 @@ from .. import build
 from .. import mlog
 from .. import dependencies
 from .. import compilers
-from ..compilers import CompilerArgs, CCompiler
+from ..compilers import CompilerArgs, CCompiler, CompilerType
 from ..linkers import ArLinker
 from ..mesonlib import File, MesonException, OrderedSet
 from ..mesonlib import get_compiler_for_source, has_path_sep
@@ -171,6 +171,8 @@ class NinjaBackend(backends.Backend):
             # Have to detect the dependency format
             if compiler.id == 'msvc':
                 break
+            elif compiler.id == 'intel' and compiler.compiler_type is CompilerType.ICC_WIN:
+                break
         else:
             # None of our compilers are MSVC, we're done.
             return open(tempfilename, 'a', encoding='utf-8')
@@ -185,7 +187,8 @@ int dummy;
         # and locale dependent. Any attempt at converting it to
         # Python strings leads to failure. We _must_ do this detection
         # in raw byte mode and write the result in raw bytes.
-        pc = subprocess.Popen(['cl', '/showIncludes', '/c', 'incdetect.c'],
+        pc = subprocess.Popen(['cl' if compiler.id == 'msvc' else 'icl',
+                               '/showIncludes', '/c', 'incdetect.c'],
                               cwd=self.environment.get_scratch_dir(),
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (stdo, _) = pc.communicate()
