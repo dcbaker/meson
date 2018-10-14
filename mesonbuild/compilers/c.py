@@ -159,29 +159,6 @@ class CCompiler(Compiler):
         '''
         return self.get_no_optimization_args()
 
-    def get_allow_undefined_link_args(self):
-        '''
-        Get args for allowing undefined symbols when linking to a shared library
-        '''
-        if self.id in ('clang', 'gcc'):
-            if self.compiler_type.is_osx_compiler:
-                # Apple ld
-                return ['-Wl,-undefined,dynamic_lookup']
-            else:
-                # GNU ld and LLVM lld
-                return ['-Wl,--allow-shlib-undefined']
-        elif self.id == 'msvc':
-            # link.exe
-            return ['/FORCE:UNRESOLVED']
-        elif self.id == 'intel':
-            if self.compiler_type.is_osx_compiler:
-                # Apple ld
-                return ['-Wl,-undefined,dynamic_lookup']
-            else:
-                return ['-Wl,--allow-shlib-undefined']
-        # FIXME: implement other linkers
-        return []
-
     def get_output_args(self, target):
         return ['-o', target]
 
@@ -1573,6 +1550,10 @@ class VisualStudioCCompiler(CCompiler):
         # MSVC doesn't have __attribute__ like Clang and GCC do, so just return
         # false without compiling anything
         return name in ['dllimport', 'dllexport']
+
+    def get_allow_undefined_link_args(self):
+        # link.exe
+        return ['/FORCE:UNRESOLVED']
 
 
 class ArmCCompiler(ArmCompiler, CCompiler):

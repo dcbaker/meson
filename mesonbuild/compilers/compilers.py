@@ -1188,6 +1188,13 @@ class Compiler:
     def get_linker_undefined_args(self, not_allow):
         return []
 
+    def get_undefined_link_args(self):
+        '''
+        Get args for allowing undefined symbols when linking to a shared library
+        '''
+        return []
+
+
 @enum.unique
 class CompilerType(enum.Enum):
     GCC_STANDARD = 0
@@ -1411,6 +1418,14 @@ class GnuLikeCompiler(abc.ABC):
 
     def get_profile_use_args(self):
         return '-fprofile-use'
+
+    def get_allow_undefined_link_args(self):
+        if self.compiler_type.is_osx_compiler:
+            # Apple ld
+            return ['-Wl,-undefined,dynamic_lookup']
+        else:
+            # GNU ld and LLVM lld
+            return ['-Wl,--allow-shlib-undefined']
 
 
 class GnuCompiler(GnuLikeCompiler):
