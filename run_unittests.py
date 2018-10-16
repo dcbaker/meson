@@ -1648,7 +1648,10 @@ class AllPlatformTests(BasePlatformTests):
                     self.assertIsInstance(elinker, ar)
                 elif ebase.startswith('ic'):
                     self.assertIsInstance(ecc, intel)
-                    self.assertIsInstance(elinker, ar)
+                    if is_windows():
+                        self.assertIsInstance(elinker, lib)
+                    else:
+                        self.assertIsInstance(elinker, ar)
                 elif ebase.startswith('cl'):
                     self.assertIsInstance(ecc, msvc)
                     self.assertIsInstance(elinker, lib)
