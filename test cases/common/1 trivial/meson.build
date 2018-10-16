@@ -6,7 +6,7 @@ project('trivial test',
 #this is a comment
 sources = 'trivial.c'
 
-cc = meson.get_compiler('c').
+cc = meson.get_compiler('c')
 
 # Error out if the -std=xxx option is incorrect
 if cc.get_id() == 'intel'
