@@ -40,7 +40,7 @@ def detect_toolset(build, default):
     if (cc and cc.id == 'intel') or (cpp and cpp.id == 'intel'):
         # XXX: this is only tested with ICL 19.0, so hopefully it works beyond
         # that
-        return 'Intel C++ Compiler {}.{}'.format(*cc.version.split('.'))
+        return 'Intel C++ Compiler {}.{}'.format(*(cc or cpp).version.split('.'))
 
     return default
 
