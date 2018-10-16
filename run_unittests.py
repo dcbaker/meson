@@ -618,7 +618,7 @@ class InternalTests(unittest.TestCase):
         elif is_cygwin():
             self._test_all_naming(cc, env, patterns, 'cygwin')
         elif is_windows():
-            if cc.get_id() == 'msvc':
+            if cc.get_id() in ['msvc', 'intel']:
                 self._test_all_naming(cc, env, patterns, 'windows-msvc')
             else:
                 self._test_all_naming(cc, env, patterns, 'windows-mingw')
