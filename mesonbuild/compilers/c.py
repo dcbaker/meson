@@ -905,7 +905,8 @@ class CCompiler(Compiler):
         elif for_windows(env.is_cross_build(), env):
             # FIXME: .lib files can be import or static so we should read the
             # file, figure out which one it is, and reject the wrong kind.
-            if self.id == 'msvc':
+            # TODO: What does ICC do when cross compiling from Linux to Windows?
+            if self.id in ['msvc', 'intel']:
                 shlibext = ['lib']
             else:
                 shlibext = ['dll.a', 'lib', 'dll']
