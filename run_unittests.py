@@ -1728,8 +1728,8 @@ class AllPlatformTests(BasePlatformTests):
         testdir = os.path.join(self.common_test_dir, '138 c cpp and asm')
         # Skip if building with MSVC
         env = get_fake_env(testdir, self.builddir, self.prefix)
-        if env.detect_c_compiler(False).get_id() == 'msvc':
-            raise unittest.SkipTest('MSVC can\'t compile assembly')
+        if env.detect_c_compiler(False).get_argument_type() == 'msvc':
+            raise unittest.SkipTest('MSVC-like compilers can\'t compile assembly')
         self.init(testdir)
         commands = {'c-asm': {}, 'cpp-asm': {}, 'cpp-c-asm': {}, 'c-cpp-asm': {}}
         for cmd in self.get_compdb():
