@@ -1142,6 +1142,8 @@ You probably should put it in link_with instead.''')
         # Mixing many languages with MSVC is not supported yet so ignore stdlibs.
         if linker and linker.get_id() in ['msvc', 'llvm', 'dmd']:
             return True
+        elif linker and linker.get_id() == 'intel' and linker.get_argument_type() == 'msvc':
+            return True
         return False
 
     def check_module_linking(self):
