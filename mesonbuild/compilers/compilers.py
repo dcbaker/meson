@@ -1194,6 +1194,17 @@ class Compiler:
         '''
         return []
 
+    def get_argument_type(self):
+        """Returns the argument family type.
+
+        Compilers fall into families if they try to emulate the command line
+        interface of another compiler. For example, clang is in the GCC family
+        since it accepts most of the same arguments as GCC. ICL (ICC on
+        windows) is in the MSVC family since it accepts most of the same
+        arguments as MSVC.
+        """
+        return 'other'
+
 
 @enum.unique
 class CompilerType(enum.Enum):
@@ -1426,6 +1437,9 @@ class GnuLikeCompiler(abc.ABC):
         else:
             # GNU ld and LLVM lld
             return ['-Wl,--allow-shlib-undefined']
+
+    def get_argument_type(self):
+        return 'gcc'
 
 
 class GnuCompiler(GnuLikeCompiler):

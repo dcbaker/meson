@@ -1555,6 +1555,9 @@ class VisualStudioCCompiler(CCompiler):
         # link.exe
         return ['/FORCE:UNRESOLVED']
 
+    def get_argument_type(self):
+        return 'msvc'
+
 
 class ArmCCompiler(ArmCompiler, CCompiler):
     def __init__(self, exelist, version, compiler_type, is_cross, exe_wrapper=None, **kwargs):

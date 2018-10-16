@@ -4,26 +4,26 @@
 
 These are return values of the `get_id` method in a compiler object.
 
-| Value     | Compiler family                |
-| -----     | ----------------               |
-| gcc       | The GNU Compiler Collection    |
-| clang     | The Clang compiler             |
-| msvc      | Microsoft Visual Studio        |
-| intel     | Intel compiler                 |
-| llvm      | LLVM-based compiler (Swift, D) |
-| mono      | Xamarin C# compiler            |
-| dmd       | D lang reference compiler      |
-| rustc     | Rust compiler                  |
-| valac     | Vala compiler                  |
-| pathscale | The Pathscale Fortran compiler |
-| pgi       | The Portland Fortran compiler  |
-| sun       | Sun Fortran compiler           |
-| g95       | The G95 Fortran compiler       |
-| open64    | The Open64 Fortran Compiler    |
-| nagfor    | The NAG Fortran compiler       |
-| lcc       | Elbrus C/C++/Fortran Compiler  |
-| arm       | ARM compiler                   |
-| armclang  | ARMCLANG compiler              |
+| Value     | Compiler family                | Argument type                  |
+| -----     | ----------------               | -------------------------------|
+| gcc       | The GNU Compiler Collection    | gcc                            |
+| clang     | The Clang compiler             | gcc                            |
+| msvc      | Microsoft Visual Studio        | msvc                           |
+| intel     | Intel compiler                 | msvc on windows, otherwise gcc |
+| llvm      | LLVM-based compiler (Swift, D) | other                          |
+| mono      | Xamarin C# compiler            | other                          |
+| dmd       | D lang reference compiler      | other                          |
+| rustc     | Rust compiler                  | other                          |
+| valac     | Vala compiler                  | other                          |
+| pathscale | The Pathscale Fortran compiler | other                          |
+| pgi       | The Portland Fortran compiler  | other                          |
+| sun       | Sun Fortran compiler           | other                          |
+| g95       | The G95 Fortran compiler       | other                          |
+| open64    | The Open64 Fortran Compiler    | other                          |
+| nagfor    | The NAG Fortran compiler       | other                          |
+| lcc       | Elbrus C/C++/Fortran Compiler  | other                          |
+| arm       | ARM compiler                   | other                          |
+| armclang  | ARMCLANG compiler              | other                          |
 
 ## Script environment variables
 

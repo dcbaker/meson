@@ -1683,6 +1683,12 @@ the following methods:
 - `get_id()` returns a string identifying the compiler. For example,
   `gcc`, `msvc`, [and more](Reference-tables.html#compiler-ids).
 
+- `get_argument_type()` *(new in 0.49.0) returns a string identifying the type
+  of arguments the compiler takes. Can be one of `gcc`, `msvc`, or `other`.
+  This method is useful for identifying compilers that are not gcc or msvc,
+  but accept the same kinds of arguments as one of those two compilers such as
+  clang or icc.
+
 - `get_supported_arguments(list_of_string)` *(added 0.43.0)* returns
   an array containing only the arguments supported by the compiler,
   as if `has_argument` were called on them individually.
