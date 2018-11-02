@@ -1018,7 +1018,7 @@ class BasePlatformTests(unittest.TestCase):
             if self.meson_cross_file:
                 args += ['--cross-file', self.meson_cross_file]
         if is_openbsd():
-            args += ['-Db_asneeded', 'false']
+            args += ['-Db_asneeded=false']
         self.privatedir = os.path.join(self.builddir, 'meson-private')
         if inprocess:
             try:
