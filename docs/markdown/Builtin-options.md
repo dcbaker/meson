@@ -97,6 +97,12 @@ The value of `b_sanitize` can be one of: `none`, `address`, `thread`,
 embedded because `-Wl,-bitcode_bundle` is incompatible with both `-bundle` and
 `-Wl,-undefined,dynamic_lookup` which are necessary for shared modules to work.
 
+### Notes about OpenBSD's clang++
+
+OpenBSD (as of 6.4) has issues with --as-needed and libc++ that make it
+impossible to use. Therefore, as-needed must be disabled on that platform with
+clang++. Using C++ works fine as it uses glibc instead of libc++.
+
 ## Compiler options
 
 Same caveats as base options above.

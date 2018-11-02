@@ -480,6 +480,10 @@ def get_base_link_args(options, linker, is_shared_module):
         args.append('-Wl,-bitcode_bundle')
     elif as_needed:
         # -Wl,-dead_strip_dylibs is incompatible with bitcode
+        if linker.language == 'cpp' and linker.compiler_type is CompilerType.CLANG_OPENBSD:
+            # This appears to be an OpenBSD bug
+            # See: https://github.com/mesonbuild/meson/issues/3593
+            raise MesonException('Clang++ on OpenBSD does not support --as-needed')
         args.append(linker.get_asneeded_args())
     try:
         crt_val = options['b_vscrt'].value
