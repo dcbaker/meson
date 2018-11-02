@@ -300,7 +300,7 @@ def _run_test(testdir, test_build_dir, install_dir, extra_args, compiler, backen
     if pass_libdir_to_test(testdir):
         gen_args += ['--libdir', 'lib']
     if mesonlib.is_openbsd:
-        geg_args += ['-Db_asneeded', 'false']
+        gen_args += ['-Db_asneeded', 'false']
     gen_args += [testdir, test_build_dir] + flags + test_args + extra_args
     (returncode, stdo, stde) = run_configure(gen_args)
     try:
