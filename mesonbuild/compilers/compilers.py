@@ -1172,12 +1172,14 @@ class Compiler:
         if build_rpath != '':
             all_paths.add(build_rpath)
 
-        if mesonlib.is_dragonflybsd() or mesonlib.is_openbsd():
+        if (mesonlib.is_dragonflybsd() or mesonlib.is_openbsd() or
+                mesonlib.is_netbsd()):
             # This argument instructs the compiler to record the value of
             # ORIGIN in the .dynamic section of the elf. On Linux this is done
-            # by default, but is not on dragonfly/openbsd for some reason. Without this
-            # $ORIGIN in the runtime path will be undefined and any binaries
-            # linked against local libraries will fail to resolve them.
+            # by default, but is not on dragonfly, netbsd, and openbsd for
+            # some reason. Without this $ORIGIN in the runtime path will be
+            # undefined and any binaries linked against local libraries will
+            # fail to resolve them.
             args.append('-Wl,-z,origin')
 
         if mesonlib.is_osx():
