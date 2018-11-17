@@ -363,6 +363,9 @@ def is_dragonflybsd():
 def is_freebsd():
     return platform.system().lower() == 'freebsd'
 
+def is_netbsd():
+    return platform.system().lower() == 'netbsd'
+
 def _get_machine_is_cross(env, is_cross):
     """
     This is not morally correct, but works for now. For cross builds the build
