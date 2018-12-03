@@ -148,7 +148,7 @@ class ArLinker(StaticLinker):
             #
             # It's possible that other OSes may need this, but I'm not sure
             # what the logic should look like.
-            return ['--plugin', 'libtlo_plugin.so']
+            return ['--plugin', 'liblto_plugin.so']
         return super().get_lto_args()
 
 class ArmarLinker(ArLinker):
