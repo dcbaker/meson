@@ -3723,6 +3723,7 @@ class LinuxlikeTests(BasePlatformTests):
         testdir = os.path.join(self.common_test_dir, '12 data')
         self.init(testdir)
         self.install()
+        __import__('pudb').set_trace()
 
         f = os.path.join(self.installdir, 'etc', 'etcfile.dat')
         found_mode = stat.filemode(os.stat(f).st_mode)
