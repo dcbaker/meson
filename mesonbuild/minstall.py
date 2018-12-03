@@ -108,7 +108,7 @@ def set_chmod(path, mode, dir_fd=None, follow_symlinks=True):
             # on NetBSD as non-root.
             msg = '{!r}: Unable to set sticky bit as normal user, installing without sticky bit...'
             print(msg.format(path))
-            os.chmod(path, mode | 0o1000, dir_fd=dir_fd, follow_symlinks=follow_symlinks)
+            os.chmod(path, mode & ~1000, dir_fd=dir_fd, follow_symlinks=follow_symlinks)
         if not os.path.islink(path) and _retry:
             os.chmod(path, mode, dir_fd=dir_fd)
 
