@@ -494,7 +494,7 @@ def get_base_link_args(options, linker, is_shared_module):
     try:
         if options['b_lto'].value:
             args.append('-flto')
-            if mesonlib.is_netbsd():
+            if mesonlib.is_netbsd() and linker.id == 'ar':
                 # NetBSD doesn't have a gcc-ar binary, just the gnu ar binary.
                 # Therefore, to make lto work we need to add some extra options
                 # to ar to get lto working.
