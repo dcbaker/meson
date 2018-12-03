@@ -146,9 +146,9 @@ class ArLinker(StaticLinker):
             # Therefore, to make lto work we need to add some extra options
             # to ar to get lto working.
             #
-            # It's possible that other OSes may need this, but I'm not sure
-            # what the logic should look like.
-            return ['--plugin', 'liblto_plugin.so']
+            # Note that the plugin is not in GCC's deafult search dir (at least
+            # for 8.0) so it must be passed as an absolute path.
+            return ['--plugin', '/usr/libexec/liblto_plugin.so']
         return super().get_lto_args()
 
 class ArmarLinker(ArLinker):
