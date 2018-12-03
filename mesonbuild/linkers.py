@@ -22,6 +22,19 @@ class StaticLinker:
         """
         return mesonlib.is_windows()
 
+    def get_lto_args(self):
+        return []
+
+    def get_base_link_args(self, options):
+        args = []
+        try:
+            if options['b_lto'].value:
+                args.extend(self.get_lto_args())
+        except KeyError:
+            pass
+
+        return args
+
 
 class VisualStudioLinker(StaticLinker):
     always_args = ['/NOLOGO']
@@ -126,6 +139,17 @@ class ArLinker(StaticLinker):
 
     def get_link_debugfile_args(self, targetfile):
         return []
+
+    def get_lto_args(self):
+        if mesonlib.is_netbsd() and linker.id == 'ar':
+            # NetBSD doesn't have a gcc-ar binary, just the gnu ar binary.
+            # Therefore, to make lto work we need to add some extra options
+            # to ar to get lto working.
+            #
+            # It's possible that other OSes may need this, but I'm not sure
+            # what the logic should look like.
+            return ['--plugin', 'libtlo_plugin.so']
+        return super().get_lto_args()
 
 class ArmarLinker(ArLinker):
 
