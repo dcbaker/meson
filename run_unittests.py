@@ -3726,7 +3726,8 @@ class LinuxlikeTests(BasePlatformTests):
 
         f = os.path.join(self.installdir, 'etc', 'etcfile.dat')
         found_mode = stat.filemode(os.stat(f).st_mode)
-        if mesonlib.is_netbsd() and os.getuid() != 0:
+        if mesonlib.is_netbsd() and os.geteuid() != 0:
+            # NetBSD doesn't allow normal users to set the sticky bit
             want_mode = 'rw------t'
         else:
             want_mode = 'rw------T'
@@ -3797,6 +3798,9 @@ class LinuxlikeTests(BasePlatformTests):
                 ('subdir', 'drwxr-x---'),
                 ('subdir/data.dat', '-rw-rwSr--'),
         ]:
+            if mesonlib.is_netbsd() and os.geteuid() != 0:
+                # NetBSD doesn't allow normal users to set the sticky bit
+                want_mode = want_mode.lower()
             f = os.path.join(self.installdir, 'usr', *fsobj.split('/'))
             found_mode = stat.filemode(os.stat(f).st_mode)
             self.assertEqual(want_mode, found_mode,
