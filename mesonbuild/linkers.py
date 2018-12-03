@@ -23,6 +23,12 @@ class StaticLinker:
         return mesonlib.is_windows()
 
     def get_lto_args(self):
+        """Add LTO (WPO/IPO) arguments for the static linker.
+
+        This is usually not needed for Unix-like OSes, as gcc-ar and llmv-ar
+        handle this internally. This may be useful for compilers that use a
+        non-ar linker, or for OSes that don't provide gcc-ar or llvm-ar.
+        """
         return []
 
     def get_base_link_args(self, options):
