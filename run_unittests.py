@@ -3726,7 +3726,7 @@ class LinuxlikeTests(BasePlatformTests):
 
         f = os.path.join(self.installdir, 'etc', 'etcfile.dat')
         found_mode = stat.filemode(os.stat(f).st_mode)
-        if mesonlib.is_netbsd():
+        if mesonlib.is_netbsd() and os.getuid() != 0:
             want_mode = 'rw------t'
         else:
             want_mode = 'rw------T'
