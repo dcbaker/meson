@@ -141,7 +141,7 @@ class ArLinker(StaticLinker):
         return []
 
     def get_lto_args(self):
-        if mesonlib.is_netbsd() and linker.id == 'ar':
+        if mesonlib.is_netbsd():
             # NetBSD doesn't have a gcc-ar binary, just the gnu ar binary.
             # Therefore, to make lto work we need to add some extra options
             # to ar to get lto working.
