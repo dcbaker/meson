@@ -2277,6 +2277,7 @@ rule FORTRAN_DEP_HACK%s
                 commands += linker.gen_import_library_args(os.path.join(self.get_target_dir(target), target.import_filename))
         elif isinstance(target, build.StaticLibrary):
             commands += linker.get_std_link_args()
+            commands += linker.get_base_link_args(self.get_base_options_for_target(target))
         else:
             raise RuntimeError('Unknown build target type.')
         return commands
@@ -2389,8 +2390,6 @@ rule FORTRAN_DEP_HACK%s
             commands += compilers.get_base_link_args(self.get_base_options_for_target(target),
                                                      linker,
                                                      isinstance(target, build.SharedModule))
-        else:
-            commands += linker.get_base_link_args(self.get_base_options_for_target(target))
 
         # Add -nostdlib if needed; can't be overridden
         commands += self.get_cross_stdlib_link_args(target, linker)
