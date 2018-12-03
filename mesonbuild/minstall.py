@@ -98,18 +98,18 @@ def set_chown(path, user=None, group=None, dir_fd=None, follow_symlinks=True):
     finally:
         os.chown = real_os_chown
 
-def set_chmod(path, mode, dir_fd=None, follow_symlinks=True):
+def set_chmod(path, mode, dir_fd=None, follow_symlinks=True, *, _retry=True):
     try:
         os.chmod(path, mode, dir_fd=dir_fd, follow_symlinks=follow_symlinks)
     except (NotImplementedError, OSError, SystemError) as e:
-        if is_netbsd() and isinstance(e, OSError) and e.errno == 79:
+        if isinstance(e, OSError) and e.errno == 79 and is_netbsd():
             # Error 79 is EFTYPE (which as of python 3.7.1 is not in the errno
             # module), this is raised if trying to install with the sticky bit
             # on NetBSD as non-root.
             msg = '{!r}: Unable to set sticky bit as normal user, installing without sticky bit...'
             print(msg.format(path))
-            set_chmod(path, mode | 1000, dir_fd=dir_fd, follow_symlinks=follow_symlinks)
-        if not os.path.islink(path):
+            set_chmod(path, mode | 0o1000, dir_fd=dir_fd, follow_symlinks=follow_symlinks, _retry=False)
+        if not os.path.islink(path) and _retry:
             os.chmod(path, mode, dir_fd=dir_fd)
 
 def sanitize_permissions(path, umask):
