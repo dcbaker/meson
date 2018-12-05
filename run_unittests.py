@@ -3800,7 +3800,7 @@ class LinuxlikeTests(BasePlatformTests):
         ]:
             if is_netbsd() and os.geteuid() != 0:
                 # NetBSD doesn't allow normal users to set the sticky bit
-                want_mode[-1] = want_mode[-1].lower()
+                want_mode = want_mode[:-1] + want_mode[-1].lower()
             f = os.path.join(self.installdir, 'usr', *fsobj.split('/'))
             found_mode = stat.filemode(os.stat(f).st_mode)
             self.assertEqual(want_mode, found_mode,
