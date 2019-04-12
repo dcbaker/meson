@@ -341,6 +341,28 @@ class PerMachine:
         }[machine]
         setattr(self, key, val)
 
+
+class PerMachineNoTarget(PerMachine):
+    """A class that acts like a PerMachine, but target is always None.
+
+    This has the advantage of being able to fulfill the PerMachine
+    interface, but enforce that target isn't used in cases where we
+    know that it should not be.
+    """
+
+    def __init__(self, build, host):
+        super().__init__(build, host, None)
+
+    @property
+    def target(self):
+        raise MesonException('There is no Target property of this instance.')
+
+    @target.setter
+    def target(self, other):
+        if other is not None:
+            raise MesonException('There is no Target property of this instance.')
+
+
 def is_osx() -> bool:
     return platform.system().lower() == 'darwin'
 
