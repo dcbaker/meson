@@ -19,7 +19,7 @@ from itertools import chain
 from pathlib import PurePath
 from collections import OrderedDict
 from .mesonlib import (
-    MesonException, MachineChoice, PerMachine,
+    MesonException, MachineChoice, PerMachineNoTarget,
     default_libdir, default_libexecdir, default_prefix, stringlistify
 )
 from .wrap import WrapMode
@@ -263,7 +263,7 @@ class CoreData:
         self.init_builtins()
         self.backend_options = {}
         self.user_options = {}
-        self.compiler_options = PerMachine({}, {}, {})
+        self.compiler_options = PerMachineNoTarget({}, {})
         self.base_options = {}
         self.cross_files = self.__load_config_files(options.cross_file)
         self.compilers = OrderedDict()
