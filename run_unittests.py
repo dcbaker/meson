@@ -5076,6 +5076,14 @@ endian = 'little'
         testdir = os.path.join(self.unit_test_dir, '55 pkg_config_path option')
         self.init(testdir, extra_args=['-Dpkg_config_path=' + os.path.join(testdir, 'extra_path')])
 
+    def test_std_remains(self):
+        # C_std defined in project options must be in effect also when cross compiling.
+        testdir = os.path.join(self.unit_test_dir, '50 std remains')
+        self.init(testdir)
+        compdb = self.get_compdb()
+        self.assertRegex(compdb[0]['command'], '-std=c99')
+        self.build()
+
 
 def should_run_cross_arm_tests():
     return shutil.which('arm-linux-gnueabihf-gcc') and not platform.machine().lower().startswith('arm')
@@ -5127,6 +5135,14 @@ class LinuxCrossArmTests(BasePlatformTests):
                 self.assertEqual(i['value'], 'lib')
                 return
         self.assertTrue(False, 'Option libdir not in introspect data.')
+
+    def test_std_remains(self):
+        # C_std defined in project options must be in effect also when cross compiling.
+        testdir = os.path.join(self.unit_test_dir, '50 std remains')
+        self.init(testdir)
+        compdb = self.get_compdb()
+        self.assertRegex(compdb[0]['command'], '-std=c99')
+        self.build()
 
 
 def should_run_cross_mingw_tests():
