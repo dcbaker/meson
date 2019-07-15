@@ -385,6 +385,9 @@ class GnuLikeCompiler(metaclass=abc.ABCMeta):
             return []
         return ['-fsanitize=' + value]
 
+    def get_dependency_gen_args(self, outtarget, outfile):
+        return ['-MD', '-MQ', outtarget, '-MF', outfile]
+
 
 class GnuCompiler(GnuLikeCompiler):
     """
