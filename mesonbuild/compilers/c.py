@@ -112,12 +112,6 @@ class ClangCCompiler(ClangCompiler, CCompiler):
     def get_option_link_args(self, options):
         return []
 
-    def get_linker_always_args(self):
-        basic = super().get_linker_always_args()
-        if self.compiler_type.is_osx_compiler:
-            return basic + ['-Wl,-headerpad_max_install_names']
-        return basic
-
 
 class EmscriptenCCompiler(ClangCCompiler):
     def __init__(self, exelist, version, compiler_type, for_machine: MachineChoice, is_cross, exe_wrapper=None, **kwargs):

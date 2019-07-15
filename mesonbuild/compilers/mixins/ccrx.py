@@ -32,15 +32,6 @@ ccrx_buildtype_args = {
     'custom': [],
 }  # type: typing.Dict[str, typing.List[str]]
 
-ccrx_buildtype_linker_args = {
-    'plain': [],
-    'debug': [],
-    'debugoptimized': [],
-    'release': [],
-    'minsize': [],
-    'custom': [],
-}  # type: typing.Dict[str, typing.List[str]]
-
 ccrx_optimization_args = {
     '0': ['-optimize=0'],
     'g': ['-optimize=0'],
@@ -88,26 +79,10 @@ class CcrxCompiler:
     def get_dependency_gen_args(self, outtarget: str, outfile: str) -> typing.List[str]:
         return []
 
-    # Override CCompiler.build_rpath_args
-    def build_rpath_args(self, build_dir: str, from_dir: str, rpath_paths: str, build_rpath: str, install_rpath: str) -> typing.List[str]:
-        return []
-
     def thread_flags(self, env: 'Environment') -> typing.List[str]:
         return []
 
-    def thread_link_flags(self, env: 'Environment') -> typing.List[str]:
-        return []
-
-    def get_linker_exelist(self) -> typing.List[str]:
-        return [self.linker_exe]
-
-    def get_linker_lib_prefix(self) -> str:
-        return '-lib='
-
     def get_coverage_args(self) -> typing.List[str]:
-        return []
-
-    def get_coverage_link_args(self) -> typing.List[str]:
         return []
 
     def get_optimization_args(self, optimization_level: str) -> typing.List[str]:
