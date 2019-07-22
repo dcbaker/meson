@@ -640,3 +640,22 @@ class XildAppleDynamicLinker(AppleDynamicLinker):
     """
 
     pass
+
+
+class CcrxDynamicLinker(DynamicLinker):
+
+    """Linker for Renesis CCrx compiler."""
+
+    def __init__(self, for_machine: mesonlib.MachineChoice,
+                 *, version: str = 'unknown version'):
+        super().__init__(['rlink.exe'], for_machine, 'rlink',
+                         version=version)
+
+    def get_accepts_rsp(self) -> bool:
+        return False
+
+    def get_lib_prefix(self) -> str:
+        return '-lib='
+
+    def get_std_shared_lib_args(self) -> typing.List[str]:
+        return []

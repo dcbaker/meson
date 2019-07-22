@@ -60,14 +60,6 @@ class CcrxCompiler:
     def __init__(self, compiler_type: 'CompilerType'):
         if not self.is_cross:
             raise EnvironmentException('ccrx supports only cross-compilation.')
-        # Check whether 'rlink.exe' is available in path
-        self.linker_exe = 'rlink.exe'
-        args = '--version'
-        try:
-            p, stdo, stderr = Popen_safe(self.linker_exe, args)
-        except OSError as e:
-            err_msg = 'Unknown linker\nRunning "{0}" gave \n"{1}"'.format(' '.join([self.linker_exe] + [args]), e)
-            raise EnvironmentException(err_msg)
         self.id = 'ccrx'
         self.compiler_type = compiler_type
         # Assembly
@@ -78,9 +70,6 @@ class CcrxCompiler:
                           '2': default_warn_args + [],
                           '3': default_warn_args + []}
 
-    def can_linker_accept_rsp(self) -> bool:
-        return False
-
     def get_pic_args(self) -> typing.List[str]:
         # PIC support is not enabled by default for CCRX,
         # if users want to use it, they need to add the required arguments explicitly
@@ -88,13 +77,6 @@ class CcrxCompiler:
 
     def get_buildtype_args(self, buildtype: str) -> typing.List[str]:
         return ccrx_buildtype_args[buildtype]
-
-    def get_buildtype_linker_args(self, buildtype: str) -> typing.List[str]:
-        return ccrx_buildtype_linker_args[buildtype]
-
-    # Override CCompiler.get_std_shared_lib_link_args
-    def get_std_shared_lib_link_args(self) -> typing.List[str]:
-        return []
 
     def get_pch_suffix(self) -> str:
         return 'pch'
