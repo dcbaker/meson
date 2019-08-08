@@ -21,8 +21,7 @@ from .. import coredata
 from .. import mlog
 from .. import mesonlib
 from ..mesonlib import (
-    EnvironmentException, MachineChoice, MesonException, OrderedSet,
-    Popen_safe
+    EnvironmentException, MachineChoice, MesonException, Popen_safe,
 )
 from ..envconfig import (
     Properties,
@@ -30,16 +29,20 @@ from ..envconfig import (
 
 if typing.TYPE_CHECKING:
     from ..coredata import OptionDictType
+    from ..dependencies.base import Dependency  # noqa: F401
     from ..environment import Environment
     from ..linkers import DynamicLinker  # noqa: F401
+
+    CompOrLinkType = typing.Union['Compiler', StaticLinker]
+    StrOrFileType = typing.Union[str, 'mesonlib.File']
 
 """This file contains the data files of all compilers Meson knows
 about. To support a new compiler, add its information below.
 Also add corresponding autodetection code in environment.py."""
 
-header_suffixes = ('h', 'hh', 'hpp', 'hxx', 'H', 'ipp', 'moc', 'vapi', 'di')
-obj_suffixes = ('o', 'obj', 'res')
-lib_suffixes = ('a', 'lib', 'dll', 'dylib', 'so')
+header_suffixes = ('h', 'hh', 'hpp', 'hxx', 'H', 'ipp', 'moc', 'vapi', 'di')  # type: typing.Tuple[str, ...]
+obj_suffixes = ('o', 'obj', 'res')  # type: typing.Tuple[str, ...]
+lib_suffixes = ('a', 'lib', 'dll', 'dylib', 'so')  # type: typing.Tuple[str, ...]
 # Mapping of language to suffixes of files that should always be in that language
 # This means we can't include .h headers here since they could be C, C++, ObjC, etc.
 lang_suffixes = {
@@ -57,23 +60,23 @@ lang_suffixes = {
     'cs': ('cs',),
     'swift': ('swift',),
     'java': ('java',),
-}
-all_languages = lang_suffixes.keys()
+}  # type: typing.Dict[str, typing.Tuple[str, ...]]
+all_languages = list(lang_suffixes.keys())  # type: typing.List[str]
 cpp_suffixes = lang_suffixes['cpp'] + ('h',)
 c_suffixes = lang_suffixes['c'] + ('h',)
 # List of languages that by default consume and output libraries following the
 # C ABI; these can generally be used interchangebly
-clib_langs = ('objcpp', 'cpp', 'objc', 'c', 'fortran',)
+clib_langs = ('objcpp', 'cpp', 'objc', 'c', 'fortran',)  # type: typing.Tuple[str, ...]
 # List of languages that can be linked with C code directly by the linker
 # used in build.py:process_compilers() and build.py:get_dynamic_linker()
-clink_langs = ('d', 'cuda') + clib_langs
-clink_suffixes = ()
+clink_langs = ('d', 'cuda') + clib_langs  # type: typing.Tuple[str, ...]
+clink_suffixes = ()  # type: typing.Tuple[str, ...]
 for _l in clink_langs + ('vala',):
     clink_suffixes += lang_suffixes[_l]
 clink_suffixes += ('h', 'll', 's')
 
 # Languages that should use LDFLAGS arguments when linking.
-languages_using_ldflags = ('objcpp', 'cpp', 'objc', 'c', 'fortran', 'd', 'cuda')
+languages_using_ldflags = ('objcpp', 'cpp', 'objc', 'c', 'fortran', 'd', 'cuda')  # type: typing.Tuple[str, ...]
 soregex = re.compile(r'.*\.so(\.[0-9]+)?(\.[0-9]+)?(\.[0-9]+)?$')
 
 # Environment variables that each lang uses.
@@ -92,7 +95,7 @@ unixy_compiler_internal_libs = ('m', 'c', 'pthread', 'dl', 'rt', 'execinfo')
 
 # All these are only for C-linkable languages; see `clink_langs` above.
 
-def sort_clink(lang):
+def sort_clink(lang: str) -> int:
     '''
     Sorting function to sort the list of languages according to
     reversed(compilers.clink_langs) and append the unknown langs in the end.
@@ -103,36 +106,36 @@ def sort_clink(lang):
         return 1
     return -clink_langs.index(lang)
 
-def is_header(fname):
-    if hasattr(fname, 'fname'):
+def is_header(fname: StrOrFileType) -> bool:
+    if isinstance(fname, mesonlib.File):
         fname = fname.fname
     suffix = fname.split('.')[-1]
     return suffix in header_suffixes
 
-def is_source(fname):
-    if hasattr(fname, 'fname'):
+def is_source(fname: StrOrFileType) -> bool:
+    if isinstance(fname, mesonlib.File):
         fname = fname.fname
     suffix = fname.split('.')[-1].lower()
     return suffix in clink_suffixes
 
-def is_assembly(fname):
-    if hasattr(fname, 'fname'):
+def is_assembly(fname: StrOrFileType) -> bool:
+    if isinstance(fname, mesonlib.File):
         fname = fname.fname
     return fname.split('.')[-1].lower() == 's'
 
-def is_llvm_ir(fname):
-    if hasattr(fname, 'fname'):
+def is_llvm_ir(fname: StrOrFileType) -> bool:
+    if isinstance(fname, mesonlib.File):
         fname = fname.fname
     return fname.split('.')[-1] == 'll'
 
-def is_object(fname):
-    if hasattr(fname, 'fname'):
+def is_object(fname: StrOrFileType) -> bool:
+    if isinstance(fname, mesonlib.File):
         fname = fname.fname
     suffix = fname.split('.')[-1]
     return suffix in obj_suffixes
 
-def is_library(fname):
-    if hasattr(fname, 'fname'):
+def is_library(fname: StrOrFileType) -> bool:
+    if isinstance(fname, mesonlib.File):
         fname = fname.fname
 
     if soregex.match(fname):
@@ -146,14 +149,14 @@ cuda_buildtype_args = {'plain': [],
                        'debugoptimized': [],
                        'release': [],
                        'minsize': [],
-                       }
+                       }  # type: typing.Dicst[str, typing.List[str]]
 java_buildtype_args = {'plain': [],
                        'debug': ['-g'],
                        'debugoptimized': ['-g'],
                        'release': [],
                        'minsize': [],
                        'custom': [],
-                       }
+                       }  # type: typing.Dicst[str, typing.List[str]]
 
 rust_buildtype_args = {'plain': [],
                        'debug': [],
@@ -161,7 +164,7 @@ rust_buildtype_args = {'plain': [],
                        'release': [],
                        'minsize': [],
                        'custom': [],
-                       }
+                       }  # type: typing.Dicst[str, typing.List[str]]
 
 d_gdc_buildtype_args = {'plain': [],
                         'debug': [],
@@ -169,7 +172,7 @@ d_gdc_buildtype_args = {'plain': [],
                         'release': ['-frelease', '-finline-functions'],
                         'minsize': [],
                         'custom': [],
-                        }
+                        }  # type: typing.Dicst[str, typing.List[str]]
 
 d_ldc_buildtype_args = {'plain': [],
                         'debug': [],
@@ -177,7 +180,7 @@ d_ldc_buildtype_args = {'plain': [],
                         'release': ['-release', '-enable-inlining', '-Hkeep-all-bodies'],
                         'minsize': [],
                         'custom': [],
-                        }
+                        }  # type: typing.Dicst[str, typing.List[str]]
 
 d_dmd_buildtype_args = {'plain': [],
                         'debug': [],
@@ -185,7 +188,7 @@ d_dmd_buildtype_args = {'plain': [],
                         'release': ['-release', '-inline'],
                         'minsize': [],
                         'custom': [],
-                        }
+                        }  # type: typing.Dicst[str, typing.List[str]]
 
 mono_buildtype_args = {'plain': [],
                        'debug': [],
@@ -193,7 +196,7 @@ mono_buildtype_args = {'plain': [],
                        'release': ['-optimize+'],
                        'minsize': [],
                        'custom': [],
-                       }
+                       }  # type: typing.Dicst[str, typing.List[str]]
 
 swift_buildtype_args = {'plain': [],
                         'debug': [],
@@ -201,7 +204,7 @@ swift_buildtype_args = {'plain': [],
                         'release': [],
                         'minsize': [],
                         'custom': [],
-                        }
+                        }  # type: typing.Dicst[str, typing.List[str]]
 
 gnu_winlibs = ['-lkernel32', '-luser32', '-lgdi32', '-lwinspool', '-lshell32',
                '-lole32', '-loleaut32', '-luuid', '-lcomdlg32', '-ladvapi32']
@@ -216,7 +219,7 @@ clike_optimization_args = {'0': [],
                            '2': ['-O2'],
                            '3': ['-O3'],
                            's': ['-Os'],
-                           }
+                           }  # type: typing.Dicst[str, typing.List[str]]
 
 cuda_optimization_args = {'0': [],
                           'g': ['-O0'],
@@ -224,13 +227,13 @@ cuda_optimization_args = {'0': [],
                           '2': ['-O2'],
                           '3': ['-O3', '-Otime'],
                           's': ['-O3', '-Ospace']
-                          }
+                          }  # type: typing.Dicst[str, typing.List[str]]
 
 cuda_debug_args = {False: [],
-                   True: ['-g']}
+                   True: ['-g']}  # type: typing.Dicst[bool, typing.List[str]]
 
 clike_debug_args = {False: [],
-                    True: ['-g']}
+                    True: ['-g']}  # type: typing.Dicst[bool, typing.List[str]]
 
 base_options = {'b_pch': coredata.UserBooleanOption('Use precompiled headers', True),
                 'b_lto': coredata.UserBooleanOption('Use link time optimization', False),
@@ -258,9 +261,10 @@ base_options = {'b_pch': coredata.UserBooleanOption('Use precompiled headers', T
                 'b_vscrt': coredata.UserComboOption('VS run-time library type to use.',
                                                     ['none', 'md', 'mdd', 'mt', 'mtd', 'from_buildtype'],
                                                     'from_buildtype'),
-                }
+                }  # type: OptionDictType
 
-def option_enabled(boptions, options, option):
+def option_enabled(boptions: typing.List[str], options: 'OptionDictType', option: str) -> bool:
+    # TODO: boptions likely should be a set
     try:
         if option not in boptions:
             return False
@@ -268,7 +272,7 @@ def option_enabled(boptions, options, option):
     except KeyError:
         return False
 
-def get_base_compile_args(options, compiler):
+def get_base_compile_args(options: 'OptionDictType', compiler: 'Compiler') -> typing.List[str]:
     args = []
     try:
         if options['b_lto'].value:
@@ -317,8 +321,9 @@ def get_base_compile_args(options, compiler):
         pass
     return args
 
-def get_base_link_args(options, linker, is_shared_module):
-    args = []
+def get_base_link_args(options: 'OptionDictType', linker: 'CompOrLinkType',
+                       is_shared_module: bool) -> typing.List[str]:
+    args = []  # type: typing.List[str]
     try:
         if options['b_lto'].value:
             args.extend(linker.get_lto_link_args())
@@ -377,13 +382,14 @@ class CrossNoRunException(MesonException):
     pass
 
 class RunResult:
-    def __init__(self, compiled, returncode=999, stdout='UNDEFINED', stderr='UNDEFINED'):
+    def __init__(self, compiled: bool, returncode: int = 999,
+                 stdout: str = 'UNDEFINED', stderr: str = 'UNDEFINED'):
         self.compiled = compiled
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr
 
-class CompilerArgs(list):
+class CompilerArgs(typing.List[str]):
     '''
     Class derived from list() that manages a list of compiler arguments. Should
     be used while constructing compiler arguments from various sources. Can be
@@ -438,13 +444,13 @@ class CompilerArgs(list):
     always_dedup_args = tuple('-l' + lib for lib in unixy_compiler_internal_libs)
     compiler = None
 
-    def __init__(self, compiler: 'CompOrLinkType', args: typing.Optional[typing.List[str]] = None):
+    def __init__(self, compiler: 'CompOrLinkType', args: typing.Optional[typing.Iterable[str]] = None):
         self.compiler = compiler
         args = args or []
         super().__init__(args)
 
     @classmethod
-    def _can_dedup(cls, arg):
+    def _can_dedup(cls, arg: str) -> int:
         '''
         Returns whether the argument can be safely de-duped. This is dependent
         on three things:
@@ -489,10 +495,8 @@ class CompilerArgs(list):
         return 0
 
     @classmethod
-    def _should_prepend(cls, arg):
-        if arg.startswith(cls.prepend_prefixes):
-            return True
-        return False
+    def _should_prepend(cls, arg: str) -> bool:
+        return arg.startswith(cls.prepend_prefixes)
 
     def to_native(self, copy: bool = False) -> typing.List[str]:
         # Check if we need to add --start/end-group for circular dependencies
@@ -525,7 +529,7 @@ class CompilerArgs(list):
                 new.insert(group_start, '-Wl,--start-group')
         return self.compiler.unix_args_to_native(new)
 
-    def append_direct(self, arg):
+    def append_direct(self, arg: str) -> None:
         '''
         Append the specified argument without any reordering or de-dup except
         for absolute paths to libraries, etc, which can always be de-duped
@@ -536,7 +540,7 @@ class CompilerArgs(list):
         else:
             super().append(arg)
 
-    def extend_direct(self, iterable):
+    def extend_direct(self, iterable: typing.Iterable[str]) -> None:
         '''
         Extend using the elements in the specified iterable without any
         reordering or de-dup except for absolute paths where the order of
@@ -545,7 +549,7 @@ class CompilerArgs(list):
         for elem in iterable:
             self.append_direct(elem)
 
-    def extend_preserving_lflags(self, iterable):
+    def extend_preserving_lflags(self, iterable: typing.Iterable[str]) -> None:
         normal_flags = []
         lflags = []
         for i in iterable:
@@ -556,20 +560,18 @@ class CompilerArgs(list):
         self.extend(normal_flags)
         self.extend_direct(lflags)
 
-    def __add__(self, args):
+    def __add__(self, args: typing.List[str]) -> 'CompilerArgs':
         new = CompilerArgs(self.compiler, self)
         new += args
         return new
 
-    def __iadd__(self, args):
+    def __iadd__(self, args: typing.Iterable[str]) -> None:
         '''
         Add two CompilerArgs while taking into account overriding of arguments
         and while preserving the order of arguments as much as possible
         '''
-        pre = []
-        post = []
-        if not isinstance(args, list):
-            raise TypeError('can only concatenate list (not "{}") to list'.format(args))
+        pre = []   # type: typing.List[str]
+        post = []  # type: typing.List[str]
         for arg in args:
             # If the argument can be de-duped, do it either by removing the
             # previous occurrence of it and adding a new one, or not adding the
@@ -595,9 +597,8 @@ class CompilerArgs(list):
         self[:0] = pre
         # Append to the end
         super().__iadd__(post)
-        return self
 
-    def __radd__(self, args):
+    def __radd__(self, args: typing.Iterable[str]) -> 'CompilerArgs':
         new = CompilerArgs(self.compiler, args)
         new += self
         return new
@@ -611,11 +612,11 @@ class CompilerArgs(list):
     def __rmul__(self, args):
         raise TypeError("can't multiply compiler arguments")
 
-    def append(self, arg):
-        self.__iadd__([arg])
+    def append(self, arg: str) -> None:
+        self += [arg]
 
-    def extend(self, args):
-        self.__iadd__(args)
+    def extend(self, args: typing.Iterable[str]) -> None:
+        self += args
 
 class Compiler:
     # Libraries to ignore in find_library() since they are provided by the
@@ -625,14 +626,17 @@ class Compiler:
     # manually searched.
     internal_libs = ()
 
-    def __init__(self, exelist, version, for_machine: MachineChoice,
+    language = 'unknown'
+    id = 'unknown'
+
+    def __init__(self, exelist: typing.Union[str, typing.List[str]], version: str,
+                 for_machine: MachineChoice,
                  linker: typing.Optional['DynamicLinker'] = None, **kwargs):
+        # TODO: remove the ability to pass exelist as a string
         if isinstance(exelist, str):
             self.exelist = [exelist]
-        elif isinstance(exelist, list):
-            self.exelist = exelist
         else:
-            raise TypeError('Unknown argument to Compiler')
+            self.exelist = exelist
         # In case it's been overridden by a child class already
         if not hasattr(self, 'file_suffixes'):
             self.file_suffixes = lang_suffixes[self.language]
@@ -645,21 +649,19 @@ class Compiler:
         else:
             self.full_version = None
         self.for_machine = for_machine
-        self.base_options = []
+        self.base_options = []  # type: typing.List[str]
         self.linker = linker
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         repr_str = "<{0}: v{1} `{2}`>"
         return repr_str.format(self.__class__.__name__, self.version,
                                ' '.join(self.exelist))
 
-    def can_compile(self, src) -> bool:
-        if hasattr(src, 'fname'):
+    def can_compile(self, src: StrOrFileType) -> bool:
+        if isinstance(src, mesonlib.File):
             src = src.fname
         suffix = os.path.splitext(src)[1].lower()
-        if suffix and suffix[1:] in self.can_compile_suffixes:
-            return True
-        return False
+        return bool(suffix and suffix[1:] in self.can_compile_suffixes)
 
     def get_id(self) -> str:
         return self.id
@@ -679,7 +681,9 @@ class Compiler:
     def get_default_suffix(self) -> str:
         return self.default_suffix
 
-    def get_define(self, dname, prefix, env, extra_args, dependencies) -> Tuple[str, bool]:
+    def get_define(self, dname: str, prefix: str, env: 'Environment',
+                   extra_args: typing.List[str],
+                   dependencies: typing.List['Dependency']) -> Tuple[str, bool]:
         raise EnvironmentException('%s does not support get_define ' % self.get_id())
 
     def compute_int(self, expression, low, high, guess, prefix, env, extra_args, dependencies) -> int:
@@ -697,7 +701,7 @@ class Compiler:
     def symbols_have_underscore_prefix(self, env) -> bool:
         raise EnvironmentException('%s does not support symbols_have_underscore_prefix ' % self.get_id())
 
-    def get_exelist(self):
+    def get_exelist(self) -> typing.List[str]:
         return self.exelist[:]
 
     def get_linker_exelist(self) -> typing.List[str]:
@@ -712,7 +716,7 @@ class Compiler:
     def has_builtin_define(self, *args, **kwargs):
         raise EnvironmentException('%s does not support has_builtin_define.' % self.id)
 
-    def get_always_args(self):
+    def get_always_args(self) -> typing.List[str]:
         return []
 
     def can_linker_accept_rsp(self) -> bool:
@@ -721,10 +725,10 @@ class Compiler:
         """
         return self.linker.get_accepts_rsp()
 
-    def get_linker_always_args(self):
+    def get_linker_always_args(self) -> typing.List[str]:
         return self.linker.get_always_args()
 
-    def get_linker_lib_prefix(self):
+    def get_linker_lib_prefix(self) -> typing.List[str]:
         return self.linker.get_lib_prefix()
 
     def gen_import_library_args(self, implibname):
