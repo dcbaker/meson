@@ -438,35 +438,10 @@ class CompilerArgs(list):
     always_dedup_args = tuple('-l' + lib for lib in unixy_compiler_internal_libs)
     compiler = None
 
-    def _check_args(self, args):
-        cargs = []
-        if len(args) > 2:
-            raise TypeError("CompilerArgs() only accepts at most 2 arguments: "
-                            "The compiler, and optionally an initial list")
-        elif not args:
-            return cargs
-        elif len(args) == 1:
-            if isinstance(args[0], (Compiler, StaticLinker)):
-                self.compiler = args[0]
-            else:
-                raise TypeError("you must pass a Compiler instance as one of "
-                                "the arguments")
-        elif len(args) == 2:
-            if isinstance(args[0], (Compiler, StaticLinker)):
-                self.compiler = args[0]
-                cargs = args[1]
-            elif isinstance(args[1], (Compiler, StaticLinker)):
-                cargs = args[0]
-                self.compiler = args[1]
-            else:
-                raise TypeError("you must pass a Compiler instance as one of "
-                                "the two arguments")
-        else:
-            raise AssertionError('Not reached')
-        return cargs
-
-    def __init__(self, *args):
-        super().__init__(self._check_args(args))
+    def __init__(self, compiler: 'CompOrLinkType', args: typing.Optional[typing.List[str]] = None):
+        self.compiler = compiler
+        args = args or []
+        super().__init__(args)
 
     @classmethod
     def _can_dedup(cls, arg):
@@ -582,7 +557,7 @@ class CompilerArgs(list):
         self.extend_direct(lflags)
 
     def __add__(self, args):
-        new = CompilerArgs(self, self.compiler)
+        new = CompilerArgs(self.compiler, self)
         new += args
         return new
 
@@ -623,7 +598,7 @@ class CompilerArgs(list):
         return self
 
     def __radd__(self, args):
-        new = CompilerArgs(args, self.compiler)
+        new = CompilerArgs(self.compiler, args)
         new += self
         return new
 
