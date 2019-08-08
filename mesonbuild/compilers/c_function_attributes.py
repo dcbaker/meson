@@ -10,6 +10,8 @@
 #   warranty.
 #
 
+import typing
+
 C_FUNC_ATTRIBUTES = {
     'alias': '''
         int foo(void) { return 0; }
@@ -111,7 +113,7 @@ C_FUNC_ATTRIBUTES = {
     'weakref': '''
         static int foo(void) { return 0; }
         static int var(void) __attribute__((weakref("foo")));''',
-}
+}  # type: typing.Dict[str, str]
 
 CXX_FUNC_ATTRIBUTES = {
     # Alias must be applied to the mangled name in C++
@@ -127,4 +129,4 @@ CXX_FUNC_ATTRIBUTES = {
          'static int (*resolve_foo(void))(void) { return my_foo; }'
          '}'
          'int foo(void) __attribute__((ifunc("resolve_foo")));'),
-}
+}  # type: typing.Dict[str, str]
