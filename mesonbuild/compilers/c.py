@@ -34,31 +34,41 @@ from .compilers import (
     CompilerType,
 )
 
+if typing.TYPE_CHECKING:
+    from ..coredata import OptionDictType
+    from ..dependencies.base import Dependency  # noqa: F401
+    from ..environment import Environment
+
 
 class CCompiler(CLikeCompiler, Compiler):
 
     @staticmethod
-    def attribute_check_func(name):
+    def attribute_check_func(name: str) -> str:
         try:
             return C_FUNC_ATTRIBUTES[name]
         except KeyError:
             raise MesonException('Unknown function attribute "{}"'.format(name))
 
-    def __init__(self, exelist, version, for_machine: MachineChoice, is_cross: bool,
+    def __init__(self, exelist: typing.List[str], version: str,
+                 for_machine: MachineChoice, is_cross: bool,
                  exe_wrapper: typing.Optional[str] = None, **kwargs):
         # If a child ObjC or CPP class has already set it, don't set it ourselves
         self.language = 'c'
         Compiler.__init__(self, exelist, version, for_machine, **kwargs)
         CLikeCompiler.__init__(self, is_cross, exe_wrapper)
 
-    def get_no_stdinc_args(self):
+    def get_no_stdinc_args(self) -> typing.List[str]:
         return ['-nostdinc']
 
-    def sanity_check(self, work_dir, environment):
+    def sanity_check(self, work_dir: str, environment: 'Environment') -> None:
         code = 'int main() { int class=0; return class; }\n'
         return self.sanity_check_impl(work_dir, environment, 'sanitycheckc.c', code)
 
-    def has_header_symbol(self, hname, symbol, prefix, env, *, extra_args=None, dependencies=None):
+    def has_header_symbol(self, hname: str, symbol: str, prefix: str,
+                          env: 'Environment', *,
+                          extra_args: typing.Optional[typing.List[str]] = None,
+                          dependencies: typing.Optional[typing.List['Dependency']] = None
+                          ) -> typing.Tuple[bool, bool]:
         fargs = {'prefix': prefix, 'header': hname, 'symbol': symbol}
         t = '''{prefix}
         #include <{header}>
@@ -74,7 +84,10 @@ class CCompiler(CLikeCompiler, Compiler):
 
 
 class ClangCCompiler(ClangCompiler, CCompiler):
-    def __init__(self, exelist, version, compiler_type, for_machine: MachineChoice, is_cross, exe_wrapper=None, **kwargs):
+
+    def __init__(self, exelist: typing.List[str], version: str,
+                 compiler_type: CompilerType, for_machine: MachineChoice,
+                 is_cross: bool, exe_wrapper: typing.Optional[str] = None, **kwargs):
         CCompiler.__init__(self, exelist, version, for_machine, is_cross, exe_wrapper, **kwargs)
         ClangCompiler.__init__(self, compiler_type)
         default_warn_args = ['-Wall', '-Winvalid-pch']
@@ -83,7 +96,7 @@ class ClangCCompiler(ClangCompiler, CCompiler):
                           '2': default_warn_args + ['-Wextra'],
                           '3': default_warn_args + ['-Wextra', '-Wpedantic']}
 
-    def get_options(self):
+    def get_options(self) -> 'OptionDictType':
         opts = CCompiler.get_options(self)
         c_stds = ['c89', 'c99', 'c11']
         g_stds = ['gnu89', 'gnu99', 'gnu11']
@@ -102,25 +115,28 @@ class ClangCCompiler(ClangCompiler, CCompiler):
                                                        'none')})
         return opts
 
-    def get_option_compile_args(self, options):
+    def get_option_compile_args(self, options: 'OptionDictType') -> typing.List[str]:
         args = []
         std = options['c_std']
         if std.value != 'none':
             args.append('-std=' + std.value)
         return args
 
-    def get_option_link_args(self, options):
+    def get_option_link_args(self, options: 'OptionDictType') -> typing.List[str]:
         return []
 
 
 class EmscriptenCCompiler(ClangCCompiler):
-    def __init__(self, exelist, version, compiler_type, for_machine: MachineChoice, is_cross, exe_wrapper=None, **kwargs):
+
+    def __init__(self, exelist: typing.List[str], version: str,
+                 compiler_type: CompilerType, for_machine: MachineChoice,
+                 is_cross: bool, exe_wrapper: typing.Optional[str] = None, **kwargs):
         if not is_cross:
             raise MesonException('Emscripten compiler can only be used for cross compilation.')
         ClangCCompiler.__init__(self, exelist, version, compiler_type, for_machine, is_cross, exe_wrapper, **kwargs)
         self.id = 'emscripten'
 
-    def get_option_link_args(self, options):
+    def get_option_link_args(self, options: 'OptionDictType') -> typing.List[str]:
         return []
 
     def get_linker_always_args(self):
@@ -138,8 +154,12 @@ class EmscriptenCCompiler(ClangCCompiler):
     def get_soname_args(self, *args, **kwargs):
         raise MesonException('Emscripten does not support shared libraries.')
 
+
 class ArmclangCCompiler(ArmclangCompiler, CCompiler):
-    def __init__(self, exelist, version, compiler_type, for_machine: MachineChoice, is_cross, exe_wrapper=None, **kwargs):
+
+    def __init__(self, exelist: typing.List[str], version: str,
+                 compiler_type: CompilerType, for_machine: MachineChoice,
+                 is_cross: bool, exe_wrapper: typing.Optional[str] = None, **kwargs):
         CCompiler.__init__(self, exelist, version, for_machine, is_cross, exe_wrapper, **kwargs)
         ArmclangCompiler.__init__(self, compiler_type)
         default_warn_args = ['-Wall', '-Winvalid-pch']
@@ -148,7 +168,7 @@ class ArmclangCCompiler(ArmclangCompiler, CCompiler):
                           '2': default_warn_args + ['-Wextra'],
                           '3': default_warn_args + ['-Wextra', '-Wpedantic']}
 
-    def get_options(self):
+    def get_options(self) -> 'OptionDictType':
         opts = CCompiler.get_options(self)
         opts.update({'c_std': coredata.UserComboOption('C language standard to use',
                                                        ['none', 'c90', 'c99', 'c11',
@@ -156,19 +176,23 @@ class ArmclangCCompiler(ArmclangCompiler, CCompiler):
                                                        'none')})
         return opts
 
-    def get_option_compile_args(self, options):
+    def get_option_compile_args(self, options: 'OptionDictType') -> typing.List[str]:
         args = []
         std = options['c_std']
         if std.value != 'none':
             args.append('-std=' + std.value)
         return args
 
-    def get_option_link_args(self, options):
+    def get_option_link_args(self, options: 'OptionDictType') -> typing.List[str]:
         return []
 
 
 class GnuCCompiler(GnuCompiler, CCompiler):
-    def __init__(self, exelist, version, compiler_type, for_machine: MachineChoice, is_cross, exe_wrapper=None, defines=None, **kwargs):
+
+    def __init__(self, exelist: typing.List[str], version: str,
+                 compiler_type: CompilerType, for_machine: MachineChoice,
+                 is_cross: bool, exe_wrapper: typing.Optional[str] = None,
+                 defines: typing.Optional[typing.Dict[str, str]] = None, **kwargs):
         CCompiler.__init__(self, exelist, version, for_machine, is_cross, exe_wrapper, **kwargs)
         GnuCompiler.__init__(self, compiler_type, defines)
         default_warn_args = ['-Wall', '-Winvalid-pch']
@@ -177,7 +201,7 @@ class GnuCCompiler(GnuCompiler, CCompiler):
                           '2': default_warn_args + ['-Wextra'],
                           '3': default_warn_args + ['-Wextra', '-Wpedantic']}
 
-    def get_options(self):
+    def get_options(self) -> 'OptionDictType':
         opts = CCompiler.get_options(self)
         c_stds = ['c89', 'c99', 'c11']
         g_stds = ['gnu89', 'gnu99', 'gnu11']
@@ -194,35 +218,42 @@ class GnuCCompiler(GnuCompiler, CCompiler):
                                                       gnu_winlibs), })
         return opts
 
-    def get_option_compile_args(self, options):
+    def get_option_compile_args(self, options: 'OptionDictType') -> typing.List[str]:
         args = []
         std = options['c_std']
         if std.value != 'none':
             args.append('-std=' + std.value)
         return args
 
-    def get_option_link_args(self, options):
+    def get_option_link_args(self, options: 'OptionDictType') -> typing.List[str]:
         if self.compiler_type.is_windows_compiler:
             return options['c_winlibs'].value[:]
         return []
 
-    def get_pch_use_args(self, pch_dir, header):
+    def get_pch_use_args(self, pch_dir: str, header: str) -> typing.List[str]:
         return ['-fpch-preprocess', '-include', os.path.basename(header)]
 
 
 class PGICCompiler(PGICompiler, CCompiler):
-    def __init__(self, exelist, version, compiler_type, for_machine: MachineChoice, is_cross, exe_wrapper=None, **kwargs):
+
+    def __init__(self, exelist: typing.List[str], version: str,
+                 compiler_type: CompilerType, for_machine: MachineChoice,
+                 is_cross: bool, exe_wrapper: typing.Optional[str] = None, **kwargs):
         CCompiler.__init__(self, exelist, version, for_machine, is_cross, exe_wrapper, **kwargs)
         PGICompiler.__init__(self, compiler_type)
 
 
 class ElbrusCCompiler(GnuCCompiler, ElbrusCompiler):
-    def __init__(self, exelist, version, compiler_type, for_machine: MachineChoice, is_cross, exe_wrapper=None, defines=None, **kwargs):
+
+    def __init__(self, exelist: typing.List[str], version: str,
+                 compiler_type: CompilerType, for_machine: MachineChoice,
+                 is_cross: bool, exe_wrapper: typing.Optional[str] = None,
+                 defines: typing.Optional[typing.Dict[str, str]] = None, **kwargs):
         GnuCCompiler.__init__(self, exelist, version, compiler_type, for_machine, is_cross, exe_wrapper, defines, **kwargs)
         ElbrusCompiler.__init__(self, compiler_type, defines)
 
     # It does support some various ISO standards and c/gnu 90, 9x, 1x in addition to those which GNU CC supports.
-    def get_options(self):
+    def get_options(self) -> 'OptionDictType':
         opts = CCompiler.get_options(self)
         opts.update({'c_std': coredata.UserComboOption('C language standard to use',
                                                        ['none', 'c89', 'c90', 'c9x', 'c99', 'c1x', 'c11',
@@ -243,7 +274,10 @@ class ElbrusCCompiler(GnuCCompiler, ElbrusCompiler):
 
 
 class IntelCCompiler(IntelGnuLikeCompiler, CCompiler):
-    def __init__(self, exelist, version, compiler_type, for_machine: MachineChoice, is_cross, exe_wrapper=None, **kwargs):
+
+    def __init__(self, exelist: typing.List[str], version: str,
+                 compiler_type: CompilerType, for_machine: MachineChoice,
+                 is_cross: bool, exe_wrapper: typing.Optional[str] = None, **kwargs):
         CCompiler.__init__(self, exelist, version, for_machine, is_cross, exe_wrapper, **kwargs)
         IntelGnuLikeCompiler.__init__(self, compiler_type)
         self.lang_header = 'c-header'
@@ -253,7 +287,7 @@ class IntelCCompiler(IntelGnuLikeCompiler, CCompiler):
                           '2': default_warn_args + ['-Wextra'],
                           '3': default_warn_args + ['-Wextra']}
 
-    def get_options(self):
+    def get_options(self) -> 'OptionDictType':
         opts = CCompiler.get_options(self)
         c_stds = ['c89', 'c99']
         g_stds = ['gnu89', 'gnu99']
@@ -264,7 +298,7 @@ class IntelCCompiler(IntelGnuLikeCompiler, CCompiler):
                                                        'none')})
         return opts
 
-    def get_option_compile_args(self, options):
+    def get_option_compile_args(self, options: 'OptionDictType') -> typing.List[str]:
         args = []
         std = options['c_std']
         if std.value != 'none':
@@ -276,25 +310,32 @@ class VisualStudioLikeCCompilerMixin:
 
     """Shared methods that apply to MSVC-like C compilers."""
 
-    def get_options(self):
+    def get_options(self) -> 'OptionDictType':
         opts = super().get_options()
         opts.update({'c_winlibs': coredata.UserArrayOption('Windows libs to link against.',
                                                            msvc_winlibs)})
         return opts
 
-    def get_option_link_args(self, options):
+    def get_option_link_args(self, options: 'OptionDictType') -> typing.List[str]:
         return options['c_winlibs'].value[:]
+
 
 class VisualStudioCCompiler(VisualStudioLikeCompiler, VisualStudioLikeCCompilerMixin, CCompiler):
 
-    def __init__(self, exelist, version, for_machine: MachineChoice, is_cross, exe_wrap, target: str, **kwargs):
-        CCompiler.__init__(self, exelist, version, for_machine, is_cross, exe_wrap, **kwargs)
+    def __init__(self, exelist: typing.List[str], version: str,
+                 for_machine: MachineChoice, is_cross: bool,
+                 exe_wrapper: typing.Optional[str], target: str, **kwargs):
+        CCompiler.__init__(self, exelist, version, for_machine, is_cross, exe_wrapper, **kwargs)
         VisualStudioLikeCompiler.__init__(self, target)
         self.id = 'msvc'
 
+
 class ClangClCCompiler(VisualStudioLikeCompiler, VisualStudioLikeCCompilerMixin, CCompiler):
-    def __init__(self, exelist, version, for_machine: MachineChoice, is_cross, exe_wrap, target, **kwargs):
-        CCompiler.__init__(self, exelist, version, for_machine, is_cross, exe_wrap, **kwargs)
+
+    def __init__(self, exelist: typing.List[str], version: str,
+                 for_machine: MachineChoice, is_cross: bool,
+                 exe_wrapper: typing.Optional[str], target: str, **kwargs):
+        CCompiler.__init__(self, exelist, version, for_machine, is_cross, exe_wrapper, **kwargs)
         VisualStudioLikeCompiler.__init__(self, target)
         self.id = 'clang-cl'
 
@@ -305,11 +346,13 @@ class IntelClCCompiler(IntelVisualStudioLikeCompiler, VisualStudioLikeCCompilerM
 
     __have_warned = False
 
-    def __init__(self, exelist, version, for_machine: MachineChoice, is_cross, exe_wrap, target, **kwargs):
-        CCompiler.__init__(self, exelist, version, for_machine, is_cross, exe_wrap, **kwargs)
+    def __init__(self, exelist: typing.List[str], version: str,
+                 for_machine: MachineChoice, is_cross: bool,
+                 exe_wrapper: typing.Optional[str], target: str, **kwargs):
+        CCompiler.__init__(self, exelist, version, for_machine, is_cross, exe_wrapper, **kwargs)
         IntelVisualStudioLikeCompiler.__init__(self, target)
 
-    def get_options(self):
+    def get_options(self) -> 'OptionDictType':
         opts = super().get_options()
         c_stds = ['none', 'c89', 'c99', 'c11']
         opts.update({'c_std': coredata.UserComboOption('C language standard to use',
@@ -317,7 +360,7 @@ class IntelClCCompiler(IntelVisualStudioLikeCompiler, VisualStudioLikeCCompilerM
                                                        'none')})
         return opts
 
-    def get_option_compile_args(self, options):
+    def get_option_compile_args(self, options: 'OptionDictType') -> typing.List[str]:
         args = []
         std = options['c_std']
         if std.value == 'c89':
@@ -330,26 +373,33 @@ class IntelClCCompiler(IntelVisualStudioLikeCompiler, VisualStudioLikeCCompilerM
 
 
 class ArmCCompiler(ArmCompiler, CCompiler):
-    def __init__(self, exelist, version, compiler_type, for_machine: MachineChoice, is_cross, exe_wrapper=None, **kwargs):
+
+    def __init__(self, exelist: typing.List[str], version: str,
+                 compiler_type: CompilerType, for_machine: MachineChoice,
+                 is_cross: bool, exe_wrapper: typing.Optional[str] = None, **kwargs):
         CCompiler.__init__(self, exelist, version, for_machine, is_cross, exe_wrapper, **kwargs)
         ArmCompiler.__init__(self, compiler_type)
 
-    def get_options(self):
+    def get_options(self) -> 'OptionDictType':
         opts = CCompiler.get_options(self)
         opts.update({'c_std': coredata.UserComboOption('C language standard to use',
                                                        ['none', 'c90', 'c99'],
                                                        'none')})
         return opts
 
-    def get_option_compile_args(self, options):
+    def get_option_compile_args(self, options: 'OptionDictType') -> typing.List[str]:
         args = []
         std = options['c_std']
         if std.value != 'none':
             args.append('--' + std.value)
         return args
 
+       
 class CcrxCCompiler(CcrxCompiler, CCompiler):
-    def __init__(self, exelist, version, compiler_type, for_machine: MachineChoice, is_cross, exe_wrapper=None, **kwargs):
+
+    def __init__(self, exelist: typing.List[str], version: str,
+                 compiler_type: CompilerType, for_machine: MachineChoice,
+                 is_cross: bool, exe_wrapper: typing.Optional[str] = None, **kwargs):
         CCompiler.__init__(self, exelist, version, for_machine, is_cross, exe_wrapper, **kwargs)
         CcrxCompiler.__init__(self, compiler_type)
 
@@ -357,14 +407,14 @@ class CcrxCCompiler(CcrxCompiler, CCompiler):
     def get_always_args(self):
         return ['-nologo']
 
-    def get_options(self):
+    def get_options(self) -> 'OptionDictType':
         opts = CCompiler.get_options(self)
         opts.update({'c_std': coredata.UserComboOption('C language standard to use',
                                                        ['none', 'c89', 'c99'],
                                                        'none')})
         return opts
 
-    def get_option_compile_args(self, options):
+    def get_option_compile_args(self, options: 'OptionDictType') -> typing.List[str]:
         args = []
         std = options['c_std']
         if std.value == 'c89':
@@ -373,22 +423,22 @@ class CcrxCCompiler(CcrxCompiler, CCompiler):
             args.append('-lang=c99')
         return args
 
-    def get_compile_only_args(self):
+    def get_compile_only_args(self) -> typing.List[str]:
         return []
 
-    def get_no_optimization_args(self):
+    def get_no_optimization_args(self) -> typing.List[str]:
         return ['-optimize=0']
 
-    def get_output_args(self, target):
+    def get_output_args(self, target: str) -> typing.List[str]:
         return ['-output=obj=%s' % target]
 
-    def get_linker_output_args(self, outputname):
+    def get_linker_output_args(self, outputname: str) -> typing.List[str]:
         return ['-output=%s' % outputname]
 
-    def get_werror_args(self):
+    def get_werror_args(self) -> typing.List[str]:
         return ['-change_message=error']
 
-    def get_include_args(self, path, is_system):
+    def get_include_args(self, path: str, is_system: bool) -> typing.List[str]:
         if path == '':
             path = '.'
         return ['-include=' + path]
