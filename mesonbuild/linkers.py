@@ -832,7 +832,7 @@ class SolarisDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
     def get_link_whole_for(self, args: typing.List[str]) -> typing.List[str]:
         if not args:
             return args
-        return ['-z', 'allextract'] + args + ['-z', 'defaultextract']
+        return ['-Wl,--whole-archive'] + args + ['-Wl,--no-whole-archive']
 
     def no_undefined_args(self) -> typing.List[str]:
         return ['-z', 'defs']
