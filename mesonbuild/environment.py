@@ -669,8 +669,7 @@ class Environment:
         _, o, e = Popen_safe(compiler + check_args)
         v = search_version(o)
         if o.startswith('LLD'):
-            l = LLVMDynamicLinker(compiler, for_machine, version=v)
-        # TODO: Solaris linker
+            l = LLVMDynamicLinker(compiler, for_machine, 'lld', version=v)
         # first is for apple clang, second is for real gcc
         elif e.endswith('(use -v to see invocation)\n') or 'macosx_version' in e:
             _, _, e = Popen_safe(compiler + [prefix + '-v'] + extra_args)
