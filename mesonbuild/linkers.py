@@ -843,10 +843,6 @@ class SolarisDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
     def fatal_warnings(self) -> typing.List[str]:
         return ['-z', 'fatal-warnings']
 
-    def get_asneeded_args(self) -> typing.List[str]:
-        # XXX: this might only be available in Solaris, not Illumos
-        return ['-z', 'discard-unused=dependencies']
-
     def build_rpath_args(self, env: 'Environment', build_dir: str, from_dir: str,
                          rpath_paths: str, build_rpath: str,
                          install_rpath: str) -> typing.List[str]:
