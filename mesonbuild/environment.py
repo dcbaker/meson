@@ -50,6 +50,7 @@ from .linkers import (
     LLVMDynamicLinker,
     MSVCDynamicLinker,
     PGIDynamicLinker,
+    SolarisDynamicLinker,
     XildAppleDynamicLinker,
     XildLinuxDynamicLinker,
     XilinkDynamicLinker,
@@ -681,12 +682,14 @@ class Environment:
             else:
                 v = 'unknown version'
             l = AppleDynamicLinker(compiler, for_machine, i, version=v)
-        else:
-            if 'GNU ld' in o:
-                i = 'GNU ld.bfd'
-            else:
+        elif 'GNU' in o:
+            if 'gold' in 'o':
                 i = 'GNU ld.gold'
+            else:
+                i = 'GNU ld.bfd'
             l = GnuDynamicLinker(compiler, for_machine, i, version=v)
+        elif 'Solaris' in e:
+            l = SolarisDynamicLinker(compiler, for_machine, i, version=search_version(e))
         return l
 
     def _detect_c_or_cpp_compiler(self, lang: str, for_machine: MachineChoice) -> typing.Tuple[Compiler, DynamicLinker]:
