@@ -862,7 +862,7 @@ class SolarisDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
                 paths = padding
             else:
                 paths = paths + ':' + padding
-        return ['-Wl,-rpath', paths]
+        return ['-Wl,-rpath,{}'.format(paths)]
 
     def get_soname_args(self, env: 'Environment', prefix: str, shlib_name: str,
                         suffix: str, soversion: str, darwin_versions: typing.Tuple[str, str],
