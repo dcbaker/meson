@@ -689,7 +689,7 @@ class Environment:
                 i = 'GNU ld.bfd'
             l = GnuDynamicLinker(compiler, for_machine, i, version=v)
         elif 'Solaris' in e:
-            l = SolarisDynamicLinker(compiler, for_machine, i, version=search_version(e))
+            l = SolarisDynamicLinker(compiler, for_machine, 'solaris', version=search_version(e))
         return l
 
     def _detect_c_or_cpp_compiler(self, lang: str, for_machine: MachineChoice) -> typing.Tuple[Compiler, DynamicLinker]:
