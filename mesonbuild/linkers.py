@@ -868,4 +868,4 @@ class SolarisDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
                         suffix: str, soversion: str, darwin_versions: typing.Tuple[str, str],
                         is_shared_module: bool) -> typing.List[str]:
         sostr = '' if soversion is None else '.' + soversion
-        return ['-Wl,--soname', '{}{}.{}{}'.format(prefix, shlib_name, suffix, sostr)]
+        return ['-Wl,-soname,{}{}.{}{}'.format(prefix, shlib_name, suffix, sostr)]
