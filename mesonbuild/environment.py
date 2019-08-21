@@ -31,7 +31,6 @@ from .envconfig import (
 from . import compilers
 from .compilers import (
     Compiler,
-    CompilerType,
     is_assembly,
     is_header,
     is_library,
@@ -619,17 +618,6 @@ class Environment:
         minor = defines.get('__LCC_MINOR__', '0')
         return dot.join((generation, major, minor))
 
-    @staticmethod
-    def get_gnu_compiler_type(defines):
-        # Detect GCC type (Apple, MinGW, Cygwin, Unix)
-        if '__APPLE__' in defines:
-            return CompilerType.GCC_OSX
-        elif '__MINGW32__' in defines or '__MINGW64__' in defines:
-            return CompilerType.GCC_MINGW
-        elif '__CYGWIN__' in defines:
-            return CompilerType.GCC_CYGWIN
-        return CompilerType.GCC_STANDARD
-
     def _get_compilers(self, lang, for_machine):
         '''
         The list of compilers is detected in the exact same way for
@@ -715,6 +703,7 @@ class Environment:
         popen_exceptions = {}
         compilers, ccache, exe_wrap = self._get_compilers(lang, for_machine)
         is_cross = not self.machines.matches_build_machine(for_machine)
+        info = self.machines[for_machine]
 
         for compiler in compilers:
             if isinstance(compiler, str):
@@ -772,7 +761,6 @@ class Environment:
                 if not defines:
                     popen_exceptions[' '.join(compiler)] = 'no pre-processor defines'
                     continue
-                compiler_type = self.get_gnu_compiler_type(defines)
 
                 linker = self._guess_nix_linker(compiler, for_machine)
 
@@ -782,14 +770,16 @@ class Environment:
                 else:
                     version = self.get_gnu_version_from_defines(defines)
                     cls = GnuCCompiler if lang == 'c' else GnuCPPCompiler
-                return cls(ccache + compiler, version, compiler_type,
-                           for_machine, is_cross, exe_wrap, defines,
-                           full_version=full_version, linker=linker)
+                return cls(
+                    ccache + compiler, version, for_machine, is_cross,
+                    info, exe_wrap, defines, full_version=full_version,
+                    linker=linker)
 
             if 'Emscripten' in out:
                 cls = EmscriptenCCompiler if lang == 'c' else EmscriptenCPPCompiler
-                compiler_type = CompilerType.CLANG_EMSCRIPTEN
-                return cls(ccache + compiler, version, compiler_type, for_machine, is_cross, exe_wrap, full_version=full_version)
+                return cls(
+                    ccache + compiler, version, for_machine, is_cross, info,
+                    exe_wrap, full_version=full_version)
 
             if 'armclang' in out:
                 # The compiler version is not present in the first line of output,
@@ -805,10 +795,11 @@ class Environment:
                 # Override previous values
                 version = search_version(arm_ver_str)
                 full_version = arm_ver_str
-                compiler_type = CompilerType.ARM_WIN
                 cls = ArmclangCCompiler if lang == 'c' else ArmclangCPPCompiler
                 linker = ArmClangDynamicLinker(for_machine, version=version)
-                return cls(ccache + compiler, version, compiler_type, for_machine, is_cross, exe_wrap, full_version=full_version, linker=linker)
+                return cls(
+                    ccache + compiler, version, for_machine, is_cross, info,
+                    exe_wrap, full_version=full_version, linker=linker)
             if 'CL.EXE COMPATIBILITY' in out:
                 # if this is clang-cl masquerading as cl, detect it as cl, not
                 # clang
@@ -825,16 +816,13 @@ class Environment:
                     target = 'unknown target'
                 cls = ClangClCCompiler if lang == 'c' else ClangClCPPCompiler
                 linker = ClangClDynamicLinker(for_machine, version=version)
-                return cls(compiler, version, for_machine, is_cross, exe_wrap, target, linker=linker)
+                return cls(
+                    compiler, version, for_machine, is_cross, info, exe_wrap,
+                    target, linker=linker)
             if 'clang' in out:
-                if 'Apple' in out or self.machines[for_machine].is_darwin():
-                    compiler_type = CompilerType.CLANG_OSX
-                elif 'windows' in out or self.machines[for_machine].is_windows():
-                    compiler_type = CompilerType.CLANG_MINGW
-                else:
-                    compiler_type = CompilerType.CLANG_STANDARD
+                linker = self._guess_nix_linker(compiler, for_machine)
                 if lang == 'c':
-                    if compiler_Type is CompilerType.CLANG_OSX:
+                    if isinstance(linker, AppleDynamicLinker):
                         cls = AppleClangCCompiler
                     else:
                         cls = ClangCCompiler
@@ -844,14 +832,17 @@ class Environment:
                     else:
                         cls = ClangCPPCompiler
 
-                linker = self._guess_nix_linker(compiler, for_machine)
-                return cls(ccache + compiler, version, compiler_type, for_machine, is_cross, exe_wrap, full_version=full_version, linker=linker)
+                return cls(
+                    ccache + compiler, version, for_machine, is_cross, info,
+                    exe_wrap, full_version=full_version, linker=linker)
             if 'Intel(R) C++ Intel(R)' in err:
                 version = search_version(err)
                 target = 'x86' if 'IA-32' in err else 'x86_64'
                 cls = IntelClCCompiler if lang == 'c' else IntelClCPPCompiler
                 linker = XilinkDynamicLinker(for_machine, version=version)
-                return cls(compiler, version, for_machine, is_cross, exe_wrap, target, linker=linker)
+                return cls(
+                    compiler, version, for_machine, is_cross, exe_wrap,
+                    target, info, linker=linker)
             if 'Microsoft' in out or 'Microsoft' in err:
                 # Latest versions of Visual Studio print version
                 # number to stderr but earlier ones print version
@@ -871,36 +862,36 @@ class Environment:
                     target = 'x86'
                 linker = MSVCDynamicLinker(for_machine, version=version)
                 cls = VisualStudioCCompiler if lang == 'c' else VisualStudioCPPCompiler
-                return cls(compiler, version, for_machine, is_cross, exe_wrap, target, linker=linker)
+                return cls(
+                    compiler, version, for_machine, is_cross, info, exe_wrap,
+                    target, linker=linker)
             if 'PGI Compilers' in out:
-                if self.machines[for_machine].is_darwin():
-                    compiler_type = CompilerType.PGI_OSX
-                elif self.machines[for_machine].is_windows():
-                    compiler_type = CompilerType.PGI_WIN
-                else:
-                    compiler_type = CompilerType.PGI_STANDARD
                 cls = PGICCompiler if lang == 'c' else PGICPPCompiler
                 linker = PGIDynamicLinker(compiler, for_machine, 'pgi', version=version)
-                return cls(ccache + compiler, version, compiler_type, for_machine, is_cross, exe_wrap, linker=linker)
+                return cls(
+                    ccache + compiler, version, for_machine, is_cross,
+                    info, exe_wrap, linker=linker)
             if '(ICC)' in out:
-                if self.machines[for_machine].is_darwin():
-                    compiler_type = CompilerType.ICC_OSX
+                if info.machines[for_machine].is_darwin():
                     l = XildAppleDynamicLinker(compiler, for_machine, 'xild', version=version)
                 else:
-                    compiler_type = CompilerType.ICC_STANDARD
                     l = XildLinuxDynamicLinker(compiler, for_machine, 'xild', version=version)
                 cls = IntelCCompiler if lang == 'c' else IntelCPPCompiler
-                return cls(ccache + compiler, version, compiler_type, for_machine, is_cross, exe_wrap, full_version=full_version, linker=l)
+                return cls(
+                    ccache + compiler, version, for_machine, is_cross, info,
+                    exe_wrap, full_version=full_version, linker=l)
             if 'ARM' in out:
-                compiler_type = CompilerType.ARM_WIN
                 cls = ArmCCompiler if lang == 'c' else ArmCPPCompiler
                 linker = ArmDynamicLinker(for_machine, version=version)
-                return cls(ccache + compiler, version, compiler_type, for_machine, is_cross, exe_wrap, full_version=full_version, linker=linker)
+                return cls(
+                    ccache + compiler, version, for_machine, is_cross,
+                    info, exe_wrap, full_version=full_version, linker=linker)
             if 'RX Family' in out:
-                compiler_type = CompilerType.CCRX_WIN
                 cls = CcrxCCompiler if lang == 'c' else CcrxCPPCompiler
                 linker = CcrxDynamicLinker(for_machine, version=version)
-                return cls(ccache + compiler, version, compiler_type, for_machine, is_cross, exe_wrap, full_version=full_version, linker=linker)
+                return cls(
+                    ccache + compiler, version, for_machine, is_cross, info,
+                    exe_wrap, full_version=full_version, linker=linker)
 
         self._handle_exceptions(popen_exceptions, compilers)
 
@@ -913,6 +904,7 @@ class Environment:
     def detect_cuda_compiler(self, for_machine):
         popen_exceptions = {}
         compilers, ccache, exe_wrap = self._get_compilers('cuda', for_machine)
+        info = self.machines[for_machine]
         for compiler in compilers:
             if isinstance(compiler, str):
                 compiler = [compiler]
@@ -940,14 +932,18 @@ class Environment:
             # Luckily, the "V" also makes it very simple to extract
             # the full version:
             version = out.strip().split('V')[-1]
-            linker = self._guess_nix_linker(compiler, for_machine, prefix='-Xlinker=')
-            return CudaCompiler(ccache + compiler, version, for_machine, exe_wrap, linker=linker)
+            linker = self._guess_nix_linker(
+                compiler, for_machine, prefix='-Xlinker=')
+            return CudaCompiler(
+                ccache + compiler, version, for_machine, info, exe_wrap,
+                linker=linker)
         raise EnvironmentException('Could not find suitable CUDA compiler: "' + ' '.join(compilers) + '"')
 
     def detect_fortran_compiler(self, for_machine: MachineChoice):
         popen_exceptions = {}
         compilers, ccache, exe_wrap = self._get_compilers('fortran', for_machine)
         is_cross = not self.machines.matches_build_machine(for_machine)
+        info = self.machines[for_machine]
         for compiler in compilers:
             if isinstance(compiler, str):
                 compiler = [compiler]
@@ -972,7 +968,6 @@ class Environment:
                     if not defines:
                         popen_exceptions[' '.join(compiler)] = 'no pre-processor defines'
                         continue
-                    compiler_type = self.get_gnu_compiler_type(defines)
                     if guess_gcc_or_lcc == 'lcc':
                         version = self.get_lcc_version_from_defines(defines)
                         cls = ElbrusFortranCompiler
@@ -980,51 +975,68 @@ class Environment:
                         version = self.get_gnu_version_from_defines(defines)
                         cls = GnuFortranCompiler
                     linker = self._guess_nix_linker(compiler, for_machine)
-                    return cls(compiler, version, compiler_type, for_machine, is_cross, exe_wrap, defines, full_version=full_version, linker=linker)
+                    return cls(
+                        compiler, version, for_machine, is_cross, info,
+                        exe_wrap, defines, full_version=full_version,
+                        linker=linker)
 
                 if 'G95' in out:
                     linker = self._guess_nix_linker(compiler, for_machine)
-                    return G95FortranCompiler(compiler, version, for_machine, is_cross, exe_wrap, full_version=full_version, linker=linker)
+                    return G95FortranCompiler(
+                        compiler, version, for_machine, is_cross, info,
+                        exe_wrap, full_version=full_version, linker=linker)
 
                 if 'Sun Fortran' in err:
                     version = search_version(err)
                     linker = self._guess_nix_linker(compiler, for_machine)
-                    return SunFortranCompiler(compiler, version, for_machine, is_cross, exe_wrap, full_version=full_version, linker=linker)
+                    return SunFortranCompiler(
+                        compiler, version, for_machine, is_cross, info,
+                        exe_wrap, full_version=full_version, linker=linker)
 
                 if 'Intel(R) Visual Fortran' in err:
                     version = search_version(err)
                     target = 'x86' if 'IA-32' in err else 'x86_64'
                     linker = XilinkDynamicLinker(for_machine, version=version)
-                    return IntelClFortranCompiler(compiler, version, for_machine, is_cross, target, exe_wrap, linker=linker)
+                    return IntelClFortranCompiler(
+                        compiler, version, for_machine, is_cross, target,
+                        info, exe_wrap, linker=linker)
 
                 if 'ifort (IFORT)' in out:
                     linker = XildLinuxDynamicLinker(compiler, for_machine, 'xild', version=version)
-                    return IntelFortranCompiler(compiler, version, for_machine, is_cross, exe_wrap, full_version=full_version, linker=linker)
+                    return IntelFortranCompiler(
+                        compiler, version, for_machine, is_cross, info,
+                        exe_wrap, full_version=full_version, linker=linker)
 
                 if 'PathScale EKOPath(tm)' in err:
-                    return PathScaleFortranCompiler(compiler, version, for_machine, is_cross, exe_wrap, full_version=full_version)
+                    return PathScaleFortranCompiler(
+                        compiler, version, for_machine, is_cross, info,
+                        exe_wrap, full_version=full_version)
 
                 if 'PGI Compilers' in out:
-                    if self.machines[for_machine].is_darwin():
-                        compiler_type = CompilerType.PGI_OSX
-                    elif self.machines[for_machine].is_windows():
-                        compiler_type = CompilerType.PGI_WIN
-                    else:
-                        compiler_type = CompilerType.PGI_STANDARD
                     linker = PGIDynamicLinker(compiler, for_machine, 'pgi', version=version)
-                    return PGIFortranCompiler(compiler, version, compiler_type, for_machine, is_cross, exe_wrap, full_version=full_version, linker=linker)
+                    return PGIFortranCompiler(
+                        compiler, version, for_machine, is_cross,
+                        self.machines[for_machine], exe_wrap,
+                        full_version=full_version, linker=linker)
 
                 if 'flang' in out or 'clang' in out:
                     linker = self._guess_nix_linker(compiler, for_machine)
-                    return FlangFortranCompiler(compiler, version, for_machine, is_cross, exe_wrap, full_version=full_version, linker=linker)
+                    return FlangFortranCompiler(
+                        compiler, version, for_machine, is_cross, info,
+                        exe_wrap, full_version=full_version, linker=linker)
 
                 if 'Open64 Compiler Suite' in err:
                     linker = self._guess_nix_linker(compiler, for_machine)
-                    return Open64FortranCompiler(compiler, version, for_machine, is_cross, exe_wrap, full_version=full_version, linker=linker)
+                    return Open64FortranCompiler(
+                        compiler, version, for_machine, is_cross, info,
+                        exe_wrap, full_version=full_version, linker=linker)
 
                 if 'NAG Fortran' in err:
                     linker = self._guess_nix_linker(compiler, for_machine)
-                    return NAGFortranCompiler(compiler, version, for_machine, is_cross, exe_wrap, full_version=full_version, linker=linker)
+                    return NAGFortranCompiler(
+                        compiler, version, for_machine, is_cross, info,
+                        exe_wrap, full_version=full_version, linker=linker)
+
         self._handle_exceptions(popen_exceptions, compilers)
 
     def get_scratch_dir(self):
@@ -1040,6 +1052,8 @@ class Environment:
         popen_exceptions = {}
         compilers, ccache, exe_wrap = self._get_compilers('objc' if objc else 'objcpp', for_machine)
         is_cross = not self.machines.matches_build_machine(for_machine)
+        info = self.machines[for_machine]
+
         for compiler in compilers:
             if isinstance(compiler, str):
                 compiler = [compiler]
@@ -1055,25 +1069,23 @@ class Environment:
                 if not defines:
                     popen_exceptions[' '.join(compiler)] = 'no pre-processor defines'
                     continue
-                compiler_type = self.get_gnu_compiler_type(defines)
                 version = self.get_gnu_version_from_defines(defines)
                 comp = GnuObjCCompiler if objc else GnuObjCPPCompiler
                 linker = self._guess_nix_linker(compiler, for_machine)
-                return comp(ccache + compiler, version, compiler_type, for_machine, is_cross, exe_wrap, defines, linker=linker)
+                return comp(
+                    ccache + compiler, version, for_machine, is_cross, info,
+                    exe_wrap, defines, linker=linker)
             if 'clang' in out:
                 comp = ClangObjCCompiler if objc else ClangObjCPPCompiler
-                if 'Apple' in out or self.machines[for_machine].is_darwin():
-                    compiler_type = CompilerType.CLANG_OSX
-                elif 'windows' in out or self.machines[for_machine].is_windows():
-                    compiler_type = CompilerType.CLANG_MINGW
-                else:
-                    compiler_type = CompilerType.CLANG_STANDARD
                 linker = self._guess_nix_linker(compiler, for_machine)
-                return comp(ccache + compiler, version, compiler_type, for_machine, is_cross, exe_wrap, linker=linker)
+                return comp(
+                    ccache + compiler, version, for_machine, is_cross, info,
+                    exe_wrap, linker=linker)
         self._handle_exceptions(popen_exceptions, compilers)
 
     def detect_java_compiler(self, for_machine):
         exelist = self.binaries.host.lookup_entry('java')
+        info = self.machines[for_machine]
         if exelist is None:
             # TODO support fallback
             exelist = [self.default_java[0]]
@@ -1088,12 +1100,13 @@ class Environment:
                 parts = (err if 'javac' in err else out).split()
                 if len(parts) > 1:
                     version = parts[1]
-            return JavaCompiler(exelist, version, for_machine)
+            return JavaCompiler(exelist, version, for_machine, info)
         raise EnvironmentException('Unknown compiler "' + ' '.join(exelist) + '"')
 
     def detect_cs_compiler(self, for_machine):
         compilers, ccache, exe_wrap = self._get_compilers('cs', for_machine)
         popen_exceptions = {}
+        info = self.machines[for_machine]
         for comp in compilers:
             if not isinstance(comp, list):
                 comp = [comp]
@@ -1105,15 +1118,17 @@ class Environment:
 
             version = search_version(out)
             if 'Mono' in out:
-                return MonoCompiler(comp, version, for_machine)
+                cls = MonoCompiler
             elif "Visual C#" in out:
-                return VisualStudioCsCompiler(comp, version, for_machine)
+                cls = VisualStudioCsCompiler
+            return cls(comp, version, for_machine, info)
 
         self._handle_exceptions(popen_exceptions, compilers)
 
     def detect_vala_compiler(self, for_machine):
         exelist = self.binaries.host.lookup_entry('vala')
         is_cross = not self.machines.matches_build_machine(for_machine)
+        info = self.machines[for_machine]
         if exelist is None:
             # TODO support fallback
             exelist = [self.default_vala[0]]
@@ -1124,13 +1139,14 @@ class Environment:
             raise EnvironmentException('Could not execute Vala compiler "%s"' % ' '.join(exelist))
         version = search_version(out)
         if 'Vala' in out:
-            return ValaCompiler(exelist, version, for_machine, is_cross)
+            return ValaCompiler(exelist, version, for_machine, info, is_cross)
         raise EnvironmentException('Unknown compiler "' + ' '.join(exelist) + '"')
 
     def detect_rust_compiler(self, for_machine):
         popen_exceptions = {}
         compilers, ccache, exe_wrap = self._get_compilers('rust', for_machine)
         is_cross = not self.machines.matches_build_machine(for_machine)
+        info = self.machines[for_machine]
         for compiler in compilers:
             if isinstance(compiler, str):
                 compiler = [compiler]
@@ -1155,11 +1171,14 @@ class Environment:
                     linker = AppleDynamicLinker([], for_machine, 'Apple ld')
                 else:
                     linker = GnuDynamicLinker([], for_machine, 'GNU ld')
-                return RustCompiler(compiler, version, for_machine, is_cross, exe_wrap, linker=linker)
+                return RustCompiler(
+                    compiler, version, for_machine, is_cross, info, exe_wrap,
+                    linker=linker)
 
         self._handle_exceptions(popen_exceptions, compilers)
 
     def detect_d_compiler(self, for_machine: MachineChoice):
+        info = self.machines[for_machine]
         exelist = self.binaries[for_machine].lookup_entry('d')
         # Search for a D compiler.
         # We prefer LDC over GDC unless overridden with the DC
@@ -1207,11 +1226,16 @@ class Environment:
                 linker = ClangClDynamicLinker(for_machine, version=search_version(o))
             else:
                 with tempfile.NamedTemporaryFile(suffix='.d') as f:
-                    linker = self._guess_nix_linker(exelist, for_machine, prefix='-L', extra_args=[f.name])
-            return compilers.LLVMDCompiler(exelist, version, for_machine, arch, full_version=full_version, linker=linker)
+                    linker = self._guess_nix_linker(
+                        exelist, for_machine, prefix='-L', extra_args=[f.name])
+            return compilers.LLVMDCompiler(
+                exelist, version, for_machine, info, arch,
+                full_version=full_version, linker=linker)
         elif 'gdc' in out:
             linker = self._guess_nix_linker(exelist, for_machine)
-            return compilers.GnuDCompiler(exelist, version, for_machine, arch, full_version=full_version, linker=linker)
+            return compilers.GnuDCompiler(
+                exelist, version, for_machine, info, arch,
+                full_version=full_version, linker=linker)
         elif 'The D Language Foundation' in out or 'Digital Mars' in out:
             # DMD seems to require a file
             m = self.machines[for_machine]
@@ -1219,13 +1243,18 @@ class Environment:
                 linker = OptlinkDynamicLinker(for_machine, version=full_version)
             else:
                 with tempfile.NamedTemporaryFile(suffix='.d') as f:
-                    linker = self._guess_nix_linker(exelist, for_machine, prefix='-L', extra_args=[f.name])
-            return compilers.DmdDCompiler(exelist, version, for_machine, arch, full_version=full_version, linker=linker)
+                    linker = self._guess_nix_linker(
+                        exelist, for_machine, prefix='-L',
+                        extra_args=[f.name])
+            return compilers.DmdDCompiler(
+                exelist, version, for_machine, info, arch,
+                full_version=full_version, linker=linker)
         raise EnvironmentException('Unknown compiler "' + ' '.join(exelist) + '"')
 
     def detect_swift_compiler(self, for_machine):
         exelist = self.binaries.host.lookup_entry('swift')
         is_cross = not self.machines.matches_build_machine(for_machine)
+        info = self.machines[for_machine]
         if exelist is None:
             # TODO support fallback
             exelist = [self.default_swift[0]]
@@ -1239,8 +1268,10 @@ class Environment:
             # As for 5.0.1 swiftc *requires* a file to check the linker:
             with tempfile.NamedTemporaryFile(suffix='.swift') as f:
                 linker = self._guess_nix_linker(
-                    exelist, for_machine, prefix=['-Xlinker'], extra_args=[f.name])
-            return compilers.SwiftCompiler(exelist, version, for_machine, is_cross, linker=linker)
+                    exelist, for_machine, prefix=['-Xlinker'],
+                    extra_args=[f.name])
+            return compilers.SwiftCompiler(
+                exelist, version, for_machine, info, is_cross, linker=linker)
 
         raise EnvironmentException('Unknown compiler "' + ' '.join(exelist) + '"')
 
