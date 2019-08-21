@@ -62,6 +62,8 @@ from .compilers import (
     ArmCPPCompiler,
     ArmclangCCompiler,
     ArmclangCPPCompiler,
+    AppleClangCCompiler,
+    AppleClangCPPCompiler,
     ClangCCompiler,
     ClangCPPCompiler,
     ClangObjCCompiler,
@@ -831,7 +833,16 @@ class Environment:
                     compiler_type = CompilerType.CLANG_MINGW
                 else:
                     compiler_type = CompilerType.CLANG_STANDARD
-                cls = ClangCCompiler if lang == 'c' else ClangCPPCompiler
+                if lang == 'c':
+                    if compiler_Type is CompilerType.CLANG_OSX:
+                        cls = AppleClangCCompiler
+                    else:
+                        cls = ClangCCompiler
+                else:
+                    if isinstance(linker, AppleDynamicLinker):
+                        cls = AppleClangCPPCompiler
+                    else:
+                        cls = ClangCPPCompiler
 
                 linker = self._guess_nix_linker(compiler, for_machine)
                 return cls(ccache + compiler, version, compiler_type, for_machine, is_cross, exe_wrap, full_version=full_version, linker=linker)
