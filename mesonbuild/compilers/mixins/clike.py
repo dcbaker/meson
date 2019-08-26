@@ -64,12 +64,6 @@ class CLikeCompiler:
     def needs_static_linker(self):
         return True # When compiling static libraries, so yes.
 
-    def get_always_args(self):
-        '''
-        Args that are always-on for all C compilers other than MSVC
-        '''
-        return ['-pipe'] + compilers.get_largefile_args(self)
-
     def get_no_stdinc_args(self):
         return ['-nostdinc']
 

@@ -285,6 +285,27 @@ class GnuLikeCompiler(PosixCompilerMixin, metaclass=abc.ABCMeta):
             return ['-isystem' + path]
         return ['-I' + path]
 
+    def get_largefile_args(self) -> typing.List[str]:
+        if not (self.info.is_windows() or self.info.is_darwin()):
+            # Enable large-file support unconditionally on all platforms other
+            # than macOS and Windows. macOS is now 64-bit-only so it doesn't
+            # need anything special, and Windows doesn't have automatic LFS.
+            # You must use the 64-bit counterparts explicitly.
+            # glibc, musl, and uclibc, and all BSD libcs support this. On Android,
+            # support for transparent LFS is available depending on the version of
+            # Bionic: https://github.com/android/platform_bionic#32-bit-abi-bugs
+            # https://code.google.com/p/android/issues/detail?id=64613
+            #
+            # If this breaks your code, fix it! It's been 20+ years!
+            return ['-D_FILE_OFFSET_BITS=64']
+            # We don't enable -D_LARGEFILE64_SOURCE since that enables
+            # transitionary features and must be enabled by programs that use
+            # those features explicitly.
+        return super().get_largefile_args()
+
+    def get_always_args(self) -> typing.List[str]:
+        return ['-pipe'] + self.get_largefile_args()
+
 
 class GnuCompiler(GnuLikeCompiler):
     """
