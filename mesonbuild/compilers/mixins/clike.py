@@ -66,10 +66,6 @@ class CLikeCompiler:
     def needs_static_linker(self) -> bool:
         return True # When compiling static libraries, so yes.
 
-    def get_no_warn_args(self):
-        # Almost every compiler uses this for disabling warnings
-        return ['-w']
-
     def split_shlib_to_parts(self, fname):
         return None, fname
 
@@ -78,9 +74,6 @@ class CLikeCompiler:
 
     def get_depfile_suffix(self):
         return 'd'
-
-    def get_preprocess_only_args(self):
-        return ['-E', '-P']
 
     def get_compiler_check_args(self):
         '''
@@ -94,9 +87,6 @@ class CLikeCompiler:
 
     def get_coverage_link_args(self) -> typing.List[str]:
         return self.linker.get_coverage_args()
-
-    def get_werror_args(self):
-        return ['-Werror']
 
     def get_std_exe_link_args(self):
         # TODO: is this a linker property?

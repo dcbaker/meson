@@ -312,6 +312,16 @@ class GnuLikeCompiler(PosixCompilerMixin, metaclass=abc.ABCMeta):
     def get_no_stdlib_link_args(self):
         return ['-nostdlib']
 
+    def get_no_warn_args(self) -> typing.List[str]:
+        # Almost every compiler uses this for disabling warnings
+        return ['-w']
+
+    def get_preprocess_only_args(self) -> typing.List[str]:
+        return ['-E', '-P']
+
+    def get_werror_args(self) -> typing.List[str]:
+        return ['-Werror']
+
 
 class GnuCompiler(GnuLikeCompiler):
     """
