@@ -66,12 +66,6 @@ class CLikeCompiler:
     def needs_static_linker(self):
         return True # When compiling static libraries, so yes.
 
-    def get_no_stdinc_args(self):
-        return ['-nostdinc']
-
-    def get_no_stdlib_link_args(self):
-        return ['-nostdlib']
-
     def get_warn_args(self, level):
         return self.warn_args[level]
 

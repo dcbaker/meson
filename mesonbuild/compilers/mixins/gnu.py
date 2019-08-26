@@ -306,6 +306,12 @@ class GnuLikeCompiler(PosixCompilerMixin, metaclass=abc.ABCMeta):
     def get_always_args(self) -> typing.List[str]:
         return ['-pipe'] + self.get_largefile_args()
 
+    def get_no_stdinc_args(self):
+        return ['-nostdinc']
+
+    def get_no_stdlib_link_args(self):
+        return ['-nostdlib']
+
 
 class GnuCompiler(GnuLikeCompiler):
     """
