@@ -37,6 +37,7 @@ from .visualstudio import VisualStudioLikeCompiler
 
 if typing.TYPE_CHECKING:
     from ...environment import Environment
+    from ...dependencies import ExternalProgram
 
 
 class CLikeCompiler:
@@ -50,7 +51,8 @@ class CLikeCompiler:
     find_framework_cache = {}
     internal_libs = compilers.unixy_compiler_internal_libs
 
-    def __init__(self, is_cross: bool, exe_wrapper: typing.Optional[str] = None):
+    # XXX: ExternalProgram isn't really right, we really want a typing_extensions.protocol
+    def __init__(self, is_cross: bool, exe_wrapper: typing.Optional['ExternalProgram'] = None):
         # If a child ObjC or CPP class has already set it, don't set it ourselves
         self.is_cross = is_cross
         self.can_compile_suffixes.add('h')
