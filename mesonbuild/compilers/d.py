@@ -605,9 +605,6 @@ class GnuDCompiler(DCompiler, GnuCompiler):
             return super().get_dependency_gen_args(outtarget, outfile)
         return []
 
-    def get_warn_args(self, level):
-        return self.warn_args[level]
-
     def get_coverage_args(self):
         return []
 

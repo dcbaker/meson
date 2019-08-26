@@ -63,11 +63,8 @@ class CLikeCompiler:
         else:
             self.exe_wrapper = exe_wrapper.get_command()
 
-    def needs_static_linker(self):
+    def needs_static_linker(self) -> bool:
         return True # When compiling static libraries, so yes.
-
-    def get_warn_args(self, level):
-        return self.warn_args[level]
 
     def get_no_warn_args(self):
         # Almost every compiler uses this for disabling warnings

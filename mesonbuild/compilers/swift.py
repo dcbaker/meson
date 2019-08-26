@@ -63,9 +63,6 @@ class SwiftCompiler(Compiler):
     def get_header_import_args(self, headername):
         return ['-import-objc-header', headername]
 
-    def get_warn_args(self, level):
-        return []
-
     def get_buildtype_args(self, buildtype):
         return swift_buildtype_args[buildtype]
 

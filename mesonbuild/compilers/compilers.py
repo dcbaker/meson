@@ -651,6 +651,13 @@ class Compiler:
     # manually searched.
     internal_libs = ()
 
+    warn_args = {
+        '0': [],
+        '1': [],
+        '2': [],
+        '3': [],
+    }  # type: typing.Dict[str, typing.List[str]]
+
     def __init__(self, exelist, version, for_machine: MachineChoice, info: 'MachineInfo',
                  linker: typing.Optional['DynamicLinker'] = None, **kwargs):
         if isinstance(exelist, str):
@@ -1147,3 +1154,6 @@ class Compiler:
     def get_largefile_args(self) -> typing.List[str]:
         """Enable transparent large-file-support for 32-bit UNIX systems"""
         return []
+
+    def get_warn_args(self, level: str) -> typing.List[str]:
+        return self.warn_args[level]

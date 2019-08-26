@@ -63,9 +63,6 @@ class ValaCompiler(Compiler):
     def get_always_args(self):
         return ['-C']
 
-    def get_warn_args(self, warning_level):
-        return []
-
     def get_no_warn_args(self):
         return ['--disable-warnings']
 

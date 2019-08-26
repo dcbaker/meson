@@ -227,9 +227,6 @@ class SunFortranCompiler(FortranCompiler):
     def get_always_args(self):
         return []
 
-    def get_warn_args(self, level):
-        return []
-
     def get_module_incdir_args(self):
         return ('-M', )
 
@@ -377,9 +374,6 @@ class NAGFortranCompiler(FortranCompiler):
         FortranCompiler.__init__(self, exelist, for_machine, version,
                                  is_cross, info, exe_wrapper, **kwargs)
         self.id = 'nagfor'
-
-    def get_warn_args(self, level):
-        return []
 
     def get_module_outdir_args(self, path):
         return ['-mdir', path]

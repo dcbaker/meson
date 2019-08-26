@@ -200,9 +200,6 @@ class CudaCompiler(Compiler):
     def get_werror_args(self):
         return ['-Werror=cross-execution-space-call,deprecated-declarations,reorder']
 
-    def get_warn_args(self, level):
-        return self.warn_args[level]
-
     def get_buildtype_args(self, buildtype):
         return cuda_buildtype_args[buildtype]
 
