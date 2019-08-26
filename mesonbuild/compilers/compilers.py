@@ -725,7 +725,7 @@ class Compiler:
         raise EnvironmentException('%s does not support symbols_have_underscore_prefix ' % self.get_id())
 
     def get_exelist(self):
-        return self.exelist[:]
+        return self.exelist.copy()
 
     def get_linker_exelist(self) -> typing.List[str]:
         return self.linker.get_exelist()

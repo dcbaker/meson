@@ -92,9 +92,6 @@ class CLikeCompiler:
     def get_depfile_suffix(self):
         return 'd'
 
-    def get_exelist(self):
-        return self.exelist[:]
-
     def get_preprocess_only_args(self):
         return ['-E', '-P']
 
