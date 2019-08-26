@@ -98,21 +98,12 @@ class CLikeCompiler:
     def get_preprocess_only_args(self):
         return ['-E', '-P']
 
-    def get_compile_only_args(self):
-        return ['-c']
-
-    def get_no_optimization_args(self):
-        return ['-O0']
-
     def get_compiler_check_args(self):
         '''
         Get arguments useful for compiler checks such as being permissive in
         the code quality and not doing any optimization.
         '''
         return self.get_no_optimization_args()
-
-    def get_output_args(self, target):
-        return ['-o', target]
 
     def get_coverage_args(self):
         return ['--coverage']
@@ -126,13 +117,6 @@ class CLikeCompiler:
     def get_std_exe_link_args(self):
         # TODO: is this a linker property?
         return []
-
-    def get_include_args(self, path, is_system):
-        if path == '':
-            path = '.'
-        if is_system:
-            return ['-isystem', path]
-        return ['-I' + path]
 
     def get_compiler_dirs(self, env: 'Environment', name: str) -> typing.List[str]:
         '''

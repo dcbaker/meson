@@ -24,6 +24,7 @@ import typing
 
 from ... import mesonlib
 from ... import mlog
+from .posix import PosixCompilerMixin
 
 if typing.TYPE_CHECKING:
     from ...coredata import UserOption  # noqa: F401
@@ -120,7 +121,7 @@ def gnulike_default_include_dirs(compiler: typing.List[str], lang: str) -> typin
     return paths
 
 
-class GnuLikeCompiler(metaclass=abc.ABCMeta):
+class GnuLikeCompiler(PosixCompilerMixin, metaclass=abc.ABCMeta):
     """
     GnuLikeCompiler is a common interface to all compilers implementing
     the GNU-style commandline interface. This includes GCC, Clang
@@ -274,14 +275,8 @@ class GnuLikeCompiler(metaclass=abc.ABCMeta):
             args.append('-fno-omit-frame-pointer')
         return args
 
-    def get_output_args(self, target: str) -> typing.List[str]:
-        return ['-o', target]
-
     def get_dependency_gen_args(self, outtarget, outfile):
         return ['-MD', '-MQ', outtarget, '-MF', outfile]
-
-    def get_compile_only_args(self) -> typing.List[str]:
-        return ['-c']
 
     def get_include_args(self, path: str, is_system: bool) -> typing.List[str]:
         if not path:
