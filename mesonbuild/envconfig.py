@@ -365,7 +365,7 @@ This is probably wrong, it should always point to the native compiler.''' % evar
                 command = split_args(command)
 
         # Do not return empty or blank string entries
-        if command is not None and (len(command) == 0 or len(command[0].strip()) == 0):
+        if not command or not command[0].strip():
             return None
         return command
 
