@@ -637,7 +637,7 @@ class CoreData:
                     self.user_options[name] = value
 
     def is_cross_build(self):
-        return len(self.cross_files) > 0
+        return bool(self.cross_files)
 
     def strip_build_option_names(self, options):
         res = {}

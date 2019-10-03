@@ -1005,7 +1005,7 @@ This will become a hard error in a future Meson release.''')
         return self.need_install
 
     def has_pch(self):
-        return len(self.pch) > 0
+        return bool(self.pch)
 
     def get_pch(self, language):
         try:
