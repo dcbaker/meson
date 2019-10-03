@@ -14,7 +14,6 @@
 
 import os.path
 import typing
-from functools import partial
 
 from .. import coredata
 from .. import mlog
@@ -45,7 +44,7 @@ class CudaCompiler(Compiler):
 
     @classmethod
     def _to_host_flags(cls, flags, phase='compiler'):
-        return list(map(partial(cls._to_host_flag, phase=phase), flags))
+        return [cls._to_host_flag(f, phase=phase) for f in flags]
 
     @classmethod
     def _to_host_flag(cls, flag, phase):

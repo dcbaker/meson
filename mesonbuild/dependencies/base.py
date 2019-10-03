@@ -1142,14 +1142,14 @@ class CMakeDependency(ExternalDependency):
         root_paths = set(temp_parser.get_cmake_var('MESON_FIND_ROOT_PATH'))
         root_paths.update(set(temp_parser.get_cmake_var('MESON_CMAKE_SYSROOT')))
         root_paths = sorted(root_paths)
-        root_paths = list(filter(lambda x: os.path.isdir(x), root_paths))
+        root_paths = [p for p in root_paths if os.path.isdir(p)]
         module_paths = set(temp_parser.get_cmake_var('MESON_PATHS_LIST'))
         rooted_paths = []
         for j in [Path(x) for x in root_paths]:
             for i in [Path(x) for x in module_paths]:
                 rooted_paths.append(str(j / i.relative_to(i.anchor)))
         module_paths = sorted(module_paths.union(rooted_paths))
-        module_paths = list(filter(lambda x: os.path.isdir(x), module_paths))
+        module_paths = [p for p in module_paths if os.path.isdir(p)]
         archs = temp_parser.get_cmake_var('MESON_ARCH_LIST')
 
         common_paths = ['lib', 'lib32', 'lib64', 'libx32', 'share']
@@ -1210,7 +1210,7 @@ class CMakeDependency(ExternalDependency):
                 cm_dir = os.path.join(i, 'cmake')
                 if self._cached_isdir(cm_dir):
                     content = self._cached_listdir(cm_dir)
-                    content = list(filter(lambda x: x[1].startswith(lname), content))
+                    content = [c for c in content if c[1].startswith(lname)]
                     for k in content:
                         if find_module(os.path.join(cm_dir, k[0])):
                             return True
@@ -1218,7 +1218,7 @@ class CMakeDependency(ExternalDependency):
                 # <path>/(lib/<arch>|lib*|share)/<name>*/
                 # <path>/(lib/<arch>|lib*|share)/<name>*/(cmake|CMake)/
                 content = self._cached_listdir(i)
-                content = list(filter(lambda x: x[1].startswith(lname), content))
+                content = [c for c in content if c[1].startswith(lname)]
                 for k in content:
                     if find_module(os.path.join(i, k[0])):
                         return True
@@ -1244,7 +1244,7 @@ class CMakeDependency(ExternalDependency):
                 return True
 
             content = self._cached_listdir(i)
-            content = list(filter(lambda x: x[1].startswith(lname), content))
+            content = [c for c in content if c[1].startswith(lname)]
             for k in content:
                 if search_lib_dirs(os.path.join(i, k[0])):
                     return True
@@ -1355,7 +1355,7 @@ class CMakeDependency(ExternalDependency):
 
             # Try to use old style variables if no module is specified
             if libs:
-                self.compile_args = list(map(lambda x: '-I{}'.format(x), incDirs)) + defs
+                self.compile_args = ['-I{}'.format(i) for i in incDirs] + defs
                 self.link_args = libs
                 mlog.debug('using old-style CMake variables for dependency {}'.format(name))
                 mlog.debug('Include Dirs:         {}'.format(incDirs))

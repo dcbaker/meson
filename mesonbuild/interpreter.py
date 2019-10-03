@@ -1540,7 +1540,7 @@ class CompilerHolder(InterpreterObject):
         for d in search_dirs:
             if not d.is_absolute():
                 raise InvalidCode('Search directory {} is not an absolute path.'.format(d))
-        search_dirs = list(map(str, search_dirs))
+        search_dirs = [str(d) for d in search_dirs]
 
         libtype = mesonlib.LibType.PREFER_SHARED
         if 'static' in kwargs:
@@ -3709,7 +3709,7 @@ This will become a hard error in the future.''' % kwargs['input'], location=self
                     mesonlib.do_conf_file(inputs_abs[0], ofile_abs, conf.held_object,
                                           fmt, file_encoding)
                 if missing_variables:
-                    var_list = ", ".join(map(repr, sorted(missing_variables)))
+                    var_list = ", ".join([repr(m) for m in sorted(missing_variables)])
                     mlog.warning(
                         "The variable(s) %s in the input file '%s' are not "
                         "present in the given configuration data." % (

@@ -215,7 +215,7 @@ class XCodeBackend(backends.Backend):
             self.source_phase[t] = self.gen_id()
 
     def generate_pbx_aggregate_target(self):
-        target_dependencies = list(map(lambda t: self.pbx_dep_map[t], self.build.targets))
+        target_dependencies = [self.pbx_dep_map[t] for t in self.build.targets]
         aggregated_targets = []
         aggregated_targets.append((self.all_id, 'ALL_BUILD', self.all_buildconf_id, [], target_dependencies))
         aggregated_targets.append((self.test_id, 'RUN_TESTS', self.test_buildconf_id, [self.test_command_id], []))

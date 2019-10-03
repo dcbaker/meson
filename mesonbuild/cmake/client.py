@@ -236,7 +236,7 @@ def _flags_to_list(raw: str) -> List[str]:
         else:
             curr += i
     res += [curr]
-    res = list(filter(lambda x: len(x) > 0, res))
+    res = [x for x in res if x]
     return res
 
 class CMakeFileGroup:
