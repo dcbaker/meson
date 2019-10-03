@@ -107,7 +107,7 @@ class CMakeSubprojectHolder(InterpreterObject, ObjectHolder):
 
     @permittedKwargs({})
     def target_list(self, args, kwargs):
-        if len(args) > 0:
+        if args:
             raise InterpreterException('target_list does not take any parameters.')
         return self.held_object.cm_interpreter.target_list()
 

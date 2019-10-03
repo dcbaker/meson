@@ -302,7 +302,7 @@ class DmdLikeCompilerMixin:
                         farg = arg[3:]
                     else:
                         farg = arg[2:]
-                    if len(farg) > 0 and not farg.startswith('-'):
+                    if farg.startswith('-'):
                         dcargs.append('-L=' + farg)
                         continue
 

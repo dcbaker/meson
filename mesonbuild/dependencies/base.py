@@ -1110,11 +1110,11 @@ class CMakeDependency(ExternalDependency):
         gen_list += CMakeDependency.class_cmake_generators
 
         for i in gen_list:
-            mlog.debug('Try CMake generator: {}'.format(i if len(i) > 0 else 'auto'))
+            mlog.debug('Try CMake generator: {}'.format(i if i else 'auto'))
 
             # Prepare options
             cmake_opts = ['--trace-expand', '.']
-            if len(i) > 0:
+            if i:
                 cmake_opts = ['-G', i] + cmake_opts
 
             # Run CMake
@@ -1283,12 +1283,12 @@ class CMakeDependency(ExternalDependency):
         gen_list += CMakeDependency.class_cmake_generators
 
         for i in gen_list:
-            mlog.debug('Try CMake generator: {}'.format(i if len(i) > 0 else 'auto'))
+            mlog.debug('Try CMake generator: {}'.format(i if i else 'auto'))
 
             # Prepare options
             cmake_opts = ['--trace-expand', '-DNAME={}'.format(name), '-DARCHS={}'.format(';'.join(self.cmakeinfo['archs']))] + args + ['.']
             cmake_opts += self._extra_cmake_opts()
-            if len(i) > 0:
+            if i:
                 cmake_opts = ['-G', i] + cmake_opts
 
             # Run CMake
@@ -1327,7 +1327,7 @@ class CMakeDependency(ExternalDependency):
         # Try to detect the version
         vers_raw = self.traceparser.get_cmake_var('PACKAGE_VERSION')
 
-        if len(vers_raw) > 0:
+        if vers_raw:
             self.version = vers_raw[0]
             self.version.strip('"\' ')
 
@@ -1337,7 +1337,7 @@ class CMakeDependency(ExternalDependency):
         autodetected_module_list = False
 
         # Try guessing a CMake target if none is provided
-        if len(modules) == 0:
+        if not modules:
             for i in self.traceparser.targets:
                 tg = i.lower()
                 lname = name.lower()
@@ -1348,13 +1348,13 @@ class CMakeDependency(ExternalDependency):
                     break
 
         # Failed to guess a target --> try the old-style method
-        if len(modules) == 0:
+        if not modules:
             incDirs = [x for x in self.traceparser.get_cmake_var('PACKAGE_INCLUDE_DIRS') if x]
             defs = [x for x in self.traceparser.get_cmake_var('PACKAGE_DEFINITIONS') if x]
             libs = [x for x in self.traceparser.get_cmake_var('PACKAGE_LIBRARIES') if x]
 
             # Try to use old style variables if no module is specified
-            if len(libs) > 0:
+            if libs:
                 self.compile_args = list(map(lambda x: '-I{}'.format(x), incDirs)) + defs
                 self.link_args = libs
                 mlog.debug('using old-style CMake variables for dependency {}'.format(name))
@@ -1389,7 +1389,7 @@ class CMakeDependency(ExternalDependency):
             if not autodetected_module_list:
                 self.found_modules += [i]
 
-            while len(targets) > 0:
+            while targets:
                 curr = targets.pop(0)
 
                 # Skip already processed targets
@@ -1777,10 +1777,10 @@ class ExternalProgram:
                     # but don't remove Windows paths
                     if commands[0].startswith('/'):
                         commands[0] = commands[0].split('/')[-1]
-                    if len(commands) > 0 and commands[0] == 'env':
+                    if commands and commands[0] == 'env':
                         commands = commands[1:]
                     # Windows does not ship python3.exe, but we know the path to it
-                    if len(commands) > 0 and commands[0] == 'python3':
+                    if commands and commands[0] == 'python3':
                         commands = mesonlib.python_command + commands[1:]
                 elif mesonlib.is_haiku():
                     # Haiku does not have /usr, but a lot of scripts assume that
@@ -1789,7 +1789,7 @@ class ExternalProgram:
                     if commands[0] == '/usr/bin/env':
                         commands = commands[1:]
                     # We know what python3 is, we're running on it
-                    if len(commands) > 0 and commands[0] == 'python3':
+                    if commands and commands[0] == 'python3':
                         commands = mesonlib.python_command + commands[1:]
                 else:
                     # Replace python3 with the actual python3 that we are using
@@ -2053,7 +2053,7 @@ class ExtraFrameworkDependency(ExternalDependency):
             if each.name.lower() == 'current':
                 continue
             versions.append(Version(each.name))
-        if len(versions) == 0:
+        if not versions:
             # most system frameworks do not have a 'Versions' directory
             return 'Headers'
         return 'Versions/{}/Headers'.format(sorted(versions)[-1]._s)

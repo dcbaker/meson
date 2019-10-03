@@ -1115,7 +1115,7 @@ class CompilerHolder(InterpreterObject):
         deps, msg = self.determine_dependencies(kwargs, endl=None)
         result = self.compiler.run(code, self.environment, extra_args=extra_args,
                                    dependencies=deps)
-        if len(testname) > 0:
+        if testname:
             if not result.compiled:
                 h = mlog.red('DID NOT COMPILE')
             elif result.returncode == 0:
@@ -1374,7 +1374,7 @@ class CompilerHolder(InterpreterObject):
         result, cached = self.compiler.compiles(code, self.environment,
                                                 extra_args=extra_args,
                                                 dependencies=deps)
-        if len(testname) > 0:
+        if testname:
             if result:
                 h = mlog.green('YES')
             else:
@@ -1408,7 +1408,7 @@ class CompilerHolder(InterpreterObject):
                                              extra_args=extra_args,
                                              dependencies=deps)
         cached = '(cached)' if cached else ''
-        if len(testname) > 0:
+        if testname:
             if result:
                 h = mlog.green('YES')
             else:
@@ -3277,9 +3277,9 @@ external dependencies (including libraries) must go to "dependencies".''')
     @FeatureNew('subdir_done', '0.46.0')
     @stringArgs
     def func_subdir_done(self, node, args, kwargs):
-        if len(kwargs) > 0:
+        if kwargs:
             raise InterpreterException('exit does not take named arguments')
-        if len(args) > 0:
+        if args:
             raise InterpreterException('exit does not take any arguments')
         raise SubdirDoneRequest()
 
@@ -3428,7 +3428,7 @@ This will become a hard error in the future.''' % kwargs['input'], location=self
         suite = []
         prj = self.subproject if self.is_subproject() else self.build.project_name
         for s in mesonlib.stringlistify(kwargs.get('suite', '')):
-            if len(s) > 0:
+            if s:
                 s = ':' + s
             suite.append(prj.replace(' ', '_').replace(':', '_') + s)
         depends = extract_as_list(kwargs, 'depends', unholder=True)
@@ -3526,7 +3526,7 @@ This will become a hard error in the future.''' % kwargs['input'], location=self
         if len(install_mode) > 3:
             raise InvalidArguments('Keyword argument install_mode takes at '
                                    'most 3 arguments.')
-        if len(install_mode) > 0 and install_mode[0] is not None and \
+        if install_mode and install_mode[0] is not None and \
            not isinstance(install_mode[0], str):
             raise InvalidArguments('Keyword argument install_mode requires the '
                                    'permissions arg to be a string or false')
@@ -3784,7 +3784,7 @@ This will become a hard error in the future.''' % kwargs['input'], location=self
             mlog.deprecation('Please use the new `install:` kwarg instead of passing '
                              '`false` to `install_dir:`', location=node)
         if not isinstance(idir, str):
-            if isinstance(idir, list) and len(idir) == 0:
+            if isinstance(idir, list) and not idir:
                 mlog.deprecation('install_dir: kwarg must be a string and not an empty array. '
                                  'Please use the install: kwarg to enable or disable installation. '
                                  'This will be a hard error in the next release.')

@@ -511,7 +511,7 @@ class BuildTarget(Target):
         for k in kwargs:
             if k not in known_kwargs:
                 unknowns.append(k)
-        if len(unknowns) > 0:
+        if unknowns:
             mlog.warning('Unknown keyword argument(s) in target %s: %s.' %
                          (self.name, ', '.join(unknowns)))
 
@@ -1957,7 +1957,7 @@ class CustomTarget(Target):
         for k in kwargs:
             if k not in CustomTarget.known_kwargs:
                 unknowns.append(k)
-        if len(unknowns) > 0:
+        if unknowns:
             mlog.warning('Unknown keyword arguments in target %s: %s' %
                          (self.name, ', '.join(unknowns)))
 
@@ -2158,7 +2158,7 @@ class CustomTarget(Target):
     def get_dep_outname(self, infilenames):
         if self.depfile is None:
             raise InvalidArguments('Tried to get depfile name for custom_target that does not have depfile defined.')
-        if len(infilenames):
+        if infilenames:
             plainname = os.path.basename(infilenames[0])
             basename = os.path.splitext(plainname)[0]
             return self.depfile.replace('@BASENAME@', basename).replace('@PLAINNAME@', plainname)

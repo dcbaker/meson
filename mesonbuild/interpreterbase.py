@@ -488,7 +488,7 @@ class InterpreterBase:
 
     def evaluate_arraystatement(self, cur):
         (arguments, kwargs) = self.reduce_arguments(cur.args)
-        if len(kwargs) > 0:
+        if kwargs:
             raise InvalidCode('Keyword arguments are invalid in array construction.')
         return arguments
 
@@ -1006,7 +1006,7 @@ The result of this is undefined and will become a hard error in a future Meson r
             raise InterpreterException('Key {!r} is not in the dictionary.'.format(key))
 
         if method_name == 'keys':
-            if len(posargs) != 0:
+            if posargs:
                 raise InterpreterException('keys() takes no arguments.')
             return list(obj.keys())
 
