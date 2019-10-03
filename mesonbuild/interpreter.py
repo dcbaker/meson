@@ -3609,20 +3609,21 @@ This will become a hard error in the future.''' % kwargs['input'], location=self
     @FeatureNewKwargs('configure_file', '0.52.0', ['depfile'])
     @permittedKwargs(permitted_kwargs['configure_file'])
     def func_configure_file(self, node, args, kwargs):
-        if len(args) > 0:
+        if args:
             raise InterpreterException("configure_file takes only keyword arguments.")
         if 'output' not in kwargs:
             raise InterpreterException('Required keyword argument "output" not defined.')
         actions = set(['configuration', 'command', 'copy']).intersection(kwargs.keys())
-        if len(actions) == 0:
+        length = len(actions)
+        if length == 0:
             raise InterpreterException('Must specify an action with one of these '
                                        'keyword arguments: \'configuration\', '
                                        '\'command\', or \'copy\'.')
-        elif len(actions) == 2:
+        elif length == 2:
             raise InterpreterException('Must not specify both {!r} and {!r} '
                                        'keyword arguments since they are '
                                        'mutually exclusive.'.format(*actions))
-        elif len(actions) == 3:
+        elif length == 3:
             raise InterpreterException('Must specify one of {!r}, {!r}, and '
                                        '{!r} keyword arguments since they are '
                                        'mutually exclusive.'.format(*actions))
