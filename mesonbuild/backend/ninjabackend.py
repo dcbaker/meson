@@ -1248,6 +1248,8 @@ int dummy;
                 args += ['--gresources=' + gres_xml]
         extra_args = []
 
+        depfile = os.path.join(c_out_dir, os.path.basename(all_files[0]) + '.d')
+
         for a in target.extra_args.get('vala', []):
             if isinstance(a, File):
                 relname = a.rel_to_builddir(self.build_to_src)
@@ -1261,6 +1263,7 @@ int dummy;
         element = NinjaBuildElement(self.all_outputs, valac_outputs,
                                     self.compiler_to_rule_name(valac),
                                     all_files + dependency_vapis)
+        element.add_item('DEPFILE', depfile)
         element.add_item('ARGS', args)
         element.add_dep(extra_dep_files)
         self.add_build(element)
@@ -1604,9 +1607,19 @@ int dummy;
     def generate_vala_compile_rules(self, compiler):
         rule = self.compiler_to_rule_name(compiler)
         invoc = [ninja_quote(i) for i in compiler.get_exelist()]
-        command = invoc + ['$ARGS', '$in']
+
+        depargs = compiler.get_dependency_gen_args('$out', '$DEPFILE')
+        quoted_depargs = []
+        for d in depargs:
+            if d != '$out' and d != '$in':
+                d = quote_func(d)
+            quoted_depargs.append(d)
+
+        command = invoc + ['$ARGS'] + quoted_depargs + ['$in']
         description = 'Compiling Vala source $in.'
-        self.add_rule(NinjaRule(rule, command, [], description, extra='restat = 1'))
+        self.add_rule(NinjaRule(rule, command, [], description,
+                                extra='restat = 1', depfile='$DEPFILE',
+                                deps='gcc'))
 
     def generate_rust_compile_rules(self, compiler):
         rule = self.compiler_to_rule_name(compiler)
@@ -1651,6 +1664,8 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         self.add_rule(NinjaRule(rule, command, args, description,
                                 rspable=compiler.can_linker_accept_rsp()))
         self.created_llvm_ir_rule[compiler.for_machine] = True
+
+        j
 
     def generate_compile_rule_for(self, langname, compiler):
         if langname == 'java':

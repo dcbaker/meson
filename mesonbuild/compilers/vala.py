@@ -129,6 +129,10 @@ class ValaCompiler(Compiler):
         mlog.debug('Searched {!r} and {!r} wasn\'t found'.format(extra_dirs, libname))
         return None
 
+    def get_dependency_gen_args(self, outtarget, outfile):
+        return ['--deps', outfile]
+        # return ['-MD', '-MQ', outtarget, '-MF', outfile]
+
     def thread_flags(self, env):
         return []
 
