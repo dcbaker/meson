@@ -1101,7 +1101,7 @@ class CompilerHolder(InterpreterObject):
                 args += self.compiler.get_include_args(idir, False)
         if not nobuiltins:
             for_machine = Interpreter.machine_from_native_kwarg(kwargs)
-            opts = self.environment.coredata.compiler_options[for_machine]
+            opts = self.environment.coredata.compiler_options[self.subproject][for_machine]
             args += self.compiler.get_option_compile_args(opts)
             if mode == 'link':
                 args += self.compiler.get_option_link_args(opts)
@@ -2682,7 +2682,7 @@ external dependencies (including libraries) must go to "dependencies".''')
             raise e
 
     def _do_subproject_meson(self, dirname, subdir, default_options, kwargs, ast=None, build_def_files=None):
-        with mlog.nested():
+        with mlog.nested(), self.coredata.do_subproject(dirname):
             new_build = self.build.copy()
             subi = Interpreter(new_build, self.backend, dirname, subdir, self.subproject_dir,
                                self.modules, default_options, ast=ast)
@@ -2757,7 +2757,7 @@ external dependencies (including libraries) must go to "dependencies".''')
         for opts in chain(
                 [self.coredata.base_options, compilers.base_options, self.coredata.builtins],
                 self.coredata.get_prefixed_options_per_machine(self.coredata.builtins_per_machine),
-                self.coredata.get_prefixed_options_per_machine(self.coredata.compiler_options),
+                self.coredata.get_prefixed_options_per_machine(self.coredata.compiler_options[self.subproject], self.subproject),
         ):
             v = opts.get(optname)
             if v is None or v.yielding:
@@ -3024,6 +3024,8 @@ external dependencies (including libraries) must go to "dependencies".''')
             machine_name = for_machine.get_lower_case_name()
             if lang in clist:
                 comp = clist[lang]
+                self.coredata.initialize_compiler_builtins(lang, comp, self.environment)
+                self.coredata.add_lang_args(lang, comp, comp.for_machine, self.environment)
             else:
                 try:
                     comp = self.environment.detect_compiler_for(lang, for_machine)

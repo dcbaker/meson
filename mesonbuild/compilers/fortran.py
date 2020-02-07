@@ -68,8 +68,9 @@ class FortranCompiler(CLikeCompiler, Compiler):
 
         source_name.write_text('print *, "Fortran compilation is working."; end')
 
-        extra_flags = environment.coredata.get_external_args(self.for_machine, self.language)
-        extra_flags += environment.coredata.get_external_link_args(self.for_machine, self.language)
+        # Subproject doesn't matter, as this is only invoked when the compiler is initially added
+        extra_flags = environment.coredata.get_external_args(self.for_machine, self.language, '')
+        extra_flags += environment.coredata.get_external_link_args(self.for_machine, self.language, '')
         extra_flags += self.get_always_args()
         # %% build the test executable "sanitycheckf"
         # cwd=work_dir is necessary on Windows especially for Intel compilers to avoid error: cannot write on sanitycheckf.obj

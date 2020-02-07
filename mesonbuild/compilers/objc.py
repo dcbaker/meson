@@ -44,11 +44,12 @@ class ObjCCompiler(CLikeCompiler, Compiler):
         # TODO try to use sanity_check_impl instead of duplicated code
         source_name = os.path.join(work_dir, 'sanitycheckobjc.m')
         binary_name = os.path.join(work_dir, 'sanitycheckobjc')
-        extra_flags = environment.coredata.get_external_args(self.for_machine, self.language)
+        # Subproject doesn't matter, as this is only invoked when the compiler is initially added
+        extra_flags = environment.coredata.get_external_args(self.for_machine, self.language, environment.coredata.subproject)
         if self.is_cross:
             extra_flags += self.get_compile_only_args()
         else:
-            extra_flags += environment.coredata.get_external_link_args(self.for_machine, self.language)
+            extra_flags += environment.coredata.get_external_link_args(self.for_machine, self.language, environment.coredata.subproject)
         with open(source_name, 'w') as ofile:
             ofile.write('#import<stddef.h>\n'
                         'int main(void) { return 0; }\n')

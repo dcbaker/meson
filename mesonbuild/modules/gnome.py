@@ -523,7 +523,7 @@ class GnomeModule(ExtensionModule):
         ret = []
 
         for lang in langs:
-            link_args = state.environment.coredata.get_external_link_args(MachineChoice.HOST, lang)
+            link_args = state.environment.coredata.get_external_link_args(MachineChoice.HOST, lang, state.subproject)
             for link_arg in link_args:
                 if link_arg.startswith('-L'):
                     ret.append(link_arg)
@@ -708,7 +708,7 @@ class GnomeModule(ExtensionModule):
     def _get_external_args_for_langs(self, state, langs):
         ret = []
         for lang in langs:
-            ret += state.environment.coredata.get_external_args(MachineChoice.HOST, lang)
+            ret += state.environment.coredata.get_external_args(MachineChoice.HOST, lang, state.subproject)
         return ret
 
     @staticmethod
@@ -1074,8 +1074,8 @@ This will become a hard error in the future.''')
         ldflags.extend(internal_ldflags)
         ldflags.extend(external_ldflags)
 
-        cflags.extend(state.environment.coredata.get_external_args(MachineChoice.HOST, 'c'))
-        ldflags.extend(state.environment.coredata.get_external_link_args(MachineChoice.HOST, 'c'))
+        cflags.extend(state.environment.coredata.get_external_args(MachineChoice.HOST, 'c', state.subproject))
+        ldflags.extend(state.environment.coredata.get_external_link_args(MachineChoice.HOST, 'c', state.subproject))
         compiler = state.environment.coredata.compilers[MachineChoice.HOST]['c']
 
         compiler_flags = self._get_langs_compilers_flags(state, [('c', compiler)])

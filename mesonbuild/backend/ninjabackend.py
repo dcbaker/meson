@@ -2445,7 +2445,8 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         guessed_dependencies = []
         # TODO The get_library_naming requirement currently excludes link targets that use d or fortran as their main linker
         if hasattr(linker, 'get_library_naming'):
-            search_dirs = tuple(search_dirs) + tuple(linker.get_library_dirs(self.environment))
+            with self.environment.coredata.do_subproject(target.subproject):
+                search_dirs = tuple(search_dirs) + tuple(linker.get_library_dirs(self.environment))
             static_patterns = linker.get_library_naming(self.environment, LibType.STATIC, strict=True)
             shared_patterns = linker.get_library_naming(self.environment, LibType.SHARED, strict=True)
             for libname in libs:
@@ -2520,7 +2521,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             commands += self.build.get_global_link_args(linker, target.for_machine)
             # Link args added from the env: LDFLAGS. We want these to override
             # all the defaults but not the per-target link args.
-            commands += self.environment.coredata.get_external_link_args(target.for_machine, linker.get_language())
+            commands += self.environment.coredata.get_external_link_args(target.for_machine, linker.get_language(), target.subproject)
 
         # Now we will add libraries and library paths from various sources
 
@@ -2559,7 +2560,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         # to be after all internal and external libraries so that unresolved
         # symbols from those can be found here. This is needed when the
         # *_winlibs that we want to link to are static mingw64 libraries.
-        commands += linker.get_option_link_args(self.environment.coredata.compiler_options[target.for_machine])
+        commands += linker.get_option_link_args(self.environment.coredata.compiler_options[target.subproject][target.for_machine])
 
         dep_targets = []
         dep_targets.extend(self.guess_external_link_dependencies(linker, target, commands, internal))

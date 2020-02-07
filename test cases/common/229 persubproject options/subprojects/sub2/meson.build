@@ -1,4 +1,4 @@
-project('sub2', 'c', default_options : ['default_library=shared'])
+project('sub2', 'c', default_options : ['default_library=shared', 'c_std=c11'])
 
 assert(get_option('default_library') == 'static', 'Parent should override default_library')
 

@@ -29,6 +29,7 @@ import configparser
 import enum
 import shlex
 import typing as T
+import contextlib
 
 if T.TYPE_CHECKING:
     from . import dependencies
@@ -360,6 +361,7 @@ class CoreData:
             'test': '3AC096D0-A1C2-E12C-1390-A8335801FDAB',
             'directory': '2150E333-8FDC-42A3-9474-1A3956D46DE8',
         }
+        self.subproject = ''
         self.test_guid = str(uuid.uuid4()).upper()
         self.regen_guid = str(uuid.uuid4()).upper()
         self.install_guid = str(uuid.uuid4()).upper()
@@ -369,7 +371,7 @@ class CoreData:
         self.builtins_per_machine = PerMachine({}, {})
         self.backend_options = {} # : OptionDictType
         self.user_options = {} # : OptionDictType
-        self.compiler_options = PerMachine({}, {})
+        self.compiler_options = {'': PerMachine({}, {})}
         self.base_options = {} # : OptionDictType
         self.cross_files = self.__load_config_files(options, scratch_dir, 'cross')
         self.compilers = PerMachine(OrderedDict(), OrderedDict())
@@ -440,6 +442,18 @@ class CoreData:
             mlog.log('Could not find any valid candidate for', ftype, 'files:', *missing)
             raise MesonException('Cannot find specified {} file: {}'.format(ftype, f))
         return real
+
+    @contextlib.contextmanager
+    def do_subproject(self, name: str) -> None:
+        old = self.subproject
+        self.subproject = name
+
+        if name not in self.compiler_options:
+            self.compiler_options[name] = PerMachine({}, {})
+
+        yield
+
+        self.subproject = old
 
     def libdir_cross_fixup(self):
         # By default set libdir to "lib" when cross compiling since
@@ -615,10 +629,13 @@ class CoreData:
 
     @staticmethod
     def get_prefixed_options_per_machine(
-        options_per_machine # : PerMachine[T.Dict[str, _V]]]
+        options_per_machine,  # : PerMachine[T.Dict[str, _V]]]
+        subproject: str = ''
     ) -> T.Iterable[T.Dict[str, _V]]:
         for for_machine in iter(MachineChoice):
             prefix = for_machine.get_prefix()
+            if subproject:
+                prefix = '{}:{}'.format(subproject, prefix)
             yield {
                 prefix + k: v
                 for k, v in options_per_machine[for_machine].items()
@@ -627,7 +644,8 @@ class CoreData:
     def _get_all_nonbuiltin_options(self) -> T.Iterable[T.Dict[str, UserOption]]:
         yield self.backend_options
         yield self.user_options
-        yield from self.get_prefixed_options_per_machine(self.compiler_options)
+        for subproject, project in self.compiler_options.items():
+            yield from self.get_prefixed_options_per_machine(project, subproject)
         yield self.base_options
 
     def _get_all_builtin_options(self) -> T.Dict[str, UserOption]:
@@ -649,11 +667,11 @@ class CoreData:
                         .with_traceback(sys.exc_info()[2])
         raise MesonException('Tried to validate unknown option %s.' % option_name)
 
-    def get_external_args(self, for_machine: MachineChoice, lang):
-        return self.compiler_options[for_machine][lang + '_args'].value
+    def get_external_args(self, for_machine: MachineChoice, lang: str, subproject: str):
+        return self.compiler_options[subproject][for_machine][lang + '_args'].value
 
-    def get_external_link_args(self, for_machine: MachineChoice, lang):
-        return self.compiler_options[for_machine][lang + '_link_args'].value
+    def get_external_link_args(self, for_machine: MachineChoice, lang: str, subproject: str):
+        return self.compiler_options[subproject][for_machine][lang + '_link_args'].value
 
     def merge_user_options(self, options):
         for (name, value) in options.items():
@@ -679,11 +697,12 @@ class CoreData:
         assert(not self.is_cross_build())
         for k, o in self.builtins_per_machine.host.items():
             self.builtins_per_machine.build[k].set_value(o.value)
-        for k, o in self.compiler_options.host.items():
-            if k in self.compiler_options.build:
-                self.compiler_options.build[k].set_value(o.value)
+        for k, o in self.compiler_options[self.subproject].host.items():
+            if k in self.compiler_options[self.subproject].build:
+                self.compiler_options[self.subproject].build[k].set_value(o.value)
 
     def set_options(self, options, *, subproject='', warn_unknown=True):
+        # We cannot use self.subproject here.
         if not self.is_cross_build():
             options = self.strip_build_option_names(options)
         # Set prefix first because it's needed to sanitize other options
@@ -789,14 +808,9 @@ class CoreData:
             opt_prefix = for_machine.get_prefix()
             if opt_prefix + k in env.cmd_line_options:
                 o.set_value(env.cmd_line_options[opt_prefix + k])
-            self.compiler_options[for_machine].setdefault(k, o)
+            self.compiler_options[self.subproject][for_machine].setdefault(k, o)
 
-    def process_new_compiler(self, lang: str, comp: T.Type['Compiler'], env: 'Environment') -> None:
-        from . import compilers
-
-        self.compilers[comp.for_machine][lang] = comp
-        enabled_opts = []
-
+    def initialize_compiler_builtins(self, lang: str, comp: T.Type['Compiler'], env: 'Environment') -> None:
         optprefix = lang + '_'
         for k, o in comp.get_options().items():
             if not k.startswith(optprefix):
@@ -805,7 +819,14 @@ class CoreData:
             opt_prefix = comp.for_machine.get_prefix()
             if opt_prefix + k in env.cmd_line_options:
                 o.set_value(env.cmd_line_options[opt_prefix + k])
-            self.compiler_options[comp.for_machine].setdefault(k, o)
+            self.compiler_options[self.subproject][comp.for_machine].setdefault(k, o)
+
+    def process_new_compiler(self, lang: str, comp: T.Type['Compiler'], env: 'Environment') -> None:
+        from . import compilers
+
+        self.compilers[comp.for_machine][lang] = comp
+
+        self.initialize_compiler_builtins(lang, comp, env)
 
         enabled_opts = []
         for optname in comp.base_options:

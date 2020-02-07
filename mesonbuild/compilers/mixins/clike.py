@@ -301,7 +301,7 @@ class CLikeCompiler:
             cargs += self.get_linker_debug_crt_args()
 
         # Add CFLAGS/CXXFLAGS/OBJCFLAGS/OBJCXXFLAGS and CPPFLAGS from the env
-        sys_args = env.coredata.get_external_args(self.for_machine, self.language)
+        sys_args = env.coredata.get_external_args(self.for_machine, self.language, env.coredata.subproject)
         # Apparently it is a thing to inject linker flags both
         # via CFLAGS _and_ LDFLAGS, even though the former are
         # also used during linking. These flags can break
@@ -311,7 +311,7 @@ class CLikeCompiler:
 
         if mode == 'link':
             # Add LDFLAGS from the env
-            sys_ld_args = env.coredata.get_external_link_args(self.for_machine, self.language)
+            sys_ld_args = env.coredata.get_external_link_args(self.for_machine, self.language, env.coredata.subproject)
             # CFLAGS and CXXFLAGS go to both linking and compiling, but we want them
             # to only appear on the command line once. Remove dupes.
             largs += [x for x in sys_ld_args if x not in sys_args]

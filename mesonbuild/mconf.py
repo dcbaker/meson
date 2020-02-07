@@ -212,8 +212,8 @@ class Conf:
             return k[:idx + 1] + 'build.' + k[idx + 1:]
 
         core_options = self.split_options_per_subproject(core_options)
-        host_compiler_options = self.split_options_per_subproject(self.coredata.compiler_options.host)
-        build_compiler_options = self.split_options_per_subproject({insert_build_prefix(k): o for k, o in self.coredata.compiler_options.build.items()})
+        host_compiler_options = {k: o.host for k, o in self.coredata.compiler_options.items()}
+        build_compiler_options = {'build.{}'.format(k): o.build for k, o in self.coredata.compiler_options.items()}
         project_options = self.split_options_per_subproject(self.coredata.user_options)
         show_build_options = self.default_values_only or self.build.environment.is_cross_build()
 

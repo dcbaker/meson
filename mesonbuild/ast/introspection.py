@@ -116,15 +116,16 @@ class IntrospectionInterpreter(AstInterpreter):
         self.func_add_languages(None, proj_langs, None)
 
     def do_subproject(self, dirname):
-        subproject_dir_abs = os.path.join(self.environment.get_source_dir(), self.subproject_dir)
-        subpr = os.path.join(subproject_dir_abs, dirname)
-        try:
-            subi = IntrospectionInterpreter(subpr, '', self.backend, cross_file=self.cross_file, subproject=dirname, subproject_dir=self.subproject_dir, env=self.environment, visitors=self.visitors)
-            subi.analyze()
-            subi.project_data['name'] = dirname
-            self.project_data['subprojects'] += [subi.project_data]
-        except (mesonlib.MesonException, RuntimeError):
-            return
+        with self.coredata.do_subproject(dirname):
+            subproject_dir_abs = os.path.join(self.environment.get_source_dir(), self.subproject_dir)
+            subpr = os.path.join(subproject_dir_abs, dirname)
+            try:
+                subi = IntrospectionInterpreter(subpr, '', self.backend, cross_file=self.cross_file, subproject=dirname, subproject_dir=self.subproject_dir, env=self.environment, visitors=self.visitors)
+                subi.analyze()
+                subi.project_data['name'] = dirname
+                self.project_data['subprojects'] += [subi.project_data]
+            except (mesonlib.MesonException, RuntimeError):
+                return
 
     def func_add_languages(self, node, args, kwargs):
         args = self.flatten_args(args)
@@ -132,7 +133,13 @@ class IntrospectionInterpreter(AstInterpreter):
             for lang in sorted(args, key=compilers.sort_clink):
                 lang = lang.lower()
                 if lang not in self.coredata.compilers[for_machine]:
-                    self.environment.detect_compiler_for(lang, for_machine)
+                    comp = self.environment.detect_compiler_for(lang, for_machine)
+                else:
+                    comp = self.coredata.compilers[for_machine][lang]
+                if comp is not None:
+                    self.coredata.initialize_compiler_builtins(lang, comp, self.environment)
+                    self.coredata.add_lang_args(lang, comp, comp.for_machine, self.environment)
+
 
     def func_dependency(self, node, args, kwargs):
         args = self.flatten_args(args)

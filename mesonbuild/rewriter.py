@@ -469,10 +469,15 @@ class Rewriter:
             **{'build.' + k: o for k, o in cdata.builtins_per_machine.build.items()},
             **cdata.backend_options,
             **cdata.base_options,
-            **cdata.compiler_options.host,
-            **{'build.' + k: o for k, o in cdata.compiler_options.build.items()},
             **cdata.user_options,
         }
+        for s, o in sorted(cdata.compiler_options.items()):
+            if s == '':
+                options.update(o.host)
+                options.update({'build.{}'.format(k): v for k, v in o.build.items()})
+            else:
+                options.update({'{}:{}'.format(s, k): v for k, v in o.host.items()})
+                options.update({'build.{}:{}'.format(s, k): v for k, v in o.build.items()})
 
         for key, val in sorted(cmd['options'].items()):
             if key not in options:

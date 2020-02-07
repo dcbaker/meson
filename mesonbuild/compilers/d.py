@@ -565,12 +565,13 @@ class DCompiler(Compiler):
                 # Add link flags needed to find dependencies
                 args += d.get_link_args()
 
+        # Subproject matters here, as the standard or arguments might differ
         if mode == 'compile':
             # Add DFLAGS from the env
-            args += env.coredata.get_external_args(self.for_machine, self.language)
+            args += env.coredata.get_external_args(self.for_machine, self.language, env.coredata.subproject)
         elif mode == 'link':
             # Add LDFLAGS from the env
-            args += env.coredata.get_external_link_args(self.for_machine, self.language)
+            args += env.coredata.get_external_link_args(self.for_machine, self.language, env.coredata.subproject)
         # extra_args must override all other arguments, so we add them last
         args += extra_args
         return args

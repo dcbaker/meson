@@ -63,7 +63,7 @@ def get_meson_introspection_types(coredata: T.Optional[cdata.CoreData] = None,
 
     return {
         'benchmarks': IntroCommand('List all benchmarks', func=lambda: list_benchmarks(benchmarkdata)),
-        'buildoptions': IntroCommand('List all build options', func=lambda: list_buildoptions(coredata), no_bd=list_buildoptions_from_source),
+        'buildoptions': IntroCommand('List all build options', func=lambda: list_buildoptions(coredata, builddata.subprojects), no_bd=list_buildoptions_from_source),
         'buildsystem_files': IntroCommand('List files that make up the build system', func=lambda: list_buildsystem_files(builddata, interpreter)),
         'dependencies': IntroCommand('List external dependencies', func=lambda: list_deps(coredata), no_bd=list_deps_from_source),
         'scan_dependencies': IntroCommand('Scan for dependencies used in the meson.build file', no_bd=list_deps_from_source),
@@ -206,6 +206,8 @@ def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[s
     dir_options = {k: o for k, o in coredata.builtins.items() if k in dir_option_names}
     test_options = {k: o for k, o in coredata.builtins.items() if k in test_option_names}
     core_options = {k: o for k, o in coredata.builtins.items() if k in core_option_names}
+    host_compiler_options = coredata.compiler_options[''].host.copy()
+    build_compiler_options = {'build.{}'.format(k): o for k, o in coredata.compiler_options[''].build.items()}
 
     if subprojects:
         # Add per subproject built-in options
@@ -215,6 +217,14 @@ def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[s
                 if o.yielding:
                     continue
                 sub_core_options[sub + ':' + k] = o
+            for k, o in coredata.compiler_options[sub].host.items():
+                if o.yielding:
+                    continue
+                host_compiler_options['{}:{}'.format(sub, k)] = o
+            for k, o in coredata.compiler_options[sub].build.items():
+                if o.yielding:
+                    continue
+                build_compiler_options['build.{}:{}'.format(sub, k)] = o
         core_options.update(sub_core_options)
 
     def add_keys(options: T.Dict[str, cdata.UserOption], section: str, machine: str = 'any') -> None:
@@ -247,12 +257,8 @@ def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[s
     )
     add_keys(coredata.backend_options, 'backend')
     add_keys(coredata.base_options, 'base')
-    add_keys(coredata.compiler_options.host, 'compiler', machine='host')
-    add_keys(
-        {'build.' + k: o for k, o in coredata.compiler_options.build.items()},
-        'compiler',
-        machine='build',
-    )
+    add_keys(host_compiler_options, 'compiler', machine='host')
+    add_keys(build_compiler_options, 'compiler', machine='build')
     add_keys(dir_options, 'directory')
     add_keys(coredata.user_options, 'user')
     add_keys(test_options, 'test')
