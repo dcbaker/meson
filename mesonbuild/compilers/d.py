@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import configparser
+import pathlib
 import os.path, subprocess
+import shutil
 import typing as T
 
 from ..mesonlib import (
@@ -769,3 +772,59 @@ class DmdDCompiler(DmdLikeCompilerMixin, DCompiler):
 
     def can_linker_accept_rsp(self) -> bool:
         return False
+
+    @classmethod
+    def use_linker_args(cls, linker: str, env: 'Environment', for_machine: MachineChoice) -> T.List[str]:
+        # DMD is very, very obnoxious. It requires that you change the linker
+        # in a config file (or through environment variables). We need to load
+        # the config file from the canonical location, modify it and write it.
+        # If we've already modified it (in a cross compile situation for
+        # example), then we need to modify the file we've already created it.
+        if str(pathlib.Path(linker).with_suffix('.exe').name) not in {'link.exe', 'lld-link.exe', 'optlink.exe'}:
+            raise EnvironmentException(
+                'Unsupported linker requested {}, only link, lld-link, and optlink are supported'.format(linker))
+
+        conf = configparser.ConfigParser(interpolation=None)
+
+        mconf = pathlib.Path(env.build_dir) / env.private_dir / 'dmd.conf'
+        if mconf.exists():
+            conf.read(mconf.resolve())
+        else:
+            if env.machines[for_machine].is_windows():
+                name = 'sc.ini'
+            else:
+                name = 'dmd.conf'
+
+            p = pathlib.Path.home() / name
+            if not p.exists():
+                p = pathlib.Path(env.binaries[for_machine].lookup_entry('d')[0])  # this is the location of dmd
+                if not p.is_absolute():
+                    p = p.resolve()
+                if not p.is_absolute():
+                    # In this case we don't have enough information to just
+                    # resovle the path, use shutil to figure out what is going
+                    # to be selected (hopefully)
+                    p = pathlib.Path(shutil.which(p.name)).resolve()
+                p = p.parent / name
+                if not p.exists():
+                    # This is only valid on Unices
+                    p = pathlib.Path('/etc/dmd.conf')
+                    if not p.exists():
+                        raise EnvironmentException('Cannot find dmd\'s {}'.format(name))
+
+            conf.read(p.resolve())  # a path-like object can be passed as of 3.6.1
+
+            # These are designed to make the entire D installation portable, we
+            # don't want that, we need to replace these variables with absolute
+            # paths
+            for _, s in conf.items():
+                for k, v in s.items():
+                    if '%@P%' in v:
+                        s[k] = v.replace('%@P%', str(p.parent.resolve()))
+    
+        section = 'Environment64' if env.machines[for_machine].is_64_bit else 'Environment32'
+        conf[section]['LINKCMD'] = shutil.which(linker)
+        with mconf.open('w') as f:
+            conf.write(f)
+        
+        return ['-conf={}'.format(mconf.resolve())]
