@@ -1532,17 +1532,20 @@ class Environment:
                 o, f = tempfile.mkstemp('.d')
                 os.close(o)
 
+                # DMD as different detection logic for x86 and x86_64
+                arch_arg = '-m64' if arch == 'x86_64' else '-m32'
+
                 try:
                     if info.is_windows() or info.is_cygwin():
                         objfile = os.path.basename(f)[:-1] + 'obj'
                         linker = self._guess_win_linker(
                             exelist, compilers.DmdDCompiler, for_machine,
-                            invoked_directly=False, extra_args=[f])
+                            invoked_directly=False, extra_args=[f, arch_arg])
                     else:
                         objfile = os.path.basename(f)[:-1] + 'o'
                         linker = self._guess_nix_linker(
                             exelist, compilers.DmdDCompiler, for_machine,
-                            extra_args=[f])
+                            extra_args=[f, arch_arg])
                 finally:
                     mesonlib.windows_proof_rm(f)
                     mesonlib.windows_proof_rm(objfile)
