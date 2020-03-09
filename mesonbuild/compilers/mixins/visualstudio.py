@@ -24,7 +24,7 @@ from ... import mesonlib
 from ... import mlog
 
 if T.TYPE_CHECKING:
-    from ...environment import Environment
+    from ...environment import Environment, MachineChoice
 
 vs32_instruction_set_args = {
     'mmx': ['/arch:SSE'], # There does not seem to be a flag just for MMX
@@ -367,7 +367,7 @@ class VisualStudioLikeCompiler(metaclass=abc.ABCMeta):
         return 'msvc'
 
     @classmethod
-    def use_linker_args(cls, linker: str) -> T.List[str]:
+    def use_linker_args(cls, linker: str, env: 'Environment', for_machine: 'MachineChoice') -> T.List[str]:
         return []
 
 

@@ -31,6 +31,7 @@ from .mixins.gnu import GnuCompiler
 
 if T.TYPE_CHECKING:
     from ..envconfig import MachineInfo
+    from ..environment import Environment
 
 d_feature_args = {'gcc':  {'unittest': '-funittest',
                            'debug': '-fdebug',
@@ -701,7 +702,7 @@ class LLVMDCompiler(DmdLikeCompilerMixin, DCompiler):
         return ldc_optimization_args[optimization_level]
 
     @classmethod
-    def use_linker_args(cls, linker: str) -> T.List[str]:
+    def use_linker_args(cls, linker: str, env: 'Environment', for_machine: MachineChoice) -> T.List[str]:
         return ['-linker={}'.format(linker)]
 
 

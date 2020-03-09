@@ -6223,7 +6223,7 @@ c = ['{0}']
         with mock.patch.dict(os.environ, {envvar: name}):
             env = get_fake_env()
             comp = getattr(env, 'detect_{}_compiler'.format(lang))(MachineChoice.HOST)
-            if lang != 'rust' and comp.use_linker_args('foo') == []:
+            if lang != 'rust' and comp.use_linker_args('foo', env, MachineChoice.HOST) == []:
                 raise unittest.SkipTest(
                     'Compiler {} does not support using alternative linkers'.format(comp.id))
             self.assertEqual(comp.linker.id, expected)

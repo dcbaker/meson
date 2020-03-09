@@ -1159,7 +1159,7 @@ class Compiler:
         return dep.get_link_args()
 
     @classmethod
-    def use_linker_args(cls, linker: str) -> T.List[str]:
+    def use_linker_args(cls, linker: str, env: 'Environment', for_machine: 'MachineChoice') -> T.List[str]:
         """Get a list of arguments to pass to the compiler to set the linker.
         """
         return []

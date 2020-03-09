@@ -27,7 +27,7 @@ from ... import mlog
 
 if T.TYPE_CHECKING:
     from ...coredata import UserOption  # noqa: F401
-    from ...environment import Environment
+    from ...environment import Environment, MachineChoice
 
 # XXX: prevent circular references.
 # FIXME: this really is a posix interface not a c-like interface
@@ -303,7 +303,7 @@ class GnuLikeCompiler(metaclass=abc.ABCMeta):
         return ['-I' + path]
 
     @classmethod
-    def use_linker_args(cls, linker: str) -> T.List[str]:
+    def use_linker_args(cls, linker: str, env: 'Environment', for_machine: 'MachineChoice') -> T.List[str]:
         return ['-fuse-ld={}'.format(linker)]
 
 

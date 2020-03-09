@@ -768,7 +768,7 @@ class Environment:
         override = []  # type: T.List[str]
         value = self.binaries[for_machine].lookup_entry(comp_class.language + '_ld')
         if value is not None:
-            override = comp_class.use_linker_args(value[0])
+            override = comp_class.use_linker_args(value[0], self, for_machine)
             check_args += override
 
         if extra_args is not None:
@@ -835,7 +835,7 @@ class Environment:
         override = []  # type: T.List[str]
         value = self.binaries[for_machine].lookup_entry(comp_class.language + '_ld')
         if value is not None:
-            override = comp_class.use_linker_args(value[0])
+            override = comp_class.use_linker_args(value[0], self, for_machine)
             check_args += override
 
         _, o, e = Popen_safe(compiler + check_args)
@@ -1444,7 +1444,7 @@ class Environment:
                     # need it to get the proper arguments to pass to rustc
                     c = cc.exelist[1] if cc.exelist[0].endswith('ccache') else cc.exelist[0]
                     compiler.extend(['-C', 'linker={}'.format(c)])
-                    compiler.extend(['-C', 'link-args={}'.format(' '.join(cc.use_linker_args(override[0])))])
+                    compiler.extend(['-C', 'link-args={}'.format(' '.join(cc.use_linker_args(override[0], self, for_machine)))])
 
                 self.coredata.add_lang_args(RustCompiler.language, RustCompiler, for_machine, self)
                 return RustCompiler(
