@@ -112,7 +112,9 @@ from .compilers import (
 )
 
 if T.TYPE_CHECKING:
+    from .compilers.compilers import CompilerType
     from .dependencies.base import ExternalProgramType
+    from .linkers import DynamicLinkerType
 
 build_filename = 'meson.build'
 
@@ -753,6 +755,42 @@ class Environment:
             for (c, e) in exceptions.items():
                 errmsg += '\nRunning "{0}" gave "{1}"'.format(c, e)
         raise EnvironmentException(errmsg)
+
+    def detect_dynamic_linker_for(self, compiler: 'CompilerType') -> 'DynamicLinkerType':
+        if compiler.get_language() in {'c', 'cpp'}:
+            return self._detect_c_dynamic_linker(compiler)
+
+        raise EnvironmentException('Unable to determine dynamic linker')
+
+    def _detect_c_dynamic_linker(self, compiler: 'CompilerType') -> 'DynamicLinkerType':
+        popen_exceptions = {}  # type: T.Dict[str, Exception]
+        popen_commands = []    # type: T.List[T.List[str]]
+
+        if compiler.get_id() in {'gcc', 'clang', 'intel'}:
+            potential_linkers = [GnuBFDDynamicLinker, GnuGoldDynamicLinker, LLVMDynamicLinker]
+
+        override = self.binaries[for_machine].lookup_entry(comp_class.language + '_ld')  # type: T.Optional[T.List[str]]
+
+        for trial in potential_linkers:
+            if compiler.INVOKES_LINKER:
+                command = compiler.get_exelist()
+                if override:
+                    command.extend(compiler.user_linker_args(override[0]))
+                check_args = command + [compiler.LINKER_PREFIX + a for a in trial.check_arguments()]
+            else:
+                raise NotImplementedError('TODO')
+
+            try:
+                p, out, err = Popen_safe(check_args)
+            except OSError as e:
+                popen_exceptions[' '.join(check_args)] = e
+                continue
+
+            if trial.check_output(out, err):
+                # XXX: linker_prefix for non-direct compilers?
+                return trial(command, compiler.for_machine, compiler.LINKER_PREFIX, version=search_version(out))
+
+        self._handle_exceptions(popen_exceptions, popen_commands, bintype='dynamic linkers')
 
     def _guess_win_linker(self, compiler: T.List[str], comp_class: Compiler,
                           for_machine: MachineChoice, *,

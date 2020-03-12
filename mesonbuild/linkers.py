@@ -258,7 +258,7 @@ class DynamicLinker(metaclass=abc.ABCMeta):
             return args
         elif isinstance(self.prefix_arg, str):
             return [self.prefix_arg + arg for arg in args]
-        ret = []
+        ret = []  # T.List[str]
         for arg in args:
             ret += self.prefix_arg + [arg]
         return ret
@@ -414,6 +414,17 @@ class DynamicLinker(metaclass=abc.ABCMeta):
                         suffix: str, soversion: str, darwin_versions: T.Tuple[str, str],
                         is_shared_module: bool) -> T.List[str]:
         return []
+
+    @staticmethod
+    def check_argument() -> T.List[str]:
+        """A list of arguments to pass the linker to get it's version."""
+        return []
+
+    @staticmethod
+    @abc.abstractmethod
+    def check_output(out: str, err: str) -> bool:
+        """Check if the output is for this linker."""
+        pass
 
 
 class PosixDynamicLinkerMixin:
@@ -575,6 +586,11 @@ class GnuLikeDynamicLinkerMixin:
 
         return args
 
+    @staticmethod
+    def check_arguments() -> T.List[str]:
+        """A list of arguments to pass the linker to get it's version."""
+        return ['--version']
+
 
 class AppleDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
 
@@ -657,6 +673,10 @@ class AppleDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
 
         return args
 
+    def check_arguments(self) -> T.List[str]:
+        """A list of arguments to pass the linker to get it's version."""
+        return ['-v']
+
 
 class GnuDynamicLinker(GnuLikeDynamicLinkerMixin, PosixDynamicLinkerMixin, DynamicLinker):
 
@@ -668,11 +688,21 @@ class GnuGoldDynamicLinker(GnuDynamicLinker):
     def __init__(self, *args, **kwargs):
         super().__init__('ld.gold', *args, **kwargs)
 
+    @staticmethod
+    def check_output(out: str, err: str) -> bool:
+        """Check if the output is for this linker."""
+        return 'GNU gold' in out
+
 
 class GnuBFDDynamicLinker(GnuDynamicLinker):
 
     def __init__(self, *args, **kwargs):
         super().__init__('ld.bfd', *args, **kwargs)
+
+    @staticmethod
+    def check_output(out: str, err: str) -> bool:
+        """Check if the output is for this linker."""
+        return 'GNU ld' in out
 
 
 class LLVMDynamicLinker(GnuLikeDynamicLinkerMixin, PosixDynamicLinkerMixin, DynamicLinker):
@@ -694,6 +724,11 @@ class LLVMDynamicLinker(GnuLikeDynamicLinkerMixin, PosixDynamicLinkerMixin, Dyna
         if self.has_allow_shlib_undefined:
             return self._apply_prefix('--allow-shlib-undefined')
         return []
+
+    @staticmethod
+    def check_output(out: str, err: str) -> bool:
+        """Check if the output is for this linker."""
+        return out.startswith('LLD') and out.endswith('(compatible with GNU linkers)')
 
 
 class WASMDynamicLinker(GnuLikeDynamicLinkerMixin, PosixDynamicLinkerMixin, DynamicLinker):
