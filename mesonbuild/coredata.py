@@ -32,7 +32,7 @@ import typing as T
 
 if T.TYPE_CHECKING:
     from . import dependencies
-    from .compilers import Compiler  # noqa: F401
+    from .compilers.compilers import CompilerType  # noqa: F401
     from .environment import Environment
 
     OptionDictType = T.Dict[str, 'UserOption[T.Any]']
@@ -789,7 +789,7 @@ class CoreData:
 
         self.set_options(options, subproject=subproject)
 
-    def add_lang_args(self, lang: str, comp: T.Type['Compiler'],
+    def add_lang_args(self, lang: str, comp: T.Type['CompilerType'],
                       for_machine: MachineChoice, env: 'Environment') -> None:
         """Add global language arguments that are needed before compiler/linker detection."""
         from .compilers import compilers
@@ -804,7 +804,7 @@ class CoreData:
                 o.set_value(env.cmd_line_options[opt_prefix + k])
             self.compiler_options[for_machine].setdefault(k, o)
 
-    def process_new_compiler(self, lang: str, comp: T.Type['Compiler'], env: 'Environment') -> None:
+    def process_new_compiler(self, lang: str, comp: T.Type['CompilerType'], env: 'Environment') -> None:
         from . import compilers
 
         self.compilers[comp.for_machine][lang] = comp
