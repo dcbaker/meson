@@ -26,7 +26,7 @@ class Vs2019Backend(Vs2010Backend):
         super().__init__(build, interpreter)
         self.name = 'vs2019'
         if self.environment is not None:
-            comps = self.environment.coredata.compilers.host
+            comps = self.environment.coredata.toolchains.host.compilers
             if comps and all(c.id == 'clang-cl' for c in comps.values()):
                 self.platform_toolset = 'llvm'
             elif comps and all(c.id == 'intel-cl' for c in comps.values()):

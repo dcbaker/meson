@@ -235,7 +235,7 @@ class NinjaBackend(backends.Backend):
         '''VS writes its dependency in a locale dependent format.
         Detect the search prefix to use.'''
         # TODO don't hard-code host
-        for compiler in self.environment.coredata.compilers.host.values():
+        for compiler in self.environment.coredata.toolchains.host.compilers.values():
             # Have to detect the dependency format
 
             # IFort on windows is MSVC like, but doesn't have /showincludes
@@ -348,7 +348,7 @@ int dummy;
     def generate_compdb(self):
         rules = []
         for for_machine in MachineChoice:
-            for lang in self.environment.coredata.compilers[for_machine]:
+            for lang in self.environment.coredata.toolchains[for_machine].compilers:
                 rules += [self.get_compiler_rule_name(lang, for_machine)]
                 rules += [self.get_pch_rule_name(lang, for_machine)]
         compdb_options = ['-x'] if mesonlib.version_compare(self.ninja_version, '>=1.9') else []
@@ -1534,7 +1534,7 @@ int dummy;
 
     def generate_static_link_rules(self):
         num_pools = self.environment.coredata.backend_options['backend_max_links'].value
-        if 'java' in self.environment.coredata.compilers.host:
+        if 'java' in self.environment.coredata.toolchains.host.compilers:
             self.generate_java_link()
         for for_machine in MachineChoice:
             static_linker = self.build.static_linker[for_machine]
@@ -1567,7 +1567,7 @@ int dummy;
     def generate_dynamic_link_rules(self):
         num_pools = self.environment.coredata.backend_options['backend_max_links'].value
         for for_machine in MachineChoice:
-            complist = self.environment.coredata.compilers[for_machine]
+            complist = self.environment.coredata.toolchains[for_machine].compilers
             for langname, compiler in complist.items():
                 if langname == 'java' \
                         or langname == 'vala' \
@@ -1737,7 +1737,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
 
     def generate_compile_rules(self):
         for for_machine in MachineChoice:
-            clist = self.environment.coredata.compilers[for_machine]
+            clist = self.environment.coredata.toolchains[for_machine].compilers
             for langname, compiler in clist.items():
                 if compiler.get_id() == 'clang':
                     self.generate_llvm_ir_compile_rule(compiler)
@@ -1831,7 +1831,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         """
         compiler = None
         # TODO other compilers
-        for lang, c in self.environment.coredata.compilers.host.items():
+        for lang, c in self.environment.coredata.toolchains.host.compilers.items():
             if lang == 'fortran':
                 compiler = c
                 break

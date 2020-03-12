@@ -34,6 +34,7 @@ if T.TYPE_CHECKING:
     from . import dependencies
     from .compilers.compilers import CompilerType  # noqa: F401
     from .environment import Environment
+    from .linkers import DynamicLinkerType, StaticLinkerType
 
     OptionDictType = T.Dict[str, 'UserOption[T.Any]']
 
@@ -346,6 +347,19 @@ class DependencyCache:
 # Can't bind this near the class method it seems, sadly.
 _V = T.TypeVar('_V')
 
+
+class ToolChain:
+
+    """Container of representations of our toolchain for a given target."""
+
+    def __init__(self, compilers: T.Optional[T.Dict[str, 'CompilerType']] = None,
+                 linkers: T.Optional[T.Dict[str, 'DynamicLinkerType']] = None,
+                 static: T.Optional['StaticLinkerType'] = None) -> None:
+        self.compilers = compilers or {}  # type: T.Dict[str, CompilerType]
+        self.linkers = linkers or {}      # type: T.Dict[str, DynamicLinkerType]
+        self.static_linker = static              # type: T.Optional[StaticLinkerType]
+
+
 class CoreData:
 
     """All data that must persist over multiple invocations of meson.
@@ -373,7 +387,7 @@ class CoreData:
         self.compiler_options = PerMachine({}, {})
         self.base_options = {} # : OptionDictType
         self.cross_files = self.__load_config_files(options, scratch_dir, 'cross')
-        self.compilers = PerMachine(OrderedDict(), OrderedDict())
+        self.toolchains = PerMachine(ToolChain(), ToolChain())  # type: PerMachine[ToolChain]
 
         build_cache = DependencyCache(self.builtins_per_machine, MachineChoice.BUILD)
         host_cache = DependencyCache(self.builtins_per_machine, MachineChoice.BUILD)
@@ -807,7 +821,7 @@ class CoreData:
     def process_new_compiler(self, lang: str, comp: T.Type['CompilerType'], env: 'Environment') -> None:
         from . import compilers
 
-        self.compilers[comp.for_machine][lang] = comp
+        self.toolchains[comp.for_machine].compilers[lang] = comp
         enabled_opts = []
 
         optprefix = lang + '_'

@@ -596,7 +596,7 @@ class VulkanDependencySystem(ExternalDependency):
                 lib_name = 'vulkan-1'
                 lib_dir = 'Lib32'
                 inc_dir = 'Include'
-                if detect_cpu_family(self.env.coredata.compilers.host) == 'x86_64':
+                if detect_cpu_family(self.env.coredata.toolchains.host.compilers) == 'x86_64':
                     lib_dir = 'Lib'
 
             # make sure header and lib are valid

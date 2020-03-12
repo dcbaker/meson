@@ -585,7 +585,7 @@ class BuildTarget(Target):
         which compiler to use if one hasn't been selected already.
         """
         # Populate list of compilers
-        compilers = self.environment.coredata.compilers[self.for_machine]
+        compilers = self.environment.coredata.toolchains[self.for_machine].compilers
 
         # did user override clink_langs for this target?
         link_langs = [self.link_language] if self.link_language else clink_langs
@@ -622,7 +622,7 @@ class BuildTarget(Target):
         if not self.sources and not self.generated and not self.objects:
             return
         # Populate list of compilers
-        compilers = self.environment.coredata.compilers[self.for_machine]
+        compilers = self.environment.coredata.toolchains[self.for_machine].compilers
         # Pre-existing sources
         sources = list(self.sources)
         # All generated sources
@@ -1239,7 +1239,7 @@ You probably should put it in link_with instead.''')
         '''
         # Populate list of all compilers, not just those being used to compile
         # sources in this target
-        all_compilers = self.environment.coredata.compilers[self.for_machine]
+        all_compilers = self.environment.coredata.toolchains[self.for_machine].compilers
         # Languages used by dependencies
         dep_langs = self.get_langs_used_by_deps()
         # Pick a compiler based on the language priority-order

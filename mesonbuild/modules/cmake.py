@@ -128,7 +128,7 @@ class CmakeModule(ExtensionModule):
         self.snippets.add('subproject')
 
     def detect_voidp_size(self, env):
-        compilers = env.coredata.compilers.host
+        compilers = env.coredata.toolchains.host.compilers
         compiler = compilers.get('c', None)
         if not compiler:
             compiler = compilers.get('cpp', None)

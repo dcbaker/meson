@@ -26,7 +26,7 @@ class Vs2015Backend(Vs2010Backend):
         self.vs_version = '2015'
         if self.environment is not None:
             # TODO: we assume host == build
-            comps = self.environment.coredata.compilers.host
+            comps = self.environment.coredata.toolchains.host.compilers
             if comps and all(c.id == 'intel-cl' for c in comps.values()):
                 c = list(comps.values())[0]
                 if c.version.startswith('19'):

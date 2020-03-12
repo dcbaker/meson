@@ -28,7 +28,7 @@ class CudaDependency(ExternalDependency):
     supported_languages = ['cuda', 'cpp', 'c'] # see also _default_language
 
     def __init__(self, environment, kwargs):
-        compilers = environment.coredata.compilers[self.get_for_machine_from_kwargs(kwargs)]
+        compilers = environment.coredata.toolchains[self.get_for_machine_from_kwargs(kwargs)].compilers
         language = self._detect_language(compilers)
         if language not in self.supported_languages:
             raise DependencyException('Language \'{}\' is not supported by the CUDA Toolkit. Supported languages are {}.'.format(language, self.supported_languages))
@@ -183,7 +183,7 @@ class CudaDependency(ExternalDependency):
         return '.'.join(version.split('.')[:2])
 
     def _detect_arch_libdir(self):
-        arch = detect_cpu_family(self.env.coredata.compilers.host)
+        arch = detect_cpu_family(self.env.coredata.toolchains.host.compilers)
         machine = self.env.machines[self.for_machine]
         msg = '{} architecture is not supported in {} version of the CUDA Toolkit.'
         if machine.is_windows():

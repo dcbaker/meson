@@ -22,6 +22,9 @@ if T.TYPE_CHECKING:
     from .coredata import OptionDictType
     from .environment import Environment
 
+    StaticLinkerType = T.TypeVar('StaticLinkerType', bound=StaticLinker)
+    DynamicLinkerType = T.TypeVar('DynamicLinkerType', bound=DynamicLinker)
+
 
 class StaticLinker:
 

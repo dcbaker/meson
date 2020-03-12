@@ -126,7 +126,7 @@ class MPIDependency(ExternalDependency):
         result = []
         multi_args = ('-I', )
         if self.language == 'fortran':
-            fc = self.env.coredata.compilers[self.for_machine]['fortran']
+            fc = self.env.coredata.toolchains[self.for_machine].compilers['fortran']
             multi_args += fc.get_module_incdir_args()
 
         include_next = False
@@ -251,7 +251,7 @@ class MPIDependency(ExternalDependency):
             return None
 
         incdir = os.environ['MSMPI_INC']
-        arch = detect_cpu_family(self.env.coredata.compilers.host)
+        arch = detect_cpu_family(self.env.coredata.toolchains.host.compilers)
         if arch == 'x86':
             if 'MSMPI_LIB32' not in os.environ:
                 return None

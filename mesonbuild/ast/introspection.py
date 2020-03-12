@@ -146,7 +146,7 @@ class IntrospectionInterpreter(AstInterpreter):
                 if not isinstance(lang, str):
                     continue
                 lang = lang.lower()
-                if lang not in self.coredata.compilers[for_machine]:
+                if lang not in self.coredata.toolchains[for_machine].compilers:
                     self.environment.detect_compiler_for(lang, for_machine)
 
     def func_dependency(self, node: BaseNode, args: T.List[TYPE_nvar], kwargs: T.Dict[str, TYPE_nvar]) -> None:

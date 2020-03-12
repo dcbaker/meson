@@ -1968,7 +1968,7 @@ class MesonMain(InterpreterObject):
             raise InterpreterException('get_compiler_method must have one and only one argument.')
         cname = args[0]
         for_machine = Interpreter.machine_from_native_kwarg(kwargs)
-        clist = self.interpreter.coredata.compilers[for_machine]
+        clist = self.interpreter.coredata.toolchains[for_machine].compilers
         if cname in clist:
             return CompilerHolder(clist[cname], self.build.environment, self.interpreter.subproject)
         raise InterpreterException('Tried to access compiler for unspecified language "%s".' % cname)
@@ -2259,7 +2259,7 @@ class Interpreter(InterpreterBase):
         # have the compilers needed to gain more knowledge, so wipe out old
         # inference and start over.
         machines = self.build.environment.machines.miss_defaulting()
-        machines.build = environment.detect_machine_info(self.coredata.compilers.build)
+        machines.build = environment.detect_machine_info(self.coredata.toolchains.build.compilers)
         self.build.environment.machines = machines.default_missing()
         assert self.build.environment.machines.build.cpu is not None
         assert self.build.environment.machines.host.cpu is not None
@@ -2438,7 +2438,7 @@ class Interpreter(InterpreterBase):
     def check_stdlibs(self):
         for for_machine in MachineChoice:
             props = self.build.environment.properties[for_machine]
-            for l in self.coredata.compilers[for_machine].keys():
+            for l in self.coredata.toolchains[for_machine].compilers.keys():
                 try:
                     di = mesonlib.stringlistify(props.get_stdlib(l))
                     if len(di) != 2:
@@ -3080,7 +3080,7 @@ external dependencies (including libraries) must go to "dependencies".''')
         success = True
         for lang in sorted(args, key=compilers.sort_clink):
             lang = lang.lower()
-            clist = self.coredata.compilers[for_machine]
+            clist = self.coredata.toolchains[for_machine].compilers
             machine_name = for_machine.get_lower_case_name()
             if lang in clist:
                 comp = clist[lang]
@@ -3111,7 +3111,7 @@ external dependencies (including libraries) must go to "dependencies".''')
                            mlog.bold(' '.join(comp.linker.get_exelist())), comp.linker.id, comp.linker.version)
             self.build.ensure_static_linker(comp)
 
-        langs = self.coredata.compilers[for_machine].keys()
+        langs = self.coredata.toolchains[for_machine].compilers.keys()
         if 'vala' in langs:
             if 'c' not in langs:
                 raise InterpreterException('Compiling Vala requires C. Add C to your project languages and rerun Meson.')
@@ -4350,7 +4350,7 @@ different subdirectory.
 
     def print_extra_warnings(self):
         # TODO cross compilation
-        for c in self.coredata.compilers.host.values():
+        for c in self.coredata.toolchains.host.compilers.values():
             if c.get_id() == 'clang':
                 self.check_clang_asan_lundef()
                 break
@@ -4563,7 +4563,7 @@ This will become a hard error in the future.''', location=self.current_node)
         result = {}
         for i in target.sources:
             # TODO other platforms
-            for lang, c in self.coredata.compilers.host.items():
+            for lang, c in self.coredata.toolchains.host.compilers.items():
                 if c.can_compile(i):
                     result[lang] = True
                     break

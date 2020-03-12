@@ -798,7 +798,7 @@ class CMakeInterpreter:
             self.fileapi.setup_request()
 
         # Map meson compiler to CMake variables
-        for lang, comp in self.env.coredata.compilers[for_machine].items():
+        for lang, comp in self.env.coredata.toolchains[for_machine].compilers.items():
             if lang not in language_map:
                 continue
             self.linkers.add(comp.get_linker_id())

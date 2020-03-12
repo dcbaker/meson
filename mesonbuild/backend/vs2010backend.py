@@ -727,7 +727,7 @@ class Vs2010Backend(backends.Backend):
         # No source files, only objects, but we still need a compiler, so
         # return a found compiler
         if len(target.objects) > 0:
-            for lang, c in self.environment.coredata.compilers[target.for_machine].items():
+            for lang, c in self.environment.coredata.toolchains[target.for_machine].compilers.items():
                 if lang in ('c', 'cpp'):
                     return c
         raise MesonException('Could not find a C or C++ compiler. MSVC can only build C/C++ projects.')

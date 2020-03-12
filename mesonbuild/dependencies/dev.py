@@ -251,7 +251,7 @@ class LLVMDependencyConfigTool(ConfigToolDependency):
               "-L IBPATH:...", if we're using an msvc like compilers convert
               that to "/LIBPATH", otherwise to "-L ..."
         """
-        cpp = self.env.coredata.compilers[self.for_machine]['cpp']
+        cpp = self.env.coredata.toolchains[self.for_machine].compilers['cpp']
 
         new_args = []
         for arg in args:

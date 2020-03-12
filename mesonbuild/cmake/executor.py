@@ -248,7 +248,7 @@ class CMakeExecutor:
         # Try to set the correct compiler for C and C++
         # This step is required to make try_compile work inside CMake
         fallback = os.path.realpath(__file__)  # A file used as a fallback wehen everything else fails
-        compilers = self.environment.coredata.compilers[MachineChoice.BUILD]
+        compilers = self.environment.coredata.toolchains[MachineChoice.BUILD].compilers
 
         def make_abs(exe: str, lang: str) -> str:
             if os.path.isabs(exe):

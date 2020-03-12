@@ -835,7 +835,7 @@ class InternalTests(unittest.TestCase):
             pkgbin = ExternalProgram('pkg-config', command=['pkg-config'], silent=True)
             env = get_fake_env()
             compiler = env.detect_c_compiler(MachineChoice.HOST)
-            env.coredata.compilers.host = {'c': compiler}
+            env.coredata.toolchains.host.compilers = {'c': compiler}
             env.coredata.compiler_options.host['c_link_args'] = FakeCompilerOptions()
             p1 = Path(tmpdir) / '1'
             p2 = Path(tmpdir) / '2'

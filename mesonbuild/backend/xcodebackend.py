@@ -739,7 +739,7 @@ class XCodeBackend(backends.Backend):
                 ldstr = ' '.join(ldargs)
                 valid = self.buildconfmap[target_name][buildtype]
                 langargs = {}
-                for lang in self.environment.coredata.compilers[target.for_machine]:
+                for lang in self.environment.coredata.toolchains[target.for_machine].compilers:
                     if lang not in langnamemap:
                         continue
                     # Add compile args added using add_project_arguments()

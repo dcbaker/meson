@@ -222,7 +222,7 @@ class Python3DependencySystem(ExternalDependency):
         if pyarch is None:
             self.is_found = False
             return
-        arch = detect_cpu_family(env.coredata.compilers.host)
+        arch = detect_cpu_family(env.coredata.toolchains.host.compilers)
         if arch == 'x86':
             arch = '32'
         elif arch == 'x86_64':

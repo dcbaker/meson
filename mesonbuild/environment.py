@@ -521,7 +521,7 @@ class Environment:
         # target machine.)
         machines = PerThreeMachineDefaultable()
 
-        # Similar to coredata.compilers, but lower level in that there is no
+        # Similar to toolchain.compilers, but lower level in that there is no
         # meta data, only names/paths.
         binaries = PerMachineDefaultable()
 
@@ -1749,7 +1749,7 @@ class Environment:
         return self.coredata.get_builtin_option('datadir')
 
     def get_compiler_system_dirs(self, for_machine: MachineChoice):
-        for comp in self.coredata.compilers[for_machine].values():
+        for comp in self.coredata.toolchains[for_machine].compilers.values():
             if isinstance(comp, compilers.ClangCompiler):
                 index = 1
                 break

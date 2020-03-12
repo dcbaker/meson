@@ -1014,9 +1014,9 @@ class CMakeDependency(ExternalDependency):
         if language is None:
             compilers = None
             if kwargs.get('native', False):
-                compilers = environment.coredata.compilers.build
+                compilers = environment.coredata.toolchains.build.compilers
             else:
-                compilers = environment.coredata.compilers.host
+                compilers = environment.coredata.toolchains.host.compilers
 
             candidates = ['c', 'cpp', 'fortran', 'objc', 'objcxx']
             self.language_list += [x for x in candidates if x in compilers]
@@ -2491,7 +2491,7 @@ def factory_methods(methods: T.Set[DependencyMethods]) -> 'FactoryType':
 def detect_compiler(name: str, env: Environment, for_machine: MachineChoice,
                     language: T.Optional[str]) -> T.Optional['CompilerType']:
     """Given a language and environment find the compiler used."""
-    compilers = env.coredata.compilers[for_machine]
+    compilers = env.coredata.toolchains[for_machine].compilers
 
     # Set the compiler for this dependency if a language is specified,
     # else try to pick something that looks usable.

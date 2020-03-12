@@ -29,7 +29,7 @@ class Vs2017Backend(Vs2010Backend):
         self.vs_version = '2017'
         # We assume that host == build
         if self.environment is not None:
-            comps = self.environment.coredata.compilers.host
+            comps = self.environment.coredata.toolchains.host.compilers
             if comps:
                 if comps and all(c.id == 'clang-cl' for c in comps.values()):
                     self.platform_toolset = 'llvm'
