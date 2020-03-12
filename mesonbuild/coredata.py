@@ -920,12 +920,12 @@ def get_cmd_line_options(build_dir, options):
 def major_versions_differ(v1, v2):
     return v1.split('.')[0:2] != v2.split('.')[0:2]
 
-def load(build_dir):
+def load(build_dir: str) -> 'CoreData':
     filename = os.path.join(build_dir, 'meson-private', 'coredata.dat')
     load_fail_msg = 'Coredata file {!r} is corrupted. Try with a fresh build tree.'.format(filename)
     try:
         with open(filename, 'rb') as f:
-            obj = pickle.load(f)
+            obj = pickle.load(f)  # type: CoreData
     except (pickle.UnpicklingError, EOFError):
         raise MesonException(load_fail_msg)
     except AttributeError:
