@@ -346,11 +346,12 @@ class DependencyCache:
 # Can't bind this near the class method it seems, sadly.
 _V = T.TypeVar('_V')
 
-# This class contains all data that must persist over multiple
-# invocations of Meson. It is roughly the same thing as
-# cmakecache.
-
 class CoreData:
+
+    """All data that must persist over multiple invocations of meson.
+
+    For those familiar with camke, it is roughly equivalent to the cmakecache.
+    """
 
     def __init__(self, options: argparse.Namespace, scratch_dir: str):
         self.lang_guids = {
