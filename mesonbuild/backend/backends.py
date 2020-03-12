@@ -397,7 +397,7 @@ class Backend:
         Otherwise, we query the target for the dynamic linker.
         '''
         if isinstance(target, build.StaticLibrary):
-            return self.build.static_linker[target.for_machine], []
+            return self.environment.coredata.toolchains[target.for_machine].static_linker, []
         l, stdlib_args = target.get_clink_dynamic_linker_and_stdlibs()
         return l, stdlib_args
 

@@ -3109,7 +3109,8 @@ external dependencies (including libraries) must go to "dependencies".''')
             if comp.linker is not None:
                 logger_fun(comp.get_display_language(), 'linker for the', machine_name, 'machine:',
                            mlog.bold(' '.join(comp.linker.get_exelist())), comp.linker.id, comp.linker.version)
-            self.build.ensure_static_linker(comp)
+            if comp.needs_static_linker() and not self.environment.coredata.toolchains[for_machine].static_linker:
+                self.environment.coredata.toolchains[for_machine].static_linker = self.environment.detect_static_linker(comp)
 
         langs = self.coredata.toolchains[for_machine].compilers.keys()
         if 'vala' in langs:

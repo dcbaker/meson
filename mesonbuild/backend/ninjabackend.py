@@ -1518,7 +1518,7 @@ int dummy;
         self.add_build(elem)
         if isinstance(target, build.StaticLibrary):
             elem = self.generate_link(target, self.get_target_filename(target),
-                                      rel_objects, self.build.static_linker[target.for_machine])
+                                      rel_objects, self.environment.coredata.toolchains[target.for_machine].static_linker)
             self.add_build(elem)
         elif isinstance(target, build.Executable):
             elem = NinjaBuildElement(self.all_outputs, self.get_target_filename(target), rulename, [])
@@ -1537,7 +1537,7 @@ int dummy;
         if 'java' in self.environment.coredata.toolchains.host.compilers:
             self.generate_java_link()
         for for_machine in MachineChoice:
-            static_linker = self.build.static_linker[for_machine]
+            static_linker = self.environment.coredata.toolchains[for_machine].static_linker
             if static_linker is None:
                 return
             rule = 'STATIC_LINKER%s' % self.get_rule_suffix(for_machine)

@@ -29,7 +29,6 @@ from .mesonlib import (
     get_filenames_templates_dict, substitute_values, has_path_sep, unholder
 )
 from .compilers import Compiler, is_object, clink_langs, sort_clink, lang_suffixes, is_known_suffix
-from .linkers import StaticLinker
 from .interpreterbase import FeatureNew
 
 pch_kwargs = set(['c_pch', 'cpp_pch'])
@@ -133,7 +132,6 @@ class Build:
         self.headers = []
         self.man = []
         self.data = []
-        self.static_linker = PerMachine(None, None)   # type: PerMachine[StaticLinker]
         self.subprojects = {}
         self.subproject_dir = ''
         self.install_scripts = []
@@ -161,10 +159,6 @@ class Build:
     def merge(self, other):
         for k, v in other.__dict__.items():
             self.__dict__[k] = v
-
-    def ensure_static_linker(self, compiler):
-        if self.static_linker[compiler.for_machine] is None and compiler.needs_static_linker():
-            self.static_linker[compiler.for_machine] = self.environment.detect_static_linker(compiler)
 
     def get_project(self):
         return self.projects['']
