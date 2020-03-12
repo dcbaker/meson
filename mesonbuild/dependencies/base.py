@@ -40,6 +40,7 @@ from ..mesonlib import Version, LibType
 if T.TYPE_CHECKING:
     from ..compilers.compilers import CompilerType  # noqa: F401
     DependencyType = T.TypeVar('DependencyType', bound='Dependency')
+    ExternalProgramType = T.TypeVar('ExternalProgramType', bound='ExternalProgram')
 
 # These must be defined in this file to avoid cyclical references.
 packages = {}
@@ -1781,7 +1782,7 @@ class ExternalProgram:
         return ' '.join(self.command)
 
     @classmethod
-    def from_bin_list(cls, bt: BinaryTable, name):
+    def from_bin_list(cls, bt: BinaryTable, name: str) -> 'ExternalProgramType':
         command = bt.lookup_entry(name)
         if command is None:
             return NonExistingExternalProgram()

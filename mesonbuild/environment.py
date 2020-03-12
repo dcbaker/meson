@@ -111,9 +111,13 @@ from .compilers import (
     VisualStudioCPPCompiler,
 )
 
+if T.TYPE_CHECKING:
+    from .dependencies.base import ExternalProgramType
+
 build_filename = 'meson.build'
 
 CompilersDict = T.Dict[str, Compiler]
+
 
 def detect_gcovr(min_version='3.3', new_rootdir_version='4.2', log=False):
     gcovr_exe = 'gcovr'
@@ -719,7 +723,7 @@ class Environment:
         minor = defines.get('__LCC_MINOR__', '0')
         return dot.join((generation, major, minor))
 
-    def _get_compilers(self, lang, for_machine):
+    def _get_compilers(self, lang: str, for_machine: MachineChoice) -> T.Tuple[T.List[str], T.List[str], T.Optional['ExternalProgramType']]:
         '''
         The list of compilers is detected in the exact same way for
         C, C++, ObjC, ObjC++, Fortran, CS so consolidate it here.
@@ -736,13 +740,13 @@ class Environment:
             ccache = BinaryTable.detect_ccache()
 
         if self.machines.matches_build_machine(for_machine):
-            exe_wrap = None
+            exe_wrap = None  # type : T.Optional['ExternalProgramType']
         else:
             exe_wrap = self.get_exe_wrapper()
 
         return compilers, ccache, exe_wrap
 
-    def _handle_exceptions(self, exceptions, binaries, bintype='compiler'):
+    def _handle_exceptions(self, exceptions, binaries, bintype='compiler') -> 'T.NoReturn':
         errmsg = 'Unknown {}(s): {}'.format(bintype, binaries)
         if exceptions:
             errmsg += '\nThe follow exceptions were encountered:'
@@ -781,7 +785,7 @@ class Environment:
                 return LLVMDynamicLinker(
                     compiler, for_machine, comp_class.LINKER_PREFIX,
                     override, version=search_version(o), direct=invoked_directly)
- 
+
         if value is not None and invoked_directly:
             compiler = value
             # We've already hanedled the non-direct case above
@@ -1763,13 +1767,13 @@ class Environment:
         out = out.split('\n')[index].lstrip('libraries: =').split(':')
         return [os.path.normpath(p) for p in out]
 
-    def need_exe_wrapper(self, for_machine: MachineChoice = MachineChoice.HOST):
+    def need_exe_wrapper(self, for_machine: MachineChoice = MachineChoice.HOST) -> bool:
         value = self.properties[for_machine].get('needs_exe_wrapper', None)
         if value is not None:
             return value
         return not machine_info_can_run(self.machines[for_machine])
 
-    def get_exe_wrapper(self):
+    def get_exe_wrapper(self) -> 'ExternalProgramType':
         if not self.need_exe_wrapper():
             from .dependencies import EmptyExternalProgram
             return EmptyExternalProgram()
