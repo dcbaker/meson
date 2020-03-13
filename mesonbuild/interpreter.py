@@ -3074,7 +3074,6 @@ external dependencies (including libraries) must go to "dependencies".''')
         success = self.add_languages_for(args, required, for_machine)
         if not self.coredata.is_cross_build():
             self.coredata.copy_build_options_from_regular_ones()
-            self.coredata.toolchains.static_linker.default_missing()
         return success
 
     def add_languages_for(self, args, required, for_machine: MachineChoice):
