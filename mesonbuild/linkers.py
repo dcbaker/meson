@@ -446,6 +446,11 @@ class PosixDynamicLinkerMixin:
     def get_search_args(self, dirname: str) -> T.List[str]:
         return ['-L' + dirname]
 
+    @staticmethod
+    def check_arguments() -> T.List[str]:
+        """A list of arguments to pass the linker to get it's version."""
+        return ['--version']
+
 
 class GnuLikeDynamicLinkerMixin:
 
@@ -587,10 +592,6 @@ class GnuLikeDynamicLinkerMixin:
 
         return args
 
-    @staticmethod
-    def check_argumentss() -> T.List[str]:
-        """A list of arguments to pass the linker to get it's version."""
-        return ['--version']
 
 
 class AppleDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
@@ -857,6 +858,11 @@ class PGIDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
             return ['-R' + os.path.join(build_dir, p) for p in rpath_paths]
         return []
 
+    @staticmethod
+    def check_output(out: str, err: str) -> bool:
+        """Check if the output is for this linker."""
+        return 'PGI Compilers' in out
+
 
 class PGIStaticLinker(StaticLinker):
     def __init__(self, exelist: T.List[str]):
@@ -1034,6 +1040,11 @@ class SolarisDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
                         is_shared_module: bool) -> T.List[str]:
         sostr = '' if soversion is None else '.' + soversion
         return self._apply_prefix('-soname,{}{}.{}{}'.format(prefix, shlib_name, suffix, sostr))
+
+    @staticmethod
+    def check_output(out: str, err: str) -> bool:
+        """Check if the output is for this linker."""
+        return 'Solaris' in out or 'Solaris' in err
 
 
 class OptlinkDynamicLinker(VisualStudioLikeLinkerMixin, DynamicLinker):

@@ -22,7 +22,7 @@ from .linkers import ArLinker, ArmarLinker, VisualStudioLinker, DLinker, CcrxLin
 from . import mesonlib
 from .mesonlib import (
     MesonException, EnvironmentException, MachineChoice, Popen_safe,
-    PerMachineDefaultable, PerThreeMachineDefaultable, split_args, quote_arg
+    PerMachineDefaultable, PerThreeMachineDefaultable, split_args, quote_arg, listify
 )
 from . import mlog
 
@@ -758,25 +758,39 @@ class Environment:
 
     def detect_dynamic_linker_for(self, compiler: 'CompilerType') -> 'DynamicLinkerType':
         if compiler.get_language() in {'c', 'cpp'}:
-            return self._detect_c_dynamic_linker(compiler)
+            return self.detect_clike_dynamic_linker(compiler)
 
         raise EnvironmentException('Unable to determine dynamic linker')
 
-    def _detect_c_dynamic_linker(self, compiler: 'CompilerType') -> 'DynamicLinkerType':
+    def detect_clike_dynamic_linker(self, compiler: 'CompilerType') -> 'DynamicLinkerType':
+        """Detect dynamic linker for C-like languages.
+
+        Including C, C++, Objc, and Objc++.
+        """
         popen_exceptions = {}  # type: T.Dict[str, Exception]
         popen_commands = []    # type: T.List[T.List[str]]
 
-        if compiler.get_id() in {'gcc', 'clang', 'intel'}:
-            potential_linkers = [GnuBFDDynamicLinker, GnuGoldDynamicLinker, LLVMDynamicLinker]
+        import pdb; pdb.set_trace()
 
-        override = self.binaries[for_machine].lookup_entry(comp_class.language + '_ld')  # type: T.Optional[T.List[str]]
+        if compiler.get_id() in {'gcc', 'clang', 'intel'}:
+            potential_linkers = [
+                GnuBFDDynamicLinker, GnuGoldDynamicLinker, LLVMDynamicLinker,
+                SolarisDynamicLinker, PGIDynamicLinker,
+            ] # type: T.List[T.Type[DynamicLinker]]
+
+        override = self.binaries[compiler.for_machine].lookup_entry(compiler.get_language() + '_ld')  # type: T.Optional[T.List[str]]
 
         for trial in potential_linkers:
             if compiler.INVOKES_LINKER:
                 command = compiler.get_exelist()
+                if isinstance(compiler.LINKER_PREFIX, str):
+                    check_args = command + [compiler.LINKER_PREFIX + a for a in trial.check_arguments()]
+                else:
+                    raise NotImplementedError('TODO')
+                always_args = []  # type: T.List[str]
                 if override:
-                    command.extend(compiler.user_linker_args(override[0]))
-                check_args = command + [compiler.LINKER_PREFIX + a for a in trial.check_arguments()]
+                    always_args = compiler.use_linker_args(override[0])
+                    check_args.extend(always_args)
             else:
                 raise NotImplementedError('TODO')
 
@@ -788,7 +802,8 @@ class Environment:
 
             if trial.check_output(out, err):
                 # XXX: linker_prefix for non-direct compilers?
-                return trial(command, compiler.for_machine, compiler.LINKER_PREFIX, version=search_version(out))
+                return trial(command, compiler.for_machine, compiler.LINKER_PREFIX,
+                             always_args, version=search_version(out))
 
         self._handle_exceptions(popen_exceptions, popen_commands, bintype='dynamic linkers')
 

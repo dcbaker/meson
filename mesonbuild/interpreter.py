@@ -48,6 +48,9 @@ import typing as T
 
 import importlib
 
+if T.TYPE_CHECKING:
+    from .linkers import DynamicLinkerType
+
 permitted_method_kwargs = {
     'partial_dependency': {'compile_args', 'link_args', 'links', 'includes',
                            'sources'},
@@ -3100,15 +3103,31 @@ external dependencies (including libraries) must go to "dependencies".''')
                     else:
                         raise
 
+            llist = self.coredata.toolchains[for_machine].linkers
+            if lang in llist:
+                linker = llist[lang]  # type: T.Optional[DynamicLinkerType]
+            else:
+                try:
+                    linker = self.environment.detect_dynamic_linker_for(comp)
+                except Exception:
+                    if not required:
+                        mlog.log('Dynamic Linker for language',
+                                 mlog.bold(lang), 'for the', machine_name,
+                                 'machine could not be determined.')
+                        success = False
+                        continue
+                    else:
+                        raise
+
             if for_machine == MachineChoice.HOST or self.environment.is_cross_build():
                 logger_fun = mlog.log
             else:
                 logger_fun = mlog.debug
             logger_fun(comp.get_display_language(), 'compiler for the', machine_name, 'machine:',
                        mlog.bold(' '.join(comp.get_exelist())), comp.get_version_string())
-            if comp.linker is not None:
+            if linker is not None:
                 logger_fun(comp.get_display_language(), 'linker for the', machine_name, 'machine:',
-                           mlog.bold(' '.join(comp.linker.get_exelist())), comp.linker.id, comp.linker.version)
+                           mlog.bold(' '.join(linker.get_exelist())), linker.id, linker.version)
             if comp.needs_static_linker() and not self.environment.coredata.toolchains[for_machine].static_linker:
                 self.environment.coredata.toolchains[for_machine].static_linker = self.environment.detect_static_linker(comp)
 
