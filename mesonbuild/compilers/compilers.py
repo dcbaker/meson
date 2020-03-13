@@ -732,10 +732,10 @@ class Compiler:
     LINKER_PREFIX = None  # type: T.Union[None, str, T.List[str]]
     INVOKES_LINKER = True
 
-    def __init__(self, exelist, version, for_machine: MachineChoice, info: 'MachineInfo',
+    def __init__(self, exelist: T.List[str], version, for_machine: MachineChoice, info: 'MachineInfo',
                  linker: T.Optional['DynamicLinker'] = None, **kwargs):
         if isinstance(exelist, str):
-            self.exelist = [exelist]
+            self.exelist = [exelist]  # type: T.List[str]
         elif isinstance(exelist, list):
             self.exelist = exelist
         else:
@@ -818,7 +818,7 @@ class Compiler:
     def symbols_have_underscore_prefix(self, env) -> bool:
         raise EnvironmentException('%s does not support symbols_have_underscore_prefix ' % self.get_id())
 
-    def get_exelist(self):
+    def get_exelist(self) -> T.List[str]:
         return self.exelist[:]
 
     def get_linker_exelist(self) -> T.List[str]:
