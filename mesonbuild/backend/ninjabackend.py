@@ -2390,6 +2390,8 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             # If gui_app is significant on this platform, add the appropriate linker arguments.
             # Unfortunately this can't be done in get_target_type_link_args, because some misguided
             # libraries (such as SDL2) add -mwindows to their link flags.
+            # XXX: this breaks our abstraction somewhat, GCC uses a compiler
+            # argument for this, but MSVC uses a linker argument
             commands += linker.get_gui_app_args(target.gui_app)
         return commands
 
@@ -2566,7 +2568,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
                         commands.extend_preserving_lflags(linker.get_dependency_link_args(dep))
 
         # Add link args specific to this BuildTarget type that must not be overridden by dependencies
-        commands += self.get_target_type_link_args_post_dependencies(target, linker)
+        commands += self.get_target_type_link_args_post_dependencies(target, compiler)
 
         # Add link args for c_* or cpp_* build options. Currently this only
         # adds c_winlibs and cpp_winlibs when building for Windows. This needs
