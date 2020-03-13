@@ -21,6 +21,7 @@ from . import mesonlib
 if T.TYPE_CHECKING:
     from .coredata import OptionDictType
     from .environment import Environment
+    from .envconfig import MachineInfo
 
     StaticLinkerType = T.TypeVar('StaticLinkerType', bound=StaticLinker)
     DynamicLinkerType = T.TypeVar('DynamicLinkerType', bound=DynamicLinker)
@@ -267,13 +268,17 @@ class DynamicLinker(metaclass=abc.ABCMeta):
 
     def __init__(self, exelist: T.List[str], for_machine: mesonlib.MachineChoice,
                  prefix_arg: T.Union[str, T.List[str]], always_args: T.List[str],
-                 language: str, *, version: str = 'unknown version'):
+                 language: str, info: 'MachineInfo', *,
+                 base_options: T.Optional[T.Set[str]] = None,
+                 version: str = 'unknown version'):
         self.exelist = exelist
         self.for_machine = for_machine
         self.version = version
         self.prefix_arg = prefix_arg
         self.always_args = always_args
         self.language = language
+        self.base_options = base_options or set()
+        self.info = info
 
     def __repr__(self) -> str:
         return '<{}: v{} `{}`>'.format(type(self).__name__, self.version, ' '.join(self.exelist))
@@ -428,6 +433,9 @@ class DynamicLinker(metaclass=abc.ABCMeta):
         """Check if the output is for this linker."""
         pass
 
+    def vs_module_defs_args(self, defsfile: str) -> T.List[str]:
+        return []
+
 
 class PosixDynamicLinkerMixin:
 
@@ -469,6 +477,13 @@ class GnuLikeDynamicLinkerMixin:
         'minsize': [],
         'custom': [],
     }  # type: T.Dict[str, T.List[str]]
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        if not (self.info.is_windows() or self.info.is_cygwin() or self.info.is_openbsd()):
+            self.base_options.add('b_lundef')
+        if not (self.info.is_windows() or self.info.is_cygwin()):
+            self.base_options.add('b_asneeded')
 
     def get_buildtype_args(self, buildtype: str) -> T.List[str]:
         # We can override these in children by just overriding the
@@ -600,6 +615,10 @@ class AppleDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
     """Apple's ld implementation."""
 
     id = 'ld64'
+
+    def __init__(self, *args, **kwargs) -> None:
+        base_options = {'b_bitcode', 'b_lundef', 'b_asneeded'}
+        super().__init__(*args, base_options=base_options, **kwargs)
 
     def get_asneeded_args(self) -> T.List[str]:
         return self._apply_prefix('-dead_strip_dylibs')
@@ -949,6 +968,11 @@ class VisualStudioLikeLinkerMixin:
     def import_library_args(self, implibname: str) -> T.List[str]:
         """The command to generate the import library."""
         return self._apply_prefix(['/IMPLIB:' + implibname])
+
+    def vs_module_defs_args(self, defsfile: str) -> T.List[str]:
+        # With MSVC, DLLs only export symbols that are explicitly exported,
+        # so if a module defs file is specified, we use that to export symbols
+        return ['/DEF:' + defsfile]
 
 
 class MSVCDynamicLinker(VisualStudioLikeLinkerMixin, DynamicLinker):

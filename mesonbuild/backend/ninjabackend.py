@@ -643,7 +643,9 @@ int dummy;
             for src in self.generate_unity_files(target, unity_src):
                 obj_list.append(self.generate_single_compile(target, src, True, unity_deps + header_deps))
         linker, stdlib_args = self.determine_linker_and_stdlib_args(target)
-        elem = self.generate_link(target, outname, obj_list, linker, pch_objects, stdlib_args=stdlib_args)
+        elem = self.generate_link(
+            target, outname, obj_list, target.compilers[linker.language],
+            linker, pch_objects, stdlib_args=stdlib_args)
         self.generate_shlib_aliases(target, self.get_target_dir(target))
         self.add_build(elem)
 
@@ -1957,11 +1959,13 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         else:
             return compiler.get_compile_debugfile_args(objfile, pch=False)
 
-    def get_link_debugfile_name(self, linker, target, outname):
-        return linker.get_link_debugfile_name(outname)
+    def get_link_debugfile_name(self, linker: 'DynamicLinkerType', target: build.BuildTarget,
+                                outname: str) -> T.List[str]:
+        return linker.get_debugfile_name(outname)
 
-    def get_link_debugfile_args(self, linker, target, outname):
-        return linker.get_link_debugfile_args(outname)
+    def get_link_debugfile_args(self, linker: 'DynamicLinkerType', target: build.BuildTarget,
+                                outname: str) -> T.List[str]:
+        return linker.get_debugfile_args(outname)
 
     def generate_llvm_ir_compile(self, target, src):
         compiler = get_compiler_for_source(target.compilers.values(), src)
@@ -2340,38 +2344,40 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
     def get_import_filename(self, target):
         return os.path.join(self.get_target_dir(target), target.import_filename)
 
-    def get_target_type_link_args(self, target, linker):
-        commands = []
+    def get_target_type_link_args(self, target: build.BuildTarget, compiler: 'CompilerType',
+                                  linker: 'DyanimcLinkerType') -> T.List[str]:
+        commands = []  # type: T.List[str]
         if isinstance(target, build.Executable):
             # Currently only used with the Swift compiler to add '-emit-executable'
-            commands += linker.get_std_exe_link_args()
+            commands += compiler.get_std_exe_link_args()
             # If export_dynamic, add the appropriate linker arguments
             if target.export_dynamic:
-                commands += linker.gen_export_dynamic_link_args(self.environment)
+                commands += linker.export_dynamic_link_args(self.environment)
             # If implib, and that's significant on this platform (i.e. Windows using either GCC or Visual Studio)
             if target.import_filename:
-                commands += linker.gen_import_library_args(self.get_import_filename(target))
+                commands += linker.import_library_args(self.get_import_filename(target))
             if target.pie:
-                commands += linker.get_pie_link_args()
+                commands += linker.get_pie_args()
         elif isinstance(target, build.SharedLibrary):
             if isinstance(target, build.SharedModule):
                 options = self.environment.coredata.base_options
-                commands += linker.get_std_shared_module_link_args(options)
+                commands += compiler.get_std_shared_module_link_args(options)
             else:
-                commands += linker.get_std_shared_lib_link_args()
+                commands += compiler.get_std_shared_lib_link_args()
             # All shared libraries are PIC
-            commands += linker.get_pic_args()
+            commands += ompiler.get_pic_args()
             # Add -Wl,-soname arguments on Linux, -install_name on OS X
             commands += linker.get_soname_args(
                 self.environment, target.prefix, target.name, target.suffix,
                 target.soversion, target.darwin_versions,
                 isinstance(target, build.SharedModule))
             # This is only visited when building for Windows using either GCC or Visual Studio
-            if target.vs_module_defs and hasattr(linker, 'gen_vs_module_defs_args'):
-                commands += linker.gen_vs_module_defs_args(target.vs_module_defs.rel_to_builddir(self.build_to_src))
+            # XXX: this is a linker command, not a compiler command
+            if target.vs_module_defs:
+                commands += linker.vs_module_defs_args(target.vs_module_defs.rel_to_builddir(self.build_to_src))
             # This is only visited when building for Windows using either GCC or Visual Studio
             if target.import_filename:
-                commands += linker.gen_import_library_args(self.get_import_filename(target))
+                commands += linker.import_library_args(self.get_import_filename(target))
         elif isinstance(target, build.StaticLibrary):
             commands += linker.get_std_link_args()
         else:
@@ -2467,7 +2473,9 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
 
         return guessed_dependencies + absolute_libs
 
-    def generate_link(self, target: build.BuildTarget, outname: str, obj_list, linker: 'DynamicLinkerType', extra_args=None, stdlib_args=None):
+    def generate_link(self, target: build.BuildTarget, outname: str, obj_list,
+                      compiler: 'CompilerType', linker: 'DynamicLinkerType',
+                      extra_args=None, stdlib_args=None) -> None:
         extra_args = extra_args if extra_args is not None else []
         stdlib_args = stdlib_args if stdlib_args is not None else []
         implicit_outs = []
@@ -2495,14 +2503,14 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             commands += linker.get_base_link_args(self.get_base_options_for_target(target))
         else:
             commands += compilers.get_base_link_args(self.get_base_options_for_target(target),
-                                                     linker,
+                                                     compiler, linker,
                                                      isinstance(target, build.SharedModule))
         # Add -nostdlib if needed; can't be overridden
         commands += self.get_cross_stdlib_link_args(target, linker)
         # Add things like /NOLOGO; usually can't be overridden
-        commands += linker.get_linker_always_args()
+        commands += linker.get_always_args()
         # Add buildtype linker args: optimization level, etc.
-        commands += linker.get_buildtype_linker_args(self.get_option_for_target('buildtype', target))
+        commands += linker.get_buildtype_args(self.get_option_for_target('buildtype', target))
         # Add /DEBUG and the pdb filename when using MSVC
         if self.get_option_for_target('debug', target):
             commands += self.get_link_debugfile_args(linker, target, outname)
@@ -2511,7 +2519,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
                 implicit_outs += [debugfile]
         # Add link args specific to this BuildTarget type, such as soname args,
         # PIC, import library generation, etc.
-        commands += self.get_target_type_link_args(target, linker)
+        commands += self.get_target_type_link_args(target, compiler, linker)
         # Archives that are copied wholesale in the result. Must be before any
         # other link targets so missing symbols from whole archives are found in those.
         if not isinstance(target, build.StaticLibrary):
@@ -2525,7 +2533,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             commands += self.build.get_global_link_args(linker, target.for_machine)
             # Link args added from the env: LDFLAGS. We want these to override
             # all the defaults but not the per-target link args.
-            commands += self.environment.coredata.get_external_link_args(target.for_machine, linker.get_language())
+            commands += self.environment.coredata.get_external_link_args(target.for_machine, linker.language)
 
         # Now we will add libraries and library paths from various sources
 
@@ -2545,7 +2553,8 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             # For 'automagic' deps: Boost and GTest. Also dependency('threads').
             # pkg-config puts the thread flags itself via `Cflags:`
 
-            commands += linker.get_target_link_args(target)
+            # This is used for exactly one case, cuda
+            commands += compiler.get_target_link_args(target)
             # External deps must be last because target link libraries may depend on them.
             for dep in target.get_external_deps():
                 # Extend without reordering or de-dup to preserve `-L -l` sets

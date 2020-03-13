@@ -198,9 +198,10 @@ class Build:
             return []
         return args.get(compiler.get_language(), [])
 
-    def get_global_link_args(self, compiler, for_machine):
+    def get_global_link_args(self, linker: 'DynamimcLinkerType',
+                             for_machine: 'MachineChoice') -> T.List[str]:
         d = self.global_link_args[for_machine]
-        return d.get(compiler.get_language(), [])
+        return d.get(linker.language, [])
 
     def get_project_link_args(self, compiler, project, for_machine):
         d = self.projects_link_args[for_machine]

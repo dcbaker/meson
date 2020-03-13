@@ -38,10 +38,6 @@ class ClangCompiler(GnuLikeCompiler):
         super().__init__()
         self.id = 'clang'
         self.base_options.append('b_colorout')
-        # TODO: this really should be part of the linker base_options, but
-        # linkers don't have base_options.
-        if isinstance(self.linker, AppleDynamicLinker):
-            self.base_options.append('b_bitcode')
         # All Clang backends can also do LLVM IR
         self.can_compile_suffixes.add('ll')
 

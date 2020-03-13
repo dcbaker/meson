@@ -331,28 +331,30 @@ def get_base_compile_args(options, compiler):
         pass
     return args
 
-def get_base_link_args(options, linker, is_shared_module):
-    args = []
+def get_base_link_args(options: 'OptionDictType', compiler: 'CompilerType',
+                       linker: 'DynamicLinkerType', is_shared_module: bool) -> T.List[str]:
+    args = []  # type: T.List[str]
     try:
         if options['b_lto'].value:
-            args.extend(linker.get_lto_link_args())
+            args.extend(linker.get_lto_args())
     except KeyError:
         pass
     try:
-        args += linker.sanitizer_link_args(options['b_sanitize'].value)
+        args += linker.sanitizer_args(options['b_sanitize'].value)
     except KeyError:
         pass
     try:
+        # These args are passed at link time, but they're actually compiler args.
         pgo_val = options['b_pgo'].value
         if pgo_val == 'generate':
-            args.extend(linker.get_profile_generate_args())
+            args.extend(compiler.get_profile_generate_args())
         elif pgo_val == 'use':
-            args.extend(linker.get_profile_use_args())
+            args.extend(compiler.get_profile_use_args())
     except KeyError:
         pass
     try:
         if options['b_coverage'].value:
-            args += linker.get_coverage_link_args()
+            args += linker.get_coverage_args()
     except KeyError:
         pass
 
@@ -367,19 +369,21 @@ def get_base_link_args(options, linker, is_shared_module):
         args.extend(linker.get_asneeded_args())
 
     # Apple's ld (the only one that supports bitcode) does not like any
-    # -undefined arguments at all, so don't pass these when using bitcode
+    # -undefined arguments at all when using bitcode
     if not bitcode:
         if (not is_shared_module and
                 option_enabled(linker.base_options, options, 'b_lundef')):
-            args.extend(linker.no_undefined_link_args())
+            args.extend(linker.no_undefined_args())
         else:
-            args.extend(linker.get_allow_undefined_link_args())
+            args.extend(linker.get_allow_undefined_args())
 
+    # TODO: this probably should migrate to the linker, also, it feels like
+    # there may be more than one way to do this...
     try:
         crt_val = options['b_vscrt'].value
         buildtype = options['buildtype'].value
         try:
-            args += linker.get_crt_link_args(crt_val, buildtype)
+            args += compiler.get_crt_link_args(crt_val, buildtype)
         except AttributeError:
             pass
     except KeyError:

@@ -807,7 +807,8 @@ class Environment:
             if trial.check_output(out, err):
                 # XXX: linker_prefix for non-direct compilers?
                 return trial(command, compiler.for_machine, compiler.LINKER_PREFIX,
-                             always_args, compiler.get_language(), version=search_version(out))
+                             always_args, compiler.get_language(), compiler.info,
+                             version=search_version(out))
 
         self._handle_exceptions(popen_exceptions, popen_commands, bintype='dynamic linkers')
 

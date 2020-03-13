@@ -142,10 +142,6 @@ class GnuLikeCompiler(metaclass=abc.ABCMeta):
     def __init__(self):
         self.base_options = ['b_pch', 'b_lto', 'b_pgo', 'b_sanitize', 'b_coverage',
                              'b_ndebug', 'b_staticpic', 'b_pie']
-        if not (self.info.is_windows() or self.info.is_cygwin() or self.info.is_openbsd()):
-            self.base_options.append('b_lundef')
-        if not self.info.is_windows() or self.info.is_cygwin():
-            self.base_options.append('b_asneeded')
         # All GCC-like backends can do assembly
         self.can_compile_suffixes.add('s')
 
@@ -186,16 +182,6 @@ class GnuLikeCompiler(metaclass=abc.ABCMeta):
 
     def gnu_symbol_visibility_args(self, vistype: str) -> T.List[str]:
         return gnu_symbol_visibility_args[vistype]
-
-    def gen_vs_module_defs_args(self, defsfile: str) -> T.List[str]:
-        if not isinstance(defsfile, str):
-            raise RuntimeError('Module definitions file should be str')
-        # On Windows targets, .def files may be specified on the linker command
-        # line like an object file.
-        if self.info.is_windows() or self.info.is_cygwin():
-            return [defsfile]
-        # For other targets, discard the .def file.
-        return []
 
     def get_argument_syntax(self) -> str:
         return 'gcc'
