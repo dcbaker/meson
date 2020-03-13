@@ -1061,7 +1061,8 @@ This will become a hard error in the future.''')
 
         cflags.extend(state.environment.coredata.get_external_args(MachineChoice.HOST, 'c'))
         ldflags.extend(state.environment.coredata.get_external_link_args(MachineChoice.HOST, 'c'))
-        compiler = state.environment.coredata.toolchains[MachineChoice.HOST].compilers['c']
+        compiler = state.environment.coredata.toolchains.host.compilers['c']
+        linker = state.environment.coredata.toolchains.host.linkers['c']
 
         compiler_flags = self._get_langs_compilers_flags(state, [('c', compiler)])
         cflags.extend(compiler_flags[0])
@@ -1069,7 +1070,7 @@ This will become a hard error in the future.''')
         ldflags.extend(compiler_flags[2])
         if compiler:
             args += ['--cc=%s' % join_args(compiler.get_exelist())]
-            args += ['--ld=%s' % join_args(compiler.get_linker_exelist())]
+            args += ['--ld=%s' % join_args(linker.exelist)]
         if cflags:
             args += ['--cflags=%s' % join_args(cflags)]
         if ldflags:

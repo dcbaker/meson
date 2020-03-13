@@ -2958,6 +2958,7 @@ int main(int argc, char **argv) {
             os.unlink(stlibfile)
 
     def build_shared_lib(self, compiler, source, objectfile, outfile, impfile, extra_args=None):
+        # XXX: broken
         if extra_args is None:
             extra_args = []
         if compiler.get_argument_syntax() == 'msvc':
@@ -5006,8 +5007,9 @@ class WindowsTests(BasePlatformTests):
         # Test that binaries have a non-zero checksum
         env = get_fake_env()
         cc = env.detect_c_compiler(MachineChoice.HOST)
+        cc_ld = env.detect_dynamic_linker_for(cc)
         cc_id = cc.get_id()
-        ld_id = cc.get_linker_id()
+        ld_id = cc.id
         dll = glob(os.path.join(self.builddir, '*mycpplib.dll'))[0]
         exe = os.path.join(self.builddir, 'cppprog.exe')
         for f in (dll, exe):

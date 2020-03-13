@@ -1567,23 +1567,23 @@ int dummy;
     def generate_dynamic_link_rules(self):
         num_pools = self.environment.coredata.backend_options['backend_max_links'].value
         for for_machine in MachineChoice:
-            complist = self.environment.coredata.toolchains[for_machine].compilers
-            for langname, compiler in complist.items():
+            linkers = self.environment.coredata.toolchains[for_machine].linkers
+            for langname, linker in linkers.items():
                 if langname == 'java' \
                         or langname == 'vala' \
                         or langname == 'rust' \
                         or langname == 'cs':
                     continue
                 rule = '%s_LINKER%s' % (langname, self.get_rule_suffix(for_machine))
-                command = compiler.get_linker_exelist()
-                args = ['$ARGS'] + compiler.get_linker_output_args('$out') + ['$in', '$LINK_ARGS']
+                command = linker.exelist
+                args = ['$ARGS'] + linker.get_output_args('$out') + ['$in', '$LINK_ARGS']
                 description = 'Linking target $out'
                 if num_pools > 0:
                     pool = 'pool = link_pool'
                 else:
                     pool = None
                 self.add_rule(NinjaRule(rule, command, args, description,
-                                        rspable=compiler.can_linker_accept_rsp(),
+                                        rspable=linker.can_accept_rsp(),
                                         extra=pool))
 
         args = [ninja_quote(quote_func(x)) for x in self.environment.get_build_command()] + \

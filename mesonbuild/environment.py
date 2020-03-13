@@ -1684,7 +1684,7 @@ class Environment:
             self.coredata.process_new_compiler(lang, comp, self)
         return comp
 
-    def detect_static_linker(self, compiler):
+    def detect_static_linker(self, compiler: 'CompilerType', linker: T.Optional['DynamicLinkerType']) -> 'StaticLInkerType':
         linker = self.binaries[compiler.for_machine].lookup_entry('ar')
         if linker is not None:
             linkers = [linker]
@@ -1706,7 +1706,7 @@ class Environment:
             elif isinstance(compiler, compilers.DCompiler):
                 # Prefer static linkers over linkers used by D compilers
                 if mesonlib.is_windows():
-                    linkers = [self.vs_static_linker, self.clang_cl_static_linker, compiler.get_linker_exelist()]
+                    linkers = [self.vs_static_linker, self.clang_cl_static_linker, linker.exelist]
                 else:
                     linkers = defaults
             elif isinstance(compiler, IntelClCCompiler):

@@ -59,9 +59,6 @@ class BasicLinkerIsCompilerMixin:
     def can_linker_accept_rsp(self) -> bool:
         return mesonlib.is_windows()
 
-    def get_linker_exelist(self) -> T.List[str]:
-        return self.exelist.copy()
-
     def get_linker_output_args(self, output: str) -> T.List[str]:
         return []
 
@@ -120,9 +117,6 @@ class BasicLinkerIsCompilerMixin:
     def build_rpath_args(self, env: 'Environment', build_dir: str, from_dir: str,
                          rpath_paths: str, build_rpath: str,
                          install_rpath: str) -> T.List[str]:
-        return []
-
-    def get_linker_debug_crt_args(self) -> T.List[str]:
         return []
 
     def get_asneeded_args(self) -> T.List[str]:

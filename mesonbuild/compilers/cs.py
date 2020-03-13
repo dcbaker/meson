@@ -68,9 +68,6 @@ class CsCompiler(BasicLinkerIsCompilerMixin, Compiler):
     def get_dependency_gen_args(self, outtarget, outfile):
         return []
 
-    def get_linker_exelist(self):
-        return self.exelist[:]
-
     def get_compile_only_args(self):
         return []
 

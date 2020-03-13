@@ -49,6 +49,7 @@ import typing as T
 import importlib
 
 if T.TYPE_CHECKING:
+    from .compilers.compilers import CompilerType
     from .linkers import DynamicLinkerType
 
 permitted_method_kwargs = {
@@ -1034,9 +1035,11 @@ find_library_permitted_kwargs = set([
 find_library_permitted_kwargs |= set(['header_' + k for k in header_permitted_kwargs])
 
 class CompilerHolder(InterpreterObject):
-    def __init__(self, compiler, env, subproject):
+    def __init__(self, compiler: 'CompilerType', linker: 'DynamicLinkertype',
+                 env: environment.Environment, subproject: str):
         InterpreterObject.__init__(self)
         self.compiler = compiler
+        self.linker = linker
         self.environment = env
         self.subproject = subproject
         self.methods.update({'compiles': self.compiles_method,
@@ -1201,7 +1204,7 @@ class CompilerHolder(InterpreterObject):
     @permittedKwargs({})
     @FeatureNew('compiler.get_linker_id', '0.53.0')
     def get_linker_id_method(self, args, kwargs):
-        return self.compiler.get_linker_id()
+        return self.linker.id
 
     @noPosargs
     @permittedKwargs({})
@@ -1972,8 +1975,10 @@ class MesonMain(InterpreterObject):
         cname = args[0]
         for_machine = Interpreter.machine_from_native_kwarg(kwargs)
         clist = self.interpreter.coredata.toolchains[for_machine].compilers
+        llist = self.interpreter.coredata.toolchains[for_machine].linkers
         if cname in clist:
-            return CompilerHolder(clist[cname], self.build.environment, self.interpreter.subproject)
+            assert cname in llist
+            return CompilerHolder(clist[cname], llist[cname], self.build.environment, self.interpreter.subproject)
         raise InterpreterException('Tried to access compiler for unspecified language "%s".' % cname)
 
     @noPosargs
@@ -3129,7 +3134,7 @@ external dependencies (including libraries) must go to "dependencies".''')
                 logger_fun(comp.get_display_language(), 'linker for the', machine_name, 'machine:',
                            mlog.bold(' '.join(linker.get_exelist())), linker.id, linker.version)
             if comp.needs_static_linker() and not self.environment.coredata.toolchains[for_machine].static_linker:
-                self.environment.coredata.toolchains[for_machine].static_linker = self.environment.detect_static_linker(comp)
+                self.environment.coredata.toolchains[for_machine].static_linker = self.environment.detect_static_linker(comp, linker)
 
         langs = self.coredata.toolchains[for_machine].compilers.keys()
         if 'vala' in langs:

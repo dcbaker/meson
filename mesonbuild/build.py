@@ -1231,6 +1231,7 @@ You probably should put it in link_with instead.''')
         that can link compiled C. We don't actually need to add an exception
         for Vala here because of that.
         '''
+        # XXX: this is also completly broken
         # Populate list of all compilers, not just those being used to compile
         # sources in this target
         all_compilers = self.environment.coredata.toolchains[self.for_machine].compilers
@@ -1281,6 +1282,7 @@ You probably should put it in link_with instead.''')
         2. If the target contains only objects, process_compilers guesses and
            picks the first compiler that smells right.
         '''
+        # XXX: this is completely busted
         compiler, _ = self.get_clink_dynamic_linker_and_stdlibs()
         # Mixing many languages with MSVC is not supported yet so ignore stdlibs.
         if compiler and compiler.get_linker_id() in {'link', 'lld-link', 'xilink', 'optlink'}:

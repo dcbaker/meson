@@ -18,7 +18,6 @@ import itertools
 import typing as T
 from functools import lru_cache
 
-from ..linkers import StaticLinker, GnuLikeDynamicLinkerMixin, SolarisDynamicLinker
 from .. import coredata
 from .. import mlog
 from .. import mesonlib
@@ -34,7 +33,7 @@ if T.TYPE_CHECKING:
     from ..coredata import OptionDictType
     from ..envconfig import MachineInfo
     from ..environment import Environment
-    from ..linkers import DynamicLinker  # noqa: F401
+    from ..linkers import DynamicLinkerType, StaticLinkerType  # noqa: F401
 
     CompilerType = T.TypeVar('CompilerType', bound=Compiler)
 
@@ -453,9 +452,9 @@ class CompilerArgs(collections.abc.MutableSequence):
     # *always* de-dup these because they're special arguments to the linker
     always_dedup_args = tuple('-l' + lib for lib in unixy_compiler_internal_libs)
 
-    def __init__(self, compiler: T.Union['Compiler', StaticLinker],
+    def __init__(self, executable: T.Union['CompilerType', 'StaticLinker', 'DynamicLinkerType'],
                  iterable: T.Optional[T.Iterable[str]] = None):
-        self.compiler = compiler
+        self.executable = executable
         self.__container = list(iterable) if iterable is not None else []  # type: T.List[str]
         self.__seen_args = set()
         for arg in self.__container:
@@ -499,7 +498,7 @@ class CompilerArgs(collections.abc.MutableSequence):
         self.__seen_args.add(value)
 
     def copy(self) -> 'CompilerArgs':
-        return CompilerArgs(self.compiler, self.__container.copy())
+        return CompilerArgs(self.executable, self.__container.copy())
 
     @classmethod
     @lru_cache(maxsize=None)
@@ -575,9 +574,7 @@ class CompilerArgs(collections.abc.MutableSequence):
         # This covers all ld.bfd, ld.gold, ld.gold, and xild on Linux, which
         # all act like (or are) gnu ld
         # TODO: this could probably be added to the DynamicLinker instead
-        if (isinstance(self.compiler, Compiler) and
-                self.compiler.linker is not None and
-                isinstance(self.compiler.linker, (GnuLikeDynamicLinkerMixin, SolarisDynamicLinker))):
+        if self.executable.id.startswith('ld.'):
             group_start = -1
             group_end = -1
             is_soname = False
@@ -732,8 +729,7 @@ class Compiler:
     LINKER_PREFIX = None  # type: T.Union[None, str, T.List[str]]
     INVOKES_LINKER = True
 
-    def __init__(self, exelist: T.List[str], version, for_machine: MachineChoice, info: 'MachineInfo',
-                 linker: T.Optional['DynamicLinker'] = None, **kwargs):
+    def __init__(self, exelist: T.List[str], version, for_machine: MachineChoice, info: 'MachineInfo', **kwargs):
         if isinstance(exelist, str):
             self.exelist = [exelist]  # type: T.List[str]
         elif isinstance(exelist, list):
@@ -753,7 +749,6 @@ class Compiler:
             self.full_version = None
         self.for_machine = for_machine
         self.base_options = []
-        self.linker = linker
         self.info = info
 
     def __repr__(self):
@@ -772,15 +767,6 @@ class Compiler:
 
     def get_id(self) -> str:
         return self.id
-
-    def get_linker_id(self) -> str:
-        # There is not guarantee that we have a dynamic linker instance, as
-        # some languages don't have separate linkers and compilers. In those
-        # cases return the compiler id
-        try:
-            return self.linker.id
-        except AttributeError:
-            return self.id
 
     def get_version_string(self) -> str:
         details = [self.id, self.version]
@@ -820,9 +806,6 @@ class Compiler:
 
     def get_exelist(self) -> T.List[str]:
         return self.exelist[:]
-
-    def get_linker_exelist(self) -> T.List[str]:
-        return self.linker.get_exelist()
 
     def get_linker_output_args(self, outputname: str) -> T.List[str]:
         return self.linker.get_output_args(outputname)
@@ -1155,9 +1138,6 @@ class Compiler:
 
     def bitcode_args(self) -> T.List[str]:
         return self.linker.bitcode_args()
-
-    def get_linker_debug_crt_args(self) -> T.List[str]:
-        return self.linker.get_debug_crt_args()
 
     def get_buildtype_linker_args(self, buildtype: str) -> T.List[str]:
         return self.linker.get_buildtype_args(buildtype)
