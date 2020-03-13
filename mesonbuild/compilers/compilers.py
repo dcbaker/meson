@@ -600,8 +600,8 @@ class CompilerArgs(collections.abc.MutableSequence):
                 new.insert(group_end + 1, '-Wl,--end-group')
                 new.insert(group_start, '-Wl,--start-group')
         # Remove system/default include paths added with -isystem
-        if hasattr(self.compiler, 'get_default_include_dirs'):
-            default_dirs = self.compiler.get_default_include_dirs()
+        if hasattr(self.executable, 'get_default_include_dirs'):
+            default_dirs = self.executable.get_default_include_dirs()
             bad_idx_list = []  # type: T.List[int]
             for i, each in enumerate(new):
                 # Remove the -isystem and the path if the path is a default path
@@ -615,7 +615,7 @@ class CompilerArgs(collections.abc.MutableSequence):
                     bad_idx_list += [i]
             for i in reversed(bad_idx_list):
                 new.pop(i)
-        return self.compiler.unix_args_to_native(new.__container)
+        return self.executable.unix_args_to_native(new.__container)
 
     def append_direct(self, arg: str) -> None:
         '''
@@ -818,12 +818,6 @@ class Compiler:
 
     def get_always_args(self):
         return []
-
-    def can_linker_accept_rsp(self) -> bool:
-        """
-        Determines whether the linker can accept arguments using the @rsp syntax.
-        """
-        return self.linker.get_accepts_rsp()
 
     def get_linker_always_args(self):
         return self.linker.get_always_args()
@@ -1129,9 +1123,6 @@ class Compiler:
 
     def sanitizer_compile_args(self, value: str) -> T.List[str]:
         return []
-
-    def sanitizer_link_args(self, value: str) -> T.List[str]:
-        return self.linker.sanitizer_args(value)
 
     def get_asneeded_args(self) -> T.List[str]:
         return self.linker.get_asneeded_args()

@@ -757,8 +757,14 @@ class Environment:
         raise EnvironmentException(errmsg)
 
     def detect_dynamic_linker_for(self, compiler: 'CompilerType') -> 'DynamicLinkerType':
+        linker = None # type: T.Optional[DynamicLinkerType]
+
         if compiler.get_language() in {'c', 'cpp'}:
-            return self.detect_clike_dynamic_linker(compiler)
+            linker = self.detect_clike_dynamic_linker(compiler)
+
+        if linker is not None:
+            self.coredata.toolchains[compiler.for_machine].linkers[compiler.get_language()] = linker
+            return linker
 
         raise EnvironmentException('Unable to determine dynamic linker')
 
@@ -769,8 +775,6 @@ class Environment:
         """
         popen_exceptions = {}  # type: T.Dict[str, Exception]
         popen_commands = []    # type: T.List[T.List[str]]
-
-        import pdb; pdb.set_trace()
 
         if compiler.get_id() in {'gcc', 'clang', 'intel'}:
             potential_linkers = [
@@ -803,7 +807,7 @@ class Environment:
             if trial.check_output(out, err):
                 # XXX: linker_prefix for non-direct compilers?
                 return trial(command, compiler.for_machine, compiler.LINKER_PREFIX,
-                             always_args, version=search_version(out))
+                             always_args, compiler.get_language(), version=search_version(out))
 
         self._handle_exceptions(popen_exceptions, popen_commands, bintype='dynamic linkers')
 
@@ -1016,12 +1020,10 @@ class Environment:
                     version = self.get_gnu_version_from_defines(defines)
                     cls = GnuCCompiler if lang == 'c' else GnuCPPCompiler
 
-                linker = self._guess_nix_linker(compiler, cls, for_machine)
-
+                self.coredata.add_lang_args(cls.language, cls, for_machine, self)
                 return cls(
                     ccache + compiler, version, for_machine, is_cross,
-                    info, exe_wrap, defines, full_version=full_version,
-                    linker=linker)
+                    info, exe_wrap, defines, full_version=full_version)
 
             if 'Emscripten' in out:
                 cls = EmscriptenCCompiler if lang == 'c' else EmscriptenCPPCompiler

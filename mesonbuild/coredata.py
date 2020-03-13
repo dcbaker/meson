@@ -359,6 +359,10 @@ class ToolChain:
         self.linkers = linkers or {}      # type: T.Dict[str, DynamicLinkerType]
         self.static_linker = static              # type: T.Optional[StaticLinkerType]
 
+    def __iter__(self) -> T.Generator[T.Iterator[T.Tuple[str, 'CompilerType', 'DynamicLinkerType']], None, None]:
+        for lang, compiler in self.compilers.items():  # we should have a compiler and a linker for ever language
+            yield lang, compiler, self.linkers[lang]
+
 
 class CoreData:
 

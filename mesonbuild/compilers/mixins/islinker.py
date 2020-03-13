@@ -56,12 +56,6 @@ class BasicLinkerIsCompilerMixin:
     def get_lto_link_args(self) -> T.List[str]:
         return []
 
-    def can_linker_accept_rsp(self) -> bool:
-        return mesonlib.is_windows()
-
-    def get_linker_output_args(self, output: str) -> T.List[str]:
-        return []
-
     def get_linker_always_args(self) -> T.List[str]:
         return []
 

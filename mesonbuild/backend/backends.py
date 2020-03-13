@@ -391,7 +391,7 @@ class Backend:
             self.write_benchmark_file(datafile)
         return test_data, benchmark_data
 
-    def determine_linker_and_stdlib_args(self, target):
+    def determine_linker_and_stdlib_args(self, target: build.BuildTarget) -> T.Tuple['DynamicLinkerType', T.List[str]]:
         '''
         If we're building a static library, there is only one static linker.
         Otherwise, we query the target for the dynamic linker.

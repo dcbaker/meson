@@ -3090,6 +3090,7 @@ external dependencies (including libraries) must go to "dependencies".''')
             lang = lang.lower()
             clist = self.coredata.toolchains[for_machine].compilers
             machine_name = for_machine.get_lower_case_name()
+            need_sanity_check = False
             if lang in clist:
                 comp = clist[lang]
             else:
@@ -3097,7 +3098,6 @@ external dependencies (including libraries) must go to "dependencies".''')
                     comp = self.environment.detect_compiler_for(lang, for_machine)
                     if comp is None:
                         raise InvalidArguments('Tried to use unknown language "%s".' % lang)
-                    comp.sanity_check(self.environment.get_scratch_dir(), self.environment)
                 except Exception:
                     if not required:
                         mlog.log('Compiler for language',
@@ -3123,6 +3123,10 @@ external dependencies (including libraries) must go to "dependencies".''')
                         continue
                     else:
                         raise
+
+            # We need both the compiler and the linker to make this work.
+            if need_sanity_check:
+                comp.sanity_check(self.environment.get_scratch_dir(), self.environment)
 
             if for_machine == MachineChoice.HOST or self.environment.is_cross_build():
                 logger_fun = mlog.log

@@ -31,7 +31,7 @@ class StaticLinker:
     def __init__(self, exelist: T.List[str]):
         self.exelist = exelist
 
-    def can_linker_accept_rsp(self) -> bool:
+    def accepts_rsp(self) -> bool:
         """
         Determines whether the linker can accept arguments using the @rsp syntax.
         """
@@ -166,7 +166,7 @@ class ArmarLinker(ArLinker):  # lgtm [py/missing-call-to-init]
         self.id = 'armar'
         self.std_args = ['-csr']
 
-    def can_linker_accept_rsp(self) -> bool:
+    def accepts_rsp(self) -> bool:
         # armar can't accept arguments using the @rsp syntax
         return False
 
@@ -199,7 +199,7 @@ class CcrxLinker(StaticLinker):
         super().__init__(exelist)
         self.id = 'rlink'
 
-    def can_linker_accept_rsp(self) -> bool:
+    def accepts_rsp(self) -> bool:
         return False
 
     def get_output_args(self, target: str) -> T.List[str]:
@@ -267,12 +267,13 @@ class DynamicLinker(metaclass=abc.ABCMeta):
 
     def __init__(self, exelist: T.List[str], for_machine: mesonlib.MachineChoice,
                  prefix_arg: T.Union[str, T.List[str]], always_args: T.List[str],
-                 *, version: str = 'unknown version'):
+                 language: str, *, version: str = 'unknown version'):
         self.exelist = exelist
         self.for_machine = for_machine
         self.version = version
         self.prefix_arg = prefix_arg
         self.always_args = always_args
+        self.language = language
 
     def __repr__(self) -> str:
         return '<{}: v{} `{}`>'.format(type(self).__name__, self.version, ' '.join(self.exelist))
@@ -286,7 +287,7 @@ class DynamicLinker(metaclass=abc.ABCMeta):
     def get_exelist(self) -> T.List[str]:
         return self.exelist.copy()
 
-    def get_accepts_rsp(self) -> bool:
+    def accepts_rsp(self) -> bool:
         # rsp files are only used when building on Windows because we want to
         # avoid issues with quoting and max argument length
         return mesonlib.is_windows()
@@ -767,10 +768,10 @@ class CcrxDynamicLinker(DynamicLinker):
     id = 'rlink'
 
     def __init__(self, for_machine: mesonlib.MachineChoice,
-                 *, version: str = 'unknown version'):
-        super().__init__(['rlink.exe'], for_machine, '', [], version=version)
+                 language: str, *, version: str = 'unknown version'):
+        super().__init__(['rlink.exe'], for_machine, '', [], language, version=version)
 
-    def get_accepts_rsp(self) -> bool:
+    def accepts_rsp(self) -> bool:
         return False
 
     def get_lib_prefix(self) -> str:
@@ -801,10 +802,10 @@ class ArmDynamicLinker(PosixDynamicLinkerMixin, DynamicLinker):
     id = 'armlink'
 
     def __init__(self, for_machine: mesonlib.MachineChoice,
-                 *, version: str = 'unknown version'):
-        super().__init__(['armlink'], for_machine, '', [], version=version)
+                 language: str, *, version: str = 'unknown version'):
+        super().__init__(['armlink'], for_machine, '', [], language, version=version)
 
-    def get_accepts_rsp(self) -> bool:
+    def accepts_rsp(self) -> bool:
         return False
 
     def get_std_shared_lib_args(self) -> 'T.NoReturn':
@@ -1090,7 +1091,7 @@ class CudaLinker(PosixDynamicLinkerMixin, DynamicLinker):
         # we need the most verbose version output. Luckily starting with V
         return out.strip().split('V')[-1]
 
-    def get_accepts_rsp(self) -> bool:
+    def accepts_rsp(self) -> bool:
         # nvcc does not support response files
         return False
 

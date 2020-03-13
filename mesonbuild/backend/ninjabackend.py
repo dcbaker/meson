@@ -40,6 +40,10 @@ from .backends import CleanTrees
 from ..build import InvalidArguments
 from ..interpreter import Interpreter
 
+if T.TYPE_CHECKING:
+    from ..compilers.compilers import CompilerType
+    from ..linkers import DynamicLinkerType, StaticLinkerType
+
 FORTRAN_INCLUDE_PAT = r"^\s*#?include\s*['\"](\w+\.\w+)['\"]"
 FORTRAN_MODULE_PAT = r"^\s*\bmodule\b\s+(\w+)\s*(?:!+.*)*$"
 FORTRAN_SUBMOD_PAT = r"^\s*\bsubmodule\b\s*\((\w+:?\w+)\)\s*(\w+)"
@@ -1561,7 +1565,7 @@ int dummy;
             else:
                 pool = None
             self.add_rule(NinjaRule(rule, cmdlist, args, description,
-                                    rspable=static_linker.can_linker_accept_rsp(),
+                                    rspable=static_linker.accepts_rsp(),
                                     extra=pool))
 
     def generate_dynamic_link_rules(self):
@@ -1583,7 +1587,7 @@ int dummy;
                 else:
                     pool = None
                 self.add_rule(NinjaRule(rule, command, args, description,
-                                        rspable=linker.can_accept_rsp(),
+                                        rspable=linker.accepts_rsp(),
                                         extra=pool))
 
         args = [ninja_quote(quote_func(x)) for x in self.environment.get_build_command()] + \
@@ -1655,7 +1659,7 @@ https://groups.google.com/forum/#!topic/ninja-build/j-2RfBIOd_8
 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         self.add_rule(NinjaRule(rule, cmd, [], 'Dep hack', extra='restat = 1'))
 
-    def generate_llvm_ir_compile_rule(self, compiler):
+    def generate_llvm_ir_compile_rule(self, compiler: 'CompilerType', linker: 'DynamicLinkerType') -> None:
         if self.created_llvm_ir_rule[compiler.for_machine]:
             return
         rule = self.get_compiler_rule_name('llvm_ir', compiler.for_machine)
@@ -1663,10 +1667,10 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         args = ['$ARGS'] + compiler.get_output_args('$out') + compiler.get_compile_only_args() + ['$in']
         description = 'Compiling LLVM IR object $in'
         self.add_rule(NinjaRule(rule, command, args, description,
-                                rspable=compiler.can_linker_accept_rsp()))
+                                rspable=linker.accepts_rsp()))
         self.created_llvm_ir_rule[compiler.for_machine] = True
 
-    def generate_compile_rule_for(self, langname, compiler):
+    def generate_compile_rule_for(self, langname: str, compiler: 'CompilerType', linker: 'DynamicLinkerType') -> None:
         if langname == 'java':
             if self.environment.machines.matches_build_machine(compiler.for_machine):
                 self.generate_java_compile_rule(compiler)
@@ -1706,7 +1710,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             deps = 'gcc'
             depfile = '$DEPFILE'
         self.add_rule(NinjaRule(rule, command, args, description,
-                                rspable=compiler.can_linker_accept_rsp(),
+                                rspable=linker.accepts_rsp(),
                                 deps=deps, depfile=depfile))
 
     def generate_pch_rule_for(self, langname, compiler):
@@ -1737,11 +1741,11 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
 
     def generate_compile_rules(self):
         for for_machine in MachineChoice:
-            clist = self.environment.coredata.toolchains[for_machine].compilers
-            for langname, compiler in clist.items():
+            tchain = self.environment.coredata.toolchains[for_machine]
+            for langname, compiler, linker in tchain:
                 if compiler.get_id() == 'clang':
-                    self.generate_llvm_ir_compile_rule(compiler)
-                self.generate_compile_rule_for(langname, compiler)
+                    self.generate_llvm_ir_compile_rule(compiler, linker)
+                self.generate_compile_rule_for(langname, compiler, linker)
                 self.generate_pch_rule_for(langname, compiler)
 
     def generate_generator_list_rules(self, target):
@@ -2129,7 +2133,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
 
         compiler = get_compiler_for_source(target.compilers.values(), src)
         commands = self._generate_single_compile(target, compiler, is_generated)
-        commands = CompilerArgs(commands.compiler, commands)
+        commands = CompilerArgs(commands.executable, commands)
 
         # Create introspection information
         if is_generated is False:
@@ -2463,14 +2467,14 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
 
         return guessed_dependencies + absolute_libs
 
-    def generate_link(self, target, outname, obj_list, linker, extra_args=None, stdlib_args=None):
+    def generate_link(self, target: build.BuildTarget, outname: str, obj_list, linker: 'DynamicLinkerType', extra_args=None, stdlib_args=None):
         extra_args = extra_args if extra_args is not None else []
         stdlib_args = stdlib_args if stdlib_args is not None else []
         implicit_outs = []
         if isinstance(target, build.StaticLibrary):
             linker_base = 'STATIC'
         else:
-            linker_base = linker.get_language() # Fixme.
+            linker_base = linker.language
         if isinstance(target, build.SharedLibrary):
             self.generate_shsym(target)
         crstr = self.get_rule_suffix(target.for_machine)

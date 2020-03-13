@@ -468,7 +468,7 @@ class BuildTarget(Target):
         self.is_unity = unity_opt == 'on' or (unity_opt == 'subprojects' and subproject != '')
         self.environment = environment
         self.sources = []
-        self.compilers = OrderedDict() # type: OrderedDict[str, Compiler]
+        self.compilers = OrderedDict() # type: OrderedDict[str, CompilerType]
         self.objects = []
         self.external_deps = []
         self.include_dirs = []
@@ -1221,7 +1221,7 @@ You probably should put it in link_with instead.''')
 
         return langs
 
-    def get_clink_dynamic_linker_and_stdlibs(self):
+    def get_clink_dynamic_linker_and_stdlibs(self) -> T.Tuple['DynamicLinkerType', T.List[str]]:
         '''
         We use the order of languages in `clink_langs` to determine which
         linker to use in case the target has sources compiled with multiple
@@ -1231,30 +1231,30 @@ You probably should put it in link_with instead.''')
         that can link compiled C. We don't actually need to add an exception
         for Vala here because of that.
         '''
-        # XXX: this is also completly broken
         # Populate list of all compilers, not just those being used to compile
         # sources in this target
         all_compilers = self.environment.coredata.toolchains[self.for_machine].compilers
+        all_linkers = self.environment.coredata.toolchains[self.for_machine].linkers
         # Languages used by dependencies
         dep_langs = self.get_langs_used_by_deps()
         # Pick a compiler based on the language priority-order
         for l in clink_langs:
             if l in self.compilers or l in dep_langs:
                 try:
-                    linker = all_compilers[l]
+                    linker = all_linkers[l]
                 except KeyError:
                     raise MesonException(
                         'Could not get a dynamic linker for build target {!r}. '
                         'Requires a linker for language "{}", but that is not '
                         'a project language.'.format(self.name, l))
-                stdlib_args = []
-                added_languages = set()
+                stdlib_args = []         # type: T.List[str]
+                added_languages = set()  # type: T.Set[str]
                 for dl in itertools.chain(self.compilers, dep_langs):
-                    if dl != linker.language:
+                    if dl != l:
+                        # These flags are part of the compiler, not the linker,
+                        # as they are language specific.
                         stdlib_args += all_compilers[dl].language_stdlib_only_link_flags()
                         added_languages.add(dl)
-                # Type of var 'linker' is Compiler.
-                # Pretty hard to fix because the return value is passed everywhere
                 return linker, stdlib_args
 
         m = 'Could not get a dynamic linker for build target {!r}'

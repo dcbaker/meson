@@ -294,11 +294,14 @@ class CLikeCompiler:
         return self.compiles(t.format(**fargs), env, extra_args=extra_args,
                              dependencies=dependencies)
 
-    def _get_basic_compiler_args(self, env, mode):
+    def _get_basic_compiler_args(self, env: 'Environment', mode: str) -> T.Tuple[T.List[str], T.List[str]]:
+        # TODO: this needs to either not d link args, or be factored out of the Compiler.
+
         cargs, largs = [], []
         # Select a CRT if needed since we're linking
         if mode == 'link':
-            cargs += self.get_linker_debug_crt_args()
+            # XXX: this is totally a hack
+            cargs += env.coredata.toolchains[self.for_machine].linkers[self.language].get_debug_crt_args()
 
         # Add CFLAGS/CXXFLAGS/OBJCFLAGS/OBJCXXFLAGS and CPPFLAGS from the env
         sys_args = env.coredata.get_external_args(self.for_machine, self.language)
