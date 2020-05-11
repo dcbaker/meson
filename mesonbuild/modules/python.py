@@ -281,96 +281,119 @@ class PythonModule(ExtensionModule):
         else:
             return None
 
-    def _check_version(self, name_or_path, version):
-        if name_or_path == 'python2':
-            return mesonlib.version_compare(version, '< 3.0')
-        elif name_or_path == 'python3':
-            return mesonlib.version_compare(version, '>= 3.0')
-        return True
+    @staticmethod
+    def check_python(prog: 'ExternalProgram', version: T.Union[str, T.List[str]],
+                     modules: T.List[str]) -> T.Tuple[bool, T.List[str], T.List[str]]:
+        if not prog.found():
+            return (False, [], [])
 
-    @FeatureNewKwargs('python.find_installation', '0.49.0', ['disabler'])
-    @FeatureNewKwargs('python.find_installation', '0.51.0', ['modules'])
-    @disablerIfNotFound
-    @permittedKwargs({'required', 'modules'})
-    def find_installation(self, interpreter, state, args, kwargs):
-        feature_check = FeatureNew('Passing "feature" option to find_installation', '0.48.0')
-        disabled, required, feature = extract_required_kwarg(kwargs, state.subproject, feature_check)
-        want_modules = mesonlib.extract_as_list(kwargs, 'modules')  # type: T.List[str]
-        found_modules = []    # type: T.List[str]
-        missing_modules = []  # type: T.List[str]
+        p, out, _ = mesonlib.Popen_safe(prog.get_command() + ['--version'])
+        if p.returncode != 0:
+            mlog.debug('failed to run {}'.format(version))
+            return (False, [], [])
+        if version and not mesonlib.version_compare_many(out, version):
+            mlog.debug('Version {} does not match {}'.format(out, version))
+            return (False, [], [])
 
-        if len(args) > 1:
-            raise InvalidArguments('find_installation takes zero or one positional argument.')
+        if modules:
+            found_modules = []    # type: T.List[str]
+            missing_modules = []  # type: T.List[str]
 
-        potentials = ['python']
-        if args:
-            if 'python2' in args[0]:
-                potentials.append('python2')
-            elif 'python3' in args[0]:
-                potentials.append('python3')
-        name_or_path = None
-        for name in reversed(potentials):
-            name_or_path = state.environment.lookup_binary_entry(MachineChoice.HOST, name)
-            if name_or_path is not None:
-                break
-        if name_or_path is None and args:
-            name_or_path = args[0]
-            if not isinstance(name_or_path, str):
-                raise InvalidArguments('find_installation argument must be a string.')
-
-        if disabled:
-            mlog.log('Program', name_or_path or 'python', 'found:', mlog.red('NO'), '(disabled by:', mlog.bold(feature), ')')
-            return ExternalProgramHolder(NonExistingExternalProgram(), state.subproject)
-
-        if not name_or_path:
-            python = ExternalProgram('python3', mesonlib.python_command, silent=True)
-        else:
-            python = ExternalProgram.from_entry('python3', name_or_path)
-
-            if not python.found() and mesonlib.is_windows():
-                pythonpath = self._get_win_pythonpath(name_or_path)
-                if pythonpath is not None:
-                    name_or_path = pythonpath
-                    python = ExternalProgram(name_or_path, silent=True)
-
-            # Last ditch effort, python2 or python3 can be named python
-            # on various platforms, let's not give up just yet, if an executable
-            # named python is available and has a compatible version, let's use
-            # it
-            if not python.found() and name_or_path in ['python2', 'python3']:
-                python = ExternalProgram('python', silent=True)
-
-        if python.found() and want_modules:
-            for mod in want_modules:
-                p, out, err = mesonlib.Popen_safe(
-                    python.command +
+            for mod in modules:
+                p, *_ = mesonlib.Popen_safe(
+                    prog.get_command() +
                     ['-c', 'import {0}'.format(mod)])
                 if p.returncode != 0:
                     missing_modules.append(mod)
                 else:
                     found_modules.append(mod)
 
-        msg = ['Program', python.name]
-        if want_modules:
-            msg.append('({})'.format(', '.join(want_modules)))
-        msg.append('found:')
-        if python.found() and not missing_modules:
-            msg.extend([mlog.green('YES'), '({})'.format(' '.join(python.command))])
-        else:
-            msg.append(mlog.red('NO'))
-        if found_modules:
-            msg.append('modules:')
-            msg.append(', '.join(found_modules))
+            return (bool(missing_modules), found_modules, missing_modules)
+
+        return (True, [], [])
+
+    @FeatureNewKwargs('python.find_installation', '0.49.0', ['disabler'])
+    @FeatureNewKwargs('python.find_installation', '0.51.0', ['modules'])
+    @FeatureNewKwargs('python.find_installation', '0.55.0', ['version'])
+    @disablerIfNotFound
+    @permittedKwargs({'required', 'modules'})
+    def find_installation(self, interpreter, state, args, kwargs):
+        feature_check = FeatureNew('Passing "feature" option to find_installation', '0.48.0')
+        disabled, required, feature = extract_required_kwarg(kwargs, state.subproject, feature_check)
+        want_modules = mesonlib.extract_as_list(kwargs, 'modules')  # type: T.List[str]
+        version = kwargs.get('version', []).copy()
+
+        if len(args) > 1:
+            raise InvalidArguments('find_installation takes zero or one positional argument.')
+
+        name = 'python3'
+        if args:
+            if not isinstance(args[0], str):
+                raise InvalidArguments('find_installation argument must be a string.')
+            if 'python2' in args[0]:
+                name = 'python2'
+                version.append('<3.0')
+            elif 'python3' in args[0]:
+                name = 'python3'
+                version.append('>=3.0')
+            else:
+                name = 'python'
+
+        if disabled:
+            mlog.log('Program', name, 'found:', mlog.red('NO'), '(disabled by:', mlog.bold(feature), ')')
+            return ExternalProgramHolder(NonExistingExternalProgram(), state.subproject)
+
+        _potentials = ['python']
+        if name != 'python3':
+            _potentials.append('python2')
+        if name != 'python2':
+            _potentials.append('python3')
+        potentials = [state.environment.lookup_binary_entry(MachineChoice.HOST, p)
+                      for p in reversed(_potentials)]
+
+        if args:
+            potentials.append(args[0])
+        potentials.extend([
+            'python3',
+            'python2',
+            'python',
+            mesonlib.python_command
+        ])
+        if mesonlib.is_windows():
+            for p in ['python3', 'python2', 'python']:
+                py = self._get_win_pythonpath(p)
+                if py is not None:
+                    potentials.append(py)
+
+        for p in potentials:
+            python = ExternalProgram(name, p, silent=True)
+            msg = ['Program', python.name]
+            if want_modules:
+                msg.append('({})'.format(', '.join(want_modules)))
+
+            ok, found_modules, missing_modules = self.check_python(python, version, want_modules)
+            msg.append('found:')
+            if ok and python.found() and not missing_modules:
+                msg.extend([mlog.green('YES'), '({})'.format(' '.join(python.command))])
+            else:
+                msg.append(mlog.red('NO'))
+            if found_modules:
+                msg.append('modules:')
+                msg.append(', '.join(found_modules))
+
+            mlog.debug(*msg)
+            if ok:
+                break
 
         mlog.log(*msg)
 
         if not python.found():
             if required:
-                raise mesonlib.MesonException('{} not found'.format(name_or_path or 'python'))
+                raise mesonlib.MesonException('{} not found'.format(name or 'python'))
             res = ExternalProgramHolder(NonExistingExternalProgram(), state.subproject)
         elif missing_modules:
             if required:
-                raise mesonlib.MesonException('{} is missing modules: {}'.format(name_or_path or 'python', ', '.join(missing_modules)))
+                raise mesonlib.MesonException('{} is missing modules: {}'.format(name or 'python', ', '.join(missing_modules)))
             res = ExternalProgramHolder(NonExistingExternalProgram(), state.subproject)
         else:
             # Sanity check, we expect to have something that at least quacks in tune
@@ -386,12 +409,7 @@ class PythonModule(ExtensionModule):
                 mlog.debug('Program stderr:\n')
                 mlog.debug(stderr)
 
-            if isinstance(info, dict) and 'version' in info and self._check_version(name_or_path, info['version']):
-                res = PythonInstallation(interpreter, python, info)
-            else:
-                res = ExternalProgramHolder(NonExistingExternalProgram(), state.subproject)
-                if required:
-                    raise mesonlib.MesonException('{} is not a valid python or it is missing setuptools'.format(python))
+            res = PythonInstallation(interpreter, python, info)
 
         return res
 

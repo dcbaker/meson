@@ -59,6 +59,8 @@ Keyword arguments are the following:
   *Since 0.49.0*
 - `modules`: a list of module names that this python installation must have.
   *Since 0.51.0*
+- `version`: A string or list of strings that are valid version identifiers.
+   *Since 0.55.0*
 
 **Returns**: a [python installation][`python_installation` object]
 

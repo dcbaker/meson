@@ -25,3 +25,20 @@ pymod.find_installation('python2')  # tries `python2` entry then `python` entry
 pymod.find_installation('python3')  # tries `python` entry then `python` entry
 pymod.find_installation()  # tries only `python`
 ```
+
+### Add version keyword to find_installation()
+
+This allow more fine tuning of which versions are supported.
+
+### Consider modules part of found() status
+
+Previously:
+
+```python
+pymod.find_installation('python3', modules : ['numpy'])
+```
+
+would fail if multiple versions of python3 were installed, but numpy was not
+installed in the one meson happened to pick first. Now meson will consider
+a version of python3 that doesn't have numpy as not found, and will continue
+searching.
