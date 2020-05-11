@@ -22,7 +22,7 @@ else
   error('MESON_SKIP_TEST: Python3 libraries not found, skipping test.')
 endif
 
-py3_pkg_dep = dependency('python3', method: 'pkg-config', required : false)
+py3_pkg_dep = dependency('python3', method: 'pkg-config', embed : true, required : false)
 if py3_pkg_dep.found()
   python_lib_dir = py3_pkg_dep.get_pkgconfig_variable('libdir')
 endif

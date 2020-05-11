@@ -26,7 +26,7 @@ from .mpi import mpi_factory
 from .scalapack import scalapack_factory
 from .misc import (
     BlocksDependency, OpenMPDependency, cups_factory, curses_factory, gpgme_factory,
-    libgcrypt_factory, libwmf_factory, netcdf_factory, pcap_factory, python3_factory,
+    libgcrypt_factory, libwmf_factory, netcdf_factory, pcap_factory, python_factory,
     shaderc_factory, threads_factory,
 )
 from .platform import AppleFrameworks
@@ -60,7 +60,9 @@ packages.update({
     'curses': curses_factory,
     'netcdf': netcdf_factory,
     'openmp': OpenMPDependency,
-    'python3': python3_factory,
+    'python': python_factory,
+    'python2': python_factory,
+    'python3': python_factory,
     'threads': threads_factory,
     'pcap': pcap_factory,
     'cups': cups_factory,
