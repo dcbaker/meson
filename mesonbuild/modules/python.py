@@ -302,7 +302,17 @@ class PythonModule(ExtensionModule):
         if len(args) > 1:
             raise InvalidArguments('find_installation takes zero or one positional argument.')
 
-        name_or_path = state.environment.lookup_binary_entry(MachineChoice.HOST, 'python')
+        potentials = ['python']
+        if args:
+            if 'python2' in args[0]:
+                potentials.append('python2')
+            elif 'python3' in args[0]:
+                potentials.append('python3')
+        name_or_path = None
+        for name in reversed(potentials):
+            name_or_path = state.environment.lookup_binary_entry(MachineChoice.HOST, name)
+            if name_or_path is not None:
+                break
         if name_or_path is None and args:
             name_or_path = args[0]
             if not isinstance(name_or_path, str):

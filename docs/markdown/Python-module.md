@@ -27,6 +27,12 @@ Find a python installation matching `name_or_path`.
 That argument is optional, if not provided then the returned python
 installation will be the one used to run meson.
 
+The path to search can be controlled via a machine file, by setting values in
+the `[binaries]` section. The following values are used:
+ - `python`: This will be used in all cases in meson < 0.55. In meson >= 0.55
+ - `python2`: if the name_or_path argument contains `python2`. *New in 0.55.0*
+ - `python3`: if the name_or_path argument contains `python3`. *New in 0.55.0*
+
 If provided, it can be:
 
 - A simple name, eg `python-2.7`, meson will look for an external program
