@@ -173,8 +173,8 @@ class CudaCompiler(Compiler):
         int main(void) {{ return 0; }}'''
         return self.compiles(t.format(**fargs), env, extra_args, dependencies)
 
-    def get_options(self):
-        opts = super().get_options()
+    def get_options(self, env: 'Environment'):
+        opts = super().get_options(env)
         opts.update({'cuda_std': coredata.UserComboOption('C++ language standard to use',
                                                           ['none', 'c++03', 'c++11', 'c++14'],
                                                           'none')})
@@ -182,6 +182,7 @@ class CudaCompiler(Compiler):
 
     def _to_host_compiler_options(self, options):
         overrides = {name: opt.value for name, opt in options.copy().items()}
+        raise NotImplementedError
         return OptionOverrideProxy(overrides, self.host_compiler.get_options())
 
     def get_option_compile_args(self, options):

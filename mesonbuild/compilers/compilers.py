@@ -520,8 +520,24 @@ class Compiler(metaclass=abc.ABCMeta):
         """
         return []
 
-    def get_options(self) -> T.Dict[str, coredata.UserOption]:
-        return {}
+    def get_options(self, env: 'Environment') -> T.Dict[str, coredata.UserOption]:
+        """Retreive options that apply to all compilers for a given language."""
+        description = 'Extra arguments passed to the {}'.format(self.language)
+
+        def get_args(key: str) -> T.List[str]:
+            _args = env.compiler_options[self.for_machine][self.language].get(key, [])  # type: T.Union[str, T.List[str]]
+            if isinstance(_args, str):
+                _args = split_args(_args)
+            return _args
+
+        return {
+            'args': coredata.UserArrayOption(
+                description + ' compiler',
+                get_args('args'), split_args=True, user_input=True, allow_dups=True),
+            'link_args': coredata.UserArrayOption(
+                description + ' linker',
+                get_args('link_args'), split_args=True, user_input=True, allow_dups=True),
+        }
 
     def get_option_compile_args(self, options):
         return []
@@ -886,19 +902,3 @@ def get_largefile_args(compiler):
         # transitionary features and must be enabled by programs that use
         # those features explicitly.
     return []
-
-
-def get_global_options(lang: str, comp: T.Type[Compiler], for_machine: MachineChoice,
-                       env: 'Environment') -> T.Dict[str, coredata.UserOption]:
-    """Retreive options that apply to all compilers for a given language."""
-    description = 'Extra arguments passed to the {}'.format(lang)
-    return {
-        'args': coredata.UserArrayOption(
-            description + ' compiler',
-            env.compiler_options[for_machine][lang].get('args', []).copy(),
-            split_args=True, user_input=True, allow_dups=True),
-        'link_args': coredata.UserArrayOption(
-            description + ' linker',
-            env.compiler_options[for_machine][lang].get('link_args', []).copy(),
-            split_args=True, user_input=True, allow_dups=True),
-    }

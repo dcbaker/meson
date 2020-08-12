@@ -749,6 +749,7 @@ class Environment:
                 for l in ['objcpp', 'cpp', 'objc', 'c', 'fortran', 'd', 'cuda']:
                     self.compiler_options[for_machine][key]['link_args'] = p_env
 
+
         # Read in command line and populate options
         # TODO: validate all of this
         all_builtins = set(coredata.BUILTIN_OPTIONS) | set(coredata.BUILTIN_OPTIONS_PER_MACHINE) | set(coredata.builtin_dir_noprefix_options)
@@ -989,12 +990,10 @@ class Environment:
                 errmsg += '\nRunning "{0}" gave "{1}"'.format(c, e)
         raise EnvironmentException(errmsg)
 
-    def _guess_win_linker(self, compiler: T.List[str], comp_class: Compiler,
+    def _guess_win_linker(self, compiler: T.List[str], comp_class: T.Type[Compiler],
                           for_machine: MachineChoice, *,
                           use_linker_prefix: bool = True, invoked_directly: bool = True,
                           extra_args: T.Optional[T.List[str]] = None) -> 'DynamicLinker':
-        self.coredata.add_lang_args(comp_class.language, comp_class, for_machine, self)
-
         # Explicitly pass logo here so that we can get the version of link.exe
         if not use_linker_prefix or comp_class.LINKER_PREFIX is None:
             check_args = ['/logo', '--version']
@@ -1003,7 +1002,7 @@ class Environment:
         elif isinstance(comp_class.LINKER_PREFIX, list):
             check_args = comp_class.LINKER_PREFIX + ['/logo'] + comp_class.LINKER_PREFIX + ['--version']
 
-        check_args += self.coredata.compiler_options[for_machine][comp_class.language]['args'].value
+        check_args += self.compiler_options[for_machine][comp_class.language].get('args', []).copy()
 
         override = []  # type: T.List[str]
         value = self.lookup_binary_entry(for_machine, comp_class.language + '_ld')
@@ -1063,9 +1062,12 @@ class Environment:
         :for_machine: which machine this linker targets
         :extra_args: Any additional arguments required (such as a source file)
         """
-        self.coredata.add_lang_args(comp_class.language, comp_class, for_machine, self)
         extra_args = T.cast(T.List[str], extra_args or [])
-        extra_args += self.coredata.compiler_options[for_machine][comp_class.language]['args'].value
+        # These could be either a list of strings or a string, and need to be parsed
+        _args = self.compiler_options[for_machine][comp_class.language].get('args', [])  # type: T.Union[str, T.List[str]]
+        if isinstance(_args, str):
+            _args = split_args(_args)
+        extra_args.extend(_args)
 
         if isinstance(comp_class.LINKER_PREFIX, str):
             check_args = [comp_class.LINKER_PREFIX + '--version'] + extra_args
@@ -1225,8 +1227,6 @@ class Environment:
 
             if 'Emscripten' in out:
                 cls = EmscriptenCCompiler if lang == 'c' else EmscriptenCPPCompiler
-                self.coredata.add_lang_args(cls.language, cls, for_machine, self)
-
                 # emcc requires a file input in order to pass arguments to the
                 # linker. It'll exit with an error code, but still print the
                 # linker version. Old emcc versions ignore -Wl,--version completely,
@@ -1258,7 +1258,6 @@ class Environment:
                 full_version = arm_ver_str
                 cls = ArmclangCCompiler if lang == 'c' else ArmclangCPPCompiler
                 linker = ArmClangDynamicLinker(for_machine, version=version)
-                self.coredata.add_lang_args(cls.language, cls, for_machine, self)
                 return cls(
                     ccache + compiler, version, for_machine, is_cross, info,
                     exe_wrap, full_version=full_version, linker=linker)
@@ -1312,7 +1311,6 @@ class Environment:
                 version = search_version(err)
                 target = 'x86' if 'IA-32' in err else 'x86_64'
                 cls = IntelClCCompiler if lang == 'c' else IntelClCPPCompiler
-                self.coredata.add_lang_args(cls.language, cls, for_machine, self)
                 linker = XilinkDynamicLinker(for_machine, [], version=version)
                 return cls(
                     compiler, version, for_machine, is_cross, info=info,
@@ -1343,7 +1341,6 @@ class Environment:
                     target, linker=linker)
             if 'PGI Compilers' in out:
                 cls = PGICCompiler if lang == 'c' else PGICPPCompiler
-                self.coredata.add_lang_args(cls.language, cls, for_machine, self)
                 linker = PGIDynamicLinker(compiler, for_machine, cls.LINKER_PREFIX, [], version=version)
                 return cls(
                     ccache + compiler, version, for_machine, is_cross,
@@ -1356,14 +1353,12 @@ class Environment:
                     exe_wrap, full_version=full_version, linker=l)
             if 'ARM' in out:
                 cls = ArmCCompiler if lang == 'c' else ArmCPPCompiler
-                self.coredata.add_lang_args(cls.language, cls, for_machine, self)
                 linker = ArmDynamicLinker(for_machine, version=version)
                 return cls(
                     ccache + compiler, version, for_machine, is_cross,
                     info, exe_wrap, full_version=full_version, linker=linker)
             if 'RX Family' in out:
                 cls = CcrxCCompiler if lang == 'c' else CcrxCPPCompiler
-                self.coredata.add_lang_args(cls.language, cls, for_machine, self)
                 linker = CcrxDynamicLinker(for_machine, version=version)
                 return cls(
                     ccache + compiler, version, for_machine, is_cross, info,
@@ -1371,7 +1366,6 @@ class Environment:
 
             if 'Microchip Technology' in out:
                 cls = Xc16CCompiler if lang == 'c' else Xc16CCompiler
-                self.coredata.add_lang_args(cls.language, cls, for_machine, self)
                 linker = Xc16DynamicLinker(for_machine, version=version)
                 return cls(
                     ccache + compiler, version, for_machine, is_cross, info,
@@ -1379,7 +1373,6 @@ class Environment:
 
             if 'TMS320C2000 C/C++' in out:
                 cls = C2000CCompiler if lang == 'c' else C2000CPPCompiler
-                self.coredata.add_lang_args(cls.language, cls, for_machine, self)
                 linker = C2000DynamicLinker(for_machine, version=version)
                 return cls(
                     ccache + compiler, version, for_machine, is_cross, info,
@@ -1427,7 +1420,6 @@ class Environment:
             version = out.strip().split('V')[-1]
             cpp_compiler = self.detect_cpp_compiler(for_machine)
             cls = CudaCompiler
-            self.coredata.add_lang_args(cls.language, cls, for_machine, self)
             linker = CudaLinker(compiler, for_machine, CudaCompiler.LINKER_PREFIX, [], version=CudaLinker.parse_version())
             return cls(ccache + compiler, version, for_machine, is_cross, exe_wrap, host_compiler=cpp_compiler, info=info, linker=linker)
         raise EnvironmentException('Could not find suitable CUDA compiler: "' + ' '.join(compilers) + '"')
@@ -1493,7 +1485,6 @@ class Environment:
                     version = search_version(err)
                     target = 'x86' if 'IA-32' in err else 'x86_64'
                     cls = IntelClFortranCompiler
-                    self.coredata.add_lang_args(cls.language, cls, for_machine, self)
                     linker = XilinkDynamicLinker(for_machine, [], version=version)
                     return cls(
                         compiler, version, for_machine, is_cross, target,
@@ -1512,7 +1503,6 @@ class Environment:
 
                 if 'PGI Compilers' in out:
                     cls = PGIFortranCompiler
-                    self.coredata.add_lang_args(cls.language, cls, for_machine, self)
                     linker = PGIDynamicLinker(compiler, for_machine,
                                               cls.LINKER_PREFIX, [], version=version)
                     return cls(
@@ -1614,7 +1604,6 @@ class Environment:
                 if len(parts) > 1:
                     version = parts[1]
             comp_class = JavaCompiler
-            self.coredata.add_lang_args(comp_class.language, comp_class, for_machine, self)
             return comp_class(exelist, version, for_machine, info)
         raise EnvironmentException('Unknown compiler "' + ' '.join(exelist) + '"')
 
@@ -1638,7 +1627,6 @@ class Environment:
                 cls = VisualStudioCsCompiler
             else:
                 continue
-            self.coredata.add_lang_args(cls.language, cls, for_machine, self)
             return cls(comp, version, for_machine, info)
 
         self._handle_exceptions(popen_exceptions, compilers)
@@ -1658,7 +1646,6 @@ class Environment:
         version = search_version(out)
         if 'Vala' in out:
             comp_class = ValaCompiler
-            self.coredata.add_lang_args(comp_class.language, comp_class, for_machine, self)
             return comp_class(exelist, version, for_machine, info, is_cross)
         raise EnvironmentException('Unknown compiler "' + ' '.join(exelist) + '"')
 
@@ -1734,7 +1721,6 @@ class Environment:
                     compiler.extend(['-C', 'linker={}'.format(c)])
                     compiler.extend(['-C', 'link-args={}'.format(' '.join(cc.use_linker_args(override[0])))])
 
-                self.coredata.add_lang_args(RustCompiler.language, RustCompiler, for_machine, self)
                 return RustCompiler(
                     compiler, version, for_machine, is_cross, info, exe_wrap,
                     linker=linker)

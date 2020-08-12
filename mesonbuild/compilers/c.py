@@ -38,6 +38,7 @@ from .compilers import (
 
 if T.TYPE_CHECKING:
     from ..envconfig import MachineInfo
+    from ..environment import Environment
 
 
 class CCompiler(CLikeCompiler, Compiler):
@@ -95,8 +96,8 @@ class ClangCCompiler(ClangCompiler, CCompiler):
                           '2': default_warn_args + ['-Wextra'],
                           '3': default_warn_args + ['-Wextra', '-Wpedantic']}
 
-    def get_options(self):
-        opts = CCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CCompiler.get_options(self, env)
         c_stds = ['c89', 'c99', 'c11']
         g_stds = ['gnu89', 'gnu99', 'gnu11']
         # https://releases.llvm.org/6.0.0/tools/clang/docs/ReleaseNotes.html
@@ -171,8 +172,8 @@ class ArmclangCCompiler(ArmclangCompiler, CCompiler):
                           '2': default_warn_args + ['-Wextra'],
                           '3': default_warn_args + ['-Wextra', '-Wpedantic']}
 
-    def get_options(self):
-        opts = CCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CCompiler.get_options(self, env)
         opts.update({
             'std': coredata.UserComboOption(
                 'C language standard to use',
@@ -206,8 +207,8 @@ class GnuCCompiler(GnuCompiler, CCompiler):
                           '2': default_warn_args + ['-Wextra'],
                           '3': default_warn_args + ['-Wextra', '-Wpedantic']}
 
-    def get_options(self):
-        opts = CCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CCompiler.get_options(self, env)
         c_stds = ['c89', 'c99', 'c11']
         g_stds = ['gnu89', 'gnu99', 'gnu11']
         v = '>=8.0.0'
@@ -263,8 +264,8 @@ class ElbrusCCompiler(GnuCCompiler, ElbrusCompiler):
         ElbrusCompiler.__init__(self)
 
     # It does support some various ISO standards and c/gnu 90, 9x, 1x in addition to those which GNU CC supports.
-    def get_options(self):
-        opts = CCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CCompiler.get_options(self, env)
         opts.update({
             'std': coredata.UserComboOption(
                 'C language standard to use',
@@ -302,8 +303,8 @@ class IntelCCompiler(IntelGnuLikeCompiler, CCompiler):
                           '2': default_warn_args + ['-Wextra'],
                           '3': default_warn_args + ['-Wextra']}
 
-    def get_options(self):
-        opts = CCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CCompiler.get_options(self, env)
         c_stds = ['c89', 'c99']
         g_stds = ['gnu89', 'gnu99']
         if version_compare(self.version, '>=16.0.0'):
@@ -329,8 +330,8 @@ class VisualStudioLikeCCompilerMixin:
 
     """Shared methods that apply to MSVC-like C compilers."""
 
-    def get_options(self):
-        opts = super().get_options()
+    def get_options(self, env: 'Environment'):
+        opts = super().get_options(env)
         opts.update({
             'winlibs': coredata.UserArrayOption(
                 'Windows libs to link against.',
@@ -352,8 +353,8 @@ class VisualStudioCCompiler(MSVCCompiler, VisualStudioLikeCCompilerMixin, CCompi
                            info, exe_wrap, **kwargs)
         MSVCCompiler.__init__(self, target)
 
-    def get_options(self):
-        opts = super().get_options()
+    def get_options(self, env: 'Environment'):
+        opts = super().get_options(env)
         c_stds = ['none', 'c89', 'c99', 'c11']
         opts.update({
             'std': coredata.UserComboOption(
@@ -391,8 +392,8 @@ class IntelClCCompiler(IntelVisualStudioLikeCompiler, VisualStudioLikeCCompilerM
                            info, exe_wrap, **kwargs)
         IntelVisualStudioLikeCompiler.__init__(self, target)
 
-    def get_options(self):
-        opts = super().get_options()
+    def get_options(self, env: 'Environment'):
+        opts = super().get_options(env)
         c_stds = ['none', 'c89', 'c99', 'c11']
         opts.update({
             'std': coredata.UserComboOption(
@@ -420,8 +421,8 @@ class ArmCCompiler(ArmCompiler, CCompiler):
                            info, exe_wrapper, **kwargs)
         ArmCompiler.__init__(self)
 
-    def get_options(self):
-        opts = CCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CCompiler.get_options(self, env)
         opts.update({
             'std': coredata.UserComboOption(
                 'C language standard to use',
@@ -450,8 +451,8 @@ class CcrxCCompiler(CcrxCompiler, CCompiler):
     def get_always_args(self):
         return ['-nologo']
 
-    def get_options(self):
-        opts = CCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CCompiler.get_options(self, env)
         opts.update({
             'std': coredata.UserComboOption(
                 'C language standard to use',
@@ -498,8 +499,8 @@ class Xc16CCompiler(Xc16Compiler, CCompiler):
                            info, exe_wrapper, **kwargs)
         Xc16Compiler.__init__(self)
 
-    def get_options(self):
-        opts = CCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CCompiler.get_options(self, env)
         opts.update({'c_std': coredata.UserComboOption('C language standard to use',
                                                        ['none', 'c89', 'c99', 'gnu89', 'gnu99'],
                                                        'none')})
@@ -545,8 +546,8 @@ class C2000CCompiler(C2000Compiler, CCompiler):
     def get_always_args(self):
         return []
 
-    def get_options(self):
-        opts = CCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CCompiler.get_options(self, env)
         opts.update({'c_std': coredata.UserComboOption('C language standard to use',
                                                        ['none', 'c89', 'c99', 'c11'],
                                                        'none')})

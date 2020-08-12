@@ -1316,7 +1316,7 @@ class DataTests(unittest.TestCase):
         cc = env.detect_c_compiler(MachineChoice.HOST)
         cpp = env.detect_cpp_compiler(MachineChoice.HOST)
         for comp in (cc, cpp):
-            for opt in comp.get_options().keys():
+            for opt in comp.get_options(env).keys():
                 self.assertIn(opt, md)
             for opt in comp.base_options:
                 self.assertIn(opt, md)
@@ -6061,10 +6061,12 @@ class LinuxlikeTests(BasePlatformTests):
         has_c18 = (compiler.get_id() not in {'clang', 'gcc'} or
                    compiler.get_id() == 'clang' and _clang_at_least(compiler, '>=8.0.0', '>=11.0') or
                    compiler.get_id() == 'gcc' and version_compare(compiler.version, '>=8.0.0'))
+
+        env = get_fake_env()
         # Check that all the listed -std=xxx options for this compiler work just fine when used
         # https://en.wikipedia.org/wiki/Xcode#Latest_versions
         # https://www.gnu.org/software/gcc/projects/cxx-status.html
-        for v in compiler.get_options()['std'].choices:
+        for v in compiler.get_options(env)['std'].choices:
             lang_std = p + '_std'
             # we do it like this to handle gnu++17,c++17 and gnu17,c17 cleanly
             # thus, C++ first

@@ -41,8 +41,8 @@ class EmscriptenMixin:
     def thread_flags(self, env: 'Environment') -> T.List[str]:
         return ['-s', 'USE_PTHREADS=1']
 
-    def get_options(self):
-        opts = super().get_options()
+    def get_options(self, env: 'Environment'):
+        opts = super().get_options(env)
         opts.update({
             '{}_thread_count'.format(self.language): coredata.UserIntegerOption(
                 'Number of threads to use in web assembly, set to 0 to disable',

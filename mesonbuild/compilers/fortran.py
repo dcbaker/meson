@@ -37,6 +37,7 @@ from mesonbuild.mesonlib import (
 
 if T.TYPE_CHECKING:
     from ..envconfig import MachineInfo
+    from ..environment import Environment
 
 
 class FortranCompiler(CLikeCompiler, Compiler):
@@ -179,8 +180,8 @@ class GnuFortranCompiler(GnuCompiler, FortranCompiler):
                           '2': default_warn_args + ['-Wextra'],
                           '3': default_warn_args + ['-Wextra', '-Wpedantic', '-fimplicit-none']}
 
-    def get_options(self):
-        opts = FortranCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = FortranCompiler.get_options(self, env)
         fortran_stds = ['legacy', 'f95', 'f2003']
         if version_compare(self.version, '>=4.4.0'):
             fortran_stds += ['f2008']
@@ -305,8 +306,8 @@ class IntelFortranCompiler(IntelGnuLikeCompiler, FortranCompiler):
                           '2': default_warn_args + ['-warn', 'unused'],
                           '3': ['-warn', 'all']}
 
-    def get_options(self):
-        opts = FortranCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = FortranCompiler.get_options(self, env)
         fortran_stds = ['legacy', 'f95', 'f2003', 'f2008', 'f2018']
         opts.update({
             'std': coredata.UserComboOption(
@@ -359,8 +360,8 @@ class IntelClFortranCompiler(IntelVisualStudioLikeCompiler, FortranCompiler):
                           '2': default_warn_args + ['/warn:unused'],
                           '3': ['/warn:all']}
 
-    def get_options(self):
-        opts = FortranCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = FortranCompiler.get_options(self, env)
         fortran_stds = ['legacy', 'f95', 'f2003', 'f2008', 'f2018']
         opts.update({
             'std': coredata.UserComboOption(

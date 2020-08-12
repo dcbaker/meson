@@ -41,6 +41,7 @@ from .mixins.emscripten import EmscriptenMixin
 
 if T.TYPE_CHECKING:
     from ..envconfig import MachineInfo
+    from ..environment import Environment
 
 
 def non_msvc_eh_options(eh, args):
@@ -165,8 +166,8 @@ class ClangCPPCompiler(ClangCompiler, CPPCompiler):
                           '2': default_warn_args + ['-Wextra'],
                           '3': default_warn_args + ['-Wextra', '-Wpedantic']}
 
-    def get_options(self):
-        opts = CPPCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CPPCompiler.get_options(self, env)
         opts.update({
             'eh': coredata.UserComboOption(
                 'C++ exception handling type.',
@@ -248,8 +249,8 @@ class ArmclangCPPCompiler(ArmclangCompiler, CPPCompiler):
                           '2': default_warn_args + ['-Wextra'],
                           '3': default_warn_args + ['-Wextra', '-Wpedantic']}
 
-    def get_options(self):
-        opts = CPPCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CPPCompiler.get_options(self,  env)
         opts.update({
             'eh': coredata.UserComboOption(
                 'C++ exception handling type.',
@@ -292,8 +293,8 @@ class GnuCPPCompiler(GnuCompiler, CPPCompiler):
                           '2': default_warn_args + ['-Wextra'],
                           '3': default_warn_args + ['-Wextra', '-Wpedantic']}
 
-    def get_options(self):
-        opts = CPPCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CPPCompiler.get_options(self, env)
         opts.update({
             'eh': coredata.UserComboOption(
                 'C++ exception handling type.',
@@ -365,8 +366,8 @@ class ElbrusCPPCompiler(GnuCPPCompiler, ElbrusCompiler):
         ElbrusCompiler.__init__(self)
 
     # It does not support c++/gnu++ 17 and 1z, but still does support 0x, 1y, and gnu++98.
-    def get_options(self):
-        opts = CPPCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CPPCompiler.get_options(self, env)
         opts.update({
             'eh': coredata.UserComboOption(
                 'C++ exception handling type.',
@@ -426,8 +427,8 @@ class IntelCPPCompiler(IntelGnuLikeCompiler, CPPCompiler):
                           '2': default_warn_args + ['-Wextra'],
                           '3': default_warn_args + ['-Wextra']}
 
-    def get_options(self):
-        opts = CPPCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CPPCompiler.get_options(self, env)
         # Every Unix compiler under the sun seems to accept -std=c++03,
         # with the exception of ICC. Instead of preventing the user from
         # globally requesting C++03, we transparently remap it to C++98
@@ -579,7 +580,7 @@ class VisualStudioCPPCompiler(CPP11AsCPP14Mixin, VisualStudioLikeCPPCompilerMixi
         self.base_options = ['b_pch', 'b_vscrt', 'b_ndebug'] # FIXME add lto, pgo and the like
         self.id = 'msvc'
 
-    def get_options(self):
+    def get_options(self, env: 'Environment'):
         cpp_stds = ['none', 'c++11', 'vc++11']
         # Visual Studio 2015 and later
         if version_compare(self.version, '>=19'):
@@ -613,7 +614,7 @@ class ClangClCPPCompiler(CPP11AsCPP14Mixin, VisualStudioLikeCPPCompilerMixin, Cl
         ClangClCompiler.__init__(self, target)
         self.id = 'clang-cl'
 
-    def get_options(self):
+    def get_options(self, env: 'Environment'):
         cpp_stds = ['none', 'c++11', 'vc++11', 'c++14', 'vc++14', 'c++17', 'vc++17', 'c++latest']
         return self._get_options_impl(super().get_options(), cpp_stds)
 
@@ -626,7 +627,7 @@ class IntelClCPPCompiler(VisualStudioLikeCPPCompilerMixin, IntelVisualStudioLike
                              info, exe_wrap, **kwargs)
         IntelVisualStudioLikeCompiler.__init__(self, target)
 
-    def get_options(self):
+    def get_options(self, env: 'Environment'):
         # This has only been tested with version 19.0,
         cpp_stds = ['none', 'c++11', 'vc++11', 'c++14', 'vc++14', 'c++17', 'vc++17', 'c++latest']
         return self._get_options_impl(super().get_options(), cpp_stds)
@@ -639,8 +640,8 @@ class ArmCPPCompiler(ArmCompiler, CPPCompiler):
                              info, exe_wrap, **kwargs)
         ArmCompiler.__init__(self)
 
-    def get_options(self):
-        opts = CPPCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CPPCompiler.get_options(self, env)
         opts.update({
             'std': coredata.UserComboOption(
                 'C++ language standard to use',
@@ -699,8 +700,8 @@ class C2000CPPCompiler(C2000Compiler, CPPCompiler):
                              info, exe_wrap, **kwargs)
         C2000Compiler.__init__(self)
 
-    def get_options(self):
-        opts = CPPCompiler.get_options(self)
+    def get_options(self, env: 'Environment'):
+        opts = CPPompiler.get_options(self, env)
         opts.update({'cpp_std': coredata.UserComboOption('C++ language standard to use',
                                                          ['none', 'c++03'],
                                                          'none')})
