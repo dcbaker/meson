@@ -124,6 +124,23 @@ build_filename = 'meson.build'
 
 CompilersDict = T.Dict[str, Compiler]
 
+COMPILER_OPTS_TO_ENV = {
+    'c': 'CFLAGS',
+    'cpp': 'CXXFLAGS',
+    'cuda': 'CUFLAGS',
+    'objc': 'OBJCFLAGS',
+    'objcpp': 'OBJCXXFLAGS',
+    'fortran': 'FFLAGS',
+    'd': 'DFLAGS',
+    'vala': 'VALAFLAGS',
+    'rust': 'RUSTFLAGS',
+    'pkg_config_path': 'PKG_CONFIG_PATH',
+}  # type: T.Dict[str, str]
+
+OTHER_OPTS_TO_ENV = {
+    'pkg_config_path': 'PKG_CONFIG_PATH',
+}  # type: T.Dict[str, str]
+
 def detect_gcovr(min_version='3.3', new_rootdir_version='4.2', log=False):
     gcovr_exe = 'gcovr'
     try:
@@ -682,27 +699,47 @@ class Environment:
         # unset, set those now.
 
         for for_machine in MachineChoice:
-            p_env_pair = get_env_var_pair(for_machine, self.coredata.is_cross_build(), 'PKG_CONFIG_PATH')
+            for key, envkey in OTHER_OPTS_TO_ENV.items():
+                p_env_pair = get_env_var_pair(for_machine, self.coredata.is_cross_build(), envkey)
+                if p_env_pair is not None:
+                    p_env_var, p_env = p_env_pair
+
+                    # PKG_CONFIG_PATH may contain duplicates, which must be
+                    # removed, else a duplicates-in-array-option warning arises.
+                    p_list = list(mesonlib.OrderedSet(p_env.split(':')))
+
+                    if self.first_invocation:
+                        # Environment variables override config
+                        self.meson_options[for_machine][''][key] = p_list
+                    elif self.meson_options[for_machine][''].get(key, []) != p_list:
+                        mlog.warning(
+                            p_env_var,
+                            'environment variable does not match configured',
+                            'between configurations, meson ignores this.',
+                            'Use -D{} instead'.format(key)
+                        )
+
+            for key, envkey in COMPILER_OPTS_TO_ENV.items():
+                p_env_pair = get_env_var_pair(for_machine, self.coredata.is_cross_build(), envkey)
+                if p_env_pair is not None:
+                    p_env = p_env_pair[1]
+
+                    if self.first_invocation:
+                        # Environment variables override config
+                        self.compiler_options[for_machine][key]['args'] = split_args(p_env)
+
+            # Handle CPPFLAGS, which are only relavent for a couple of languages
+            p_env_pair = get_env_var_pair(for_machine, self.coredata.is_cross_build(), 'CPPFLAGS')
             if p_env_pair is not None:
-                p_env_var, p_env = p_env_pair
+                p_env = split_args(p_env_pair[1])
+                for l in ['c', 'cpp', 'objc', 'objcpp']:
+                    self.compiler_options[for_machine][key]['args'].append(p_env)
 
-                # PKG_CONFIG_PATH may contain duplicates, which must be
-                # removed, else a duplicates-in-array-option warning arises.
-                p_list = list(mesonlib.OrderedSet(p_env.split(':')))
-
-                key = 'pkg_config_path'
-
-                if self.first_invocation:
-                    # Environment variables override config
-                    self.meson_options[for_machine][''][key] = p_list
-                elif self.meson_options[for_machine][''].get(key, []) != p_list:
-                    mlog.warning(
-                        p_env_var,
-                        'environment variable does not match configured',
-                        'between configurations, meson ignores this.',
-                        'Use -Dpkg_config_path to change pkg-config search',
-                        'path instead.'
-                    )
+            p_env_pair = get_env_var_pair(for_machine, self.coredata.is_cross_build(), 'LDFLAGS')
+            if p_env_pair is not None:
+                p_env = split_args(p_env_pair[1])
+                for l in ['objcpp', 'cpp', 'objc', 'c', 'fortran', 'd', 'cuda']:
+                    self.compiler_options[for_machine][key]['link_args'] = p_env
 
         # Read in command line and populate options
         # TODO: validate all of this

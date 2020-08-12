@@ -21,7 +21,6 @@ from functools import lru_cache
 from .. import coredata
 from .. import mlog
 from .. import mesonlib
-from ..linkers import LinkerEnvVarsMixin
 from ..mesonlib import (
     EnvironmentException, MachineChoice, MesonException,
     Popen_safe, split_args
@@ -79,22 +78,7 @@ for _l in clink_langs + ('vala',):
 clink_suffixes += ('h', 'll', 's')
 all_suffixes = set(itertools.chain(*lang_suffixes.values(), clink_suffixes))
 
-# Languages that should use LDFLAGS arguments when linking.
-languages_using_ldflags = {'objcpp', 'cpp', 'objc', 'c', 'fortran', 'd', 'cuda'}
-# Languages that should use CPPFLAGS arguments when linking.
-languages_using_cppflags = {'c', 'cpp', 'objc', 'objcpp'}
 soregex = re.compile(r'.*\.so(\.[0-9]+)?(\.[0-9]+)?(\.[0-9]+)?$')
-
-# Environment variables that each lang uses.
-cflags_mapping = {'c': 'CFLAGS',
-                  'cpp': 'CXXFLAGS',
-                  'cuda': 'CUFLAGS',
-                  'objc': 'OBJCFLAGS',
-                  'objcpp': 'OBJCXXFLAGS',
-                  'fortran': 'FFLAGS',
-                  'd': 'DFLAGS',
-                  'vala': 'VALAFLAGS',
-                  'rust': 'RUSTFLAGS'}
 
 # All these are only for C-linkable languages; see `clink_langs` above.
 
@@ -535,11 +519,6 @@ class Compiler(metaclass=abc.ABCMeta):
         This currently means C, C++, Fortran.
         """
         return []
-
-    def get_linker_args_from_envvars(self,
-                                     for_machine: MachineChoice,
-                                     is_cross: bool) -> T.List[str]:
-        return self.linker.get_args_from_envvars(for_machine, is_cross)
 
     def get_options(self) -> T.Dict[str, coredata.UserOption]:
         return {}
