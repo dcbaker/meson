@@ -719,6 +719,7 @@ class Environment:
                             'Use -D{} instead'.format(key)
                         )
 
+            compiler_args_from_env = False
             for key, envkey in COMPILER_OPTS_TO_ENV.items():
                 p_env_pair = get_env_var_pair(for_machine, self.coredata.is_cross_build(), envkey)
                 if p_env_pair is not None:
@@ -727,13 +728,20 @@ class Environment:
                     if self.first_invocation:
                         # Environment variables override config
                         self.compiler_options[for_machine][key]['args'] = split_args(p_env)
+                        compiler_args_from_env = True
 
             # Handle CPPFLAGS, which are only relavent for a couple of languages
             p_env_pair = get_env_var_pair(for_machine, self.coredata.is_cross_build(), 'CPPFLAGS')
             if p_env_pair is not None:
                 p_env = split_args(p_env_pair[1])
                 for l in ['c', 'cpp', 'objc', 'objcpp']:
-                    self.compiler_options[for_machine][key]['args'].append(p_env)
+                    # If the compiler args were set from the environment extend
+                    # them with CPPFLAGS, if they came from somewhere else
+                    # replace them.
+                    if compiler_args_from_env:
+                        self.compiler_options[for_machine][key]['args'].extend(p_env)
+                    else:
+                        self.compiler_options[for_machine][key]['args'] = p_env
 
             p_env_pair = get_env_var_pair(for_machine, self.coredata.is_cross_build(), 'LDFLAGS')
             if p_env_pair is not None:
