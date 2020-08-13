@@ -922,19 +922,29 @@ class CoreData:
                     mlog.warning('Cannot set supbroject defaults from other subprojects')
                     continue
 
-                options[k.evolve(subproject=subproject)] = v
+                # Options for subproject should be be put into the options
+                # dict, but they do need to be put into env.builtin_options
+                if not k.subproject:
+                    options[k] = v
 
-                k = k.evolve(subproject=subproject)
-                if k.name in BUILTIN_OPTIONS and not BUILTIN_OPTIONS[k.name].yielding:
-                    continue
+                if subproject:
+                    k = k.evolve(subproject=subproject)
+
                 if k not in env.builtin_options:
                     env.builtin_options[k] = v
                 if self.is_cross_build():
                     k = k.as_build()
                     if k not in env.builtin_options:
                         env.builtin_options[k] = v
+            elif classifier is ArgumentGroup.USER:
+                # Options for subproject should be be put into the options
+                # dict, but they do need to be put into env.builtin_options
+                if not k.subproject:
+                    options[k] = v
+                else:
+                    env.project_options[k] = v
             else:
-                options[k.evolve(subproject=subproject)] = v
+                options[k] = v
 
         for k, v in env.builtin_options.items():
             if k.subproject not in {subproject, ''}:
@@ -946,6 +956,8 @@ class CoreData:
                 # Don't use the superproject option if there is a subproject version
                 continue
             options[k] = v
+
+        breakpoint()
 
         options.update({k: v for k, v in env.project_options.items() if k.subproject == subproject})
 

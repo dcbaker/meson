@@ -1,6 +1,8 @@
 project('persubproject options', 'c',
   default_options : ['default_library=both',
                      'werror=true',
+                     'sub1:werror=false',
+                     'sub2:opt=overriden',
                      'warning_level=3'])
 
 assert(get_option('default_library') == 'both', 'Parent default_library should be "both"')
