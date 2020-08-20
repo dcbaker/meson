@@ -128,32 +128,44 @@ from .compilers import (
     VisualStudioCPPCompiler,
 )
 
+if T.TYPE_CHECKING:
+    import argparse
+
+    from .compilers.compilers import CompilerType
+    from .dependencies import ExternalProgram
+    from .linkers import StaticLinker
+
+    CompilersDict = T.Dict[str, Compiler]
+    CPPDefinesDict = T.Dict[T.Union[str, T.List[str]], T.Union[bool, str]]
+
 build_filename = 'meson.build'
 
-CompilersDict = T.Dict[str, Compiler]
 
-def detect_gcovr(min_version='3.3', new_rootdir_version='4.2', log=False):
+def detect_gcovr(min_version: str = '3.3', new_rootdir_version: str = '4.2',
+                 log: bool = False) -> T.Tuple[T.Optional[str], T.Optional[bool]]:
     gcovr_exe = 'gcovr'
     try:
         p, found = Popen_safe([gcovr_exe, '--version'])[0:2]
     except (FileNotFoundError, PermissionError):
         # Doesn't exist in PATH or isn't executable
-        return None, None
+        return None, False
     found = search_version(found)
     if p.returncode == 0 and mesonlib.version_compare(found, '>=' + min_version):
         if log:
             mlog.log('Found gcovr-{} at {}'.format(found, quote_arg(shutil.which(gcovr_exe))))
         return gcovr_exe, mesonlib.version_compare(found, '>=' + new_rootdir_version)
-    return None, None
+    return None, False
 
-def detect_llvm_cov():
+
+def detect_llvm_cov() -> T.Optional[str]:
     tools = get_llvm_tool_names('llvm-cov')
     for tool in tools:
         if mesonlib.exe_exists([tool, '--version']):
             return tool
     return None
 
-def find_coverage_tools():
+
+def find_coverage_tools() -> T.Tuple[T.Optional[str], bool, T.Optional[str], T.Optional[str], T.Optional[str]]:
     gcovr_exe, gcovr_new_rootdir = detect_gcovr()
 
     llvm_cov_exe = detect_llvm_cov()
@@ -168,11 +180,13 @@ def find_coverage_tools():
 
     return gcovr_exe, gcovr_new_rootdir, lcov_exe, genhtml_exe, llvm_cov_exe
 
-def detect_ninja(version: str = '1.7', log: bool = False) -> str:
+
+def detect_ninja(version: str = '1.7', log: bool = False) -> T.Optional[str]:
     r = detect_ninja_command_and_version(version, log)
     return r[0] if r else None
 
-def detect_ninja_command_and_version(version: str = '1.7', log: bool = False) -> (str, str):
+
+def detect_ninja_command_and_version(version: str = '1.7', log: bool = False) -> T.Optional[T.Tuple[str, str]]:
     env_ninja = os.environ.get('NINJA', None)
     for n in [env_ninja] if env_ninja else ['ninja', 'ninja-build', 'samu']:
         try:
@@ -195,6 +209,8 @@ def detect_ninja_command_and_version(version: str = '1.7', log: bool = False) ->
                     name = 'samurai'
                 mlog.log('Found {}-{} at {}'.format(name, found, quote_arg(n)))
             return (n, found)
+    return None
+
 
 def get_llvm_tool_names(tool: str) -> T.List[str]:
     # Ordered list of possible suffixes of LLVM executables to try. Start with
@@ -219,10 +235,8 @@ def get_llvm_tool_names(tool: str) -> T.List[str]:
         '-11',    # Debian development snapshot
         '-devel', # FreeBSD development snapshot
     ]
-    names = []
-    for suffix in suffixes:
-        names.append(tool + suffix)
-    return names
+    return [tool + s for s in suffixes]
+
 
 def detect_scanbuild() -> T.List[str]:
     """ Look for scan-build binary on build platform
@@ -241,7 +255,6 @@ def detect_scanbuild() -> T.List[str]:
     exelist = []
     if 'SCANBUILD' in os.environ:
         exelist = split_args(os.environ['SCANBUILD'])
-
     else:
         tools = get_llvm_tool_names('scan-build')
         for tool in tools:
@@ -254,6 +267,7 @@ def detect_scanbuild() -> T.List[str]:
         if os.path.isfile(tool) and os.access(tool, os.X_OK):
             return [tool]
     return []
+
 
 def detect_clangformat() -> T.List[str]:
     """ Look for clang-format binary on build platform
@@ -271,7 +285,8 @@ def detect_clangformat() -> T.List[str]:
             return [path]
     return []
 
-def detect_native_windows_arch():
+
+def detect_native_windows_arch() -> str:
     """
     The architecture of Windows itself: x86, amd64 or arm64
     """
@@ -287,7 +302,8 @@ def detect_native_windows_arch():
             raise EnvironmentException('Unable to detect native OS architecture')
     return arch
 
-def detect_windows_arch(compilers: CompilersDict) -> str:
+
+def detect_windows_arch(compilers: 'CompilersDict') -> str:
     """
     Detecting the 'native' architecture of Windows is not a trivial task. We
     cannot trust that the architecture that Python is built for is the 'native'
@@ -314,20 +330,25 @@ def detect_windows_arch(compilers: CompilersDict) -> str:
     os_arch = detect_native_windows_arch()
     if os_arch == 'x86':
         return os_arch
+
     # If we're on 64-bit Windows, 32-bit apps can be compiled without
     # cross-compilation. So if we're doing that, just set the native arch as
     # 32-bit and pretend like we're running under WOW64. Else, return the
     # actual Windows architecture that we deduced above.
+    #
+    # Ignore the warngns here about compiler.target, we know that msvc and
+    # clang-cl have a target attribute, mypy just can't determine that
     for compiler in compilers.values():
-        if compiler.id == 'msvc' and (compiler.target == 'x86' or compiler.target == '80x86'):
+        if compiler.get_id() == 'msvc' and compiler.target in {'x86', '80x86'}:  # type: ignore
             return 'x86'
-        if compiler.id == 'clang-cl' and compiler.target == 'x86':
+        if compiler.get_id() == 'clang-cl' and compiler.target == 'x86':  # type: ignore
             return 'x86'
-        if compiler.id == 'gcc' and compiler.has_builtin_define('__i386__'):
+        if compiler.get_id() == 'gcc' and compiler.has_builtin_define('__i386__'):
             return 'x86'
     return os_arch
 
-def any_compiler_has_define(compilers: CompilersDict, define):
+
+def any_compiler_has_define(compilers: 'CompilersDict', define: str) -> bool:
     for c in compilers.values():
         try:
             if c.has_builtin_define(define):
@@ -337,7 +358,8 @@ def any_compiler_has_define(compilers: CompilersDict, define):
             pass
     return False
 
-def detect_cpu_family(compilers: CompilersDict) -> str:
+
+def detect_cpu_family(compilers: 'CompilersDict') -> str:
     """
     Python is inconsistent in its platform module.
     It returns different values for the same cpu.
@@ -398,7 +420,8 @@ def detect_cpu_family(compilers: CompilersDict) -> str:
 
     return trial
 
-def detect_cpu(compilers: CompilersDict):
+
+def detect_cpu(compilers: 'CompilersDict') -> str:
     if mesonlib.is_windows():
         trial = detect_windows_arch(compilers)
     elif mesonlib.is_freebsd() or mesonlib.is_netbsd() or mesonlib.is_openbsd() or mesonlib.is_aix():
@@ -428,17 +451,24 @@ def detect_cpu(compilers: CompilersDict):
     # detect_cpu_family() above.
     return trial
 
+<<<<<<< HEAD
 def detect_system():
     if sys.platform == 'cygwin':
+=======
+
+def detect_system() -> str:
+    system = platform.system().lower()
+    if system.startswith('cygwin'):
+>>>>>>> f3a93acab... environment: Fix most mypy violations
         return 'cygwin'
     return platform.system().lower()
 
-def detect_msys2_arch():
-    if 'MSYSTEM_CARCH' in os.environ:
-        return os.environ['MSYSTEM_CARCH']
-    return None
 
-def detect_machine_info(compilers: T.Optional[CompilersDict] = None) -> MachineInfo:
+def detect_msys2_arch() -> T.Optional[str]:
+    return os.environ.get('MSYSTEM_CARCH')
+
+
+def detect_machine_info(compilers: T.Optional['CompilersDict'] = None) -> MachineInfo:
     """Detect the machine we're running on
 
     If compilers are not provided, we cannot know as much. None out those
@@ -452,9 +482,10 @@ def detect_machine_info(compilers: T.Optional[CompilersDict] = None) -> MachineI
         detect_cpu(compilers) if compilers is not None else None,
         sys.byteorder)
 
+
 # TODO make this compare two `MachineInfo`s purely. How important is the
 # `detect_cpu_family({})` distinction? It is the one impediment to that.
-def machine_info_can_run(machine_info: MachineInfo):
+def machine_info_can_run(machine_info: MachineInfo) -> bool:
     """Whether we can run binaries for this machine on the current machine.
 
     Can almost always run 32-bit binaries on 64-bit natively if the host
@@ -469,6 +500,7 @@ def machine_info_can_run(machine_info: MachineInfo):
         (machine_info.cpu_family == true_build_cpu_family) or \
         ((true_build_cpu_family == 'x86_64') and (machine_info.cpu_family == 'x86')) or \
         ((true_build_cpu_family == 'aarch64') and (machine_info.cpu_family == 'arm'))
+
 
 def search_version(text: str) -> str:
     # Usually of the type 4.1.4 but compiler output may contain
@@ -518,7 +550,7 @@ class Environment:
     log_dir = 'meson-logs'
     info_dir = 'meson-info'
 
-    def __init__(self, source_dir, build_dir, options):
+    def __init__(self, source_dir: str, build_dir: str, options: 'argparse.Namespace'):
         self.source_dir = source_dir
         self.build_dir = build_dir
         # Do not try to create build directories when build_dir is none.
@@ -560,14 +592,14 @@ class Environment:
         # Stores machine infos, the only *three* machine one because we have a
         # target machine info on for the user (Meson never cares about the
         # target machine.)
-        machines = PerThreeMachineDefaultable()
+        machines = PerThreeMachineDefaultable()  # type: PerThreeMachineDefaultable[MachineInfo]
 
         # Similar to coredata.compilers, but lower level in that there is no
         # meta data, only names/paths.
-        binaries = PerMachineDefaultable()
+        binaries = PerMachineDefaultable()  # type: PerMachineDefaultable[BinaryTable]
 
         # Misc other properties about each machine.
-        properties = PerMachineDefaultable()
+        properties = PerMachineDefaultable()  # type: PerMachineDefaultable[Properties]
 
         # We only need one of these as project options are not per machine
         user_options = collections.defaultdict(dict)  # type: T.DefaultDict[str, T.Dict[str, object]]
@@ -621,7 +653,7 @@ class Environment:
                     compiler_options[machine][lang][key] = v
                     del mopts[''][k]
 
-        def move_compiler_options(properties: Properties, compopts: T.Dict[str, T.DefaultDict[str, object]]) -> None:
+        def move_compiler_options(properties: Properties, compopts: T.DefaultDict[str, T.Dict[str, object]]) -> None:
             for k, v in properties.properties.copy().items():
                 for lang in all_languages:
                     if k == '{}_args'.format(lang):
@@ -803,7 +835,7 @@ class Environment:
         self.default_pkgconfig = ['pkg-config']
         self.wrap_resolver = None
 
-    def create_new_coredata(self, options):
+    def create_new_coredata(self, options: 'argparse.Namespace') -> None:
         # WARNING: Don't use any values from coredata in __init__. It gets
         # re-initialized with project options by the interpreter during
         # build file parsing.
@@ -815,52 +847,52 @@ class Environment:
     def is_cross_build(self, when_building_for: MachineChoice = MachineChoice.HOST) -> bool:
         return self.coredata.is_cross_build(when_building_for)
 
-    def dump_coredata(self):
+    def dump_coredata(self) -> None:
         return coredata.save(self.coredata, self.get_build_dir())
 
-    def get_script_dir(self):
+    def get_script_dir(self) -> str:
         import mesonbuild.scripts
         return os.path.dirname(mesonbuild.scripts.__file__)
 
-    def get_log_dir(self):
+    def get_log_dir(self) -> str:
         return self.log_dir
 
-    def get_coredata(self):
+    def get_coredata(self) -> coredata.CoreData:
         return self.coredata
 
-    def get_build_command(self, unbuffered=False):
-        cmd = mesonlib.meson_command[:]
+    def get_build_command(self, unbuffered: bool = False) -> T.List[str]:
+        cmd = mesonlib.meson_command.copy()
         if unbuffered and 'python' in os.path.basename(cmd[0]):
             cmd.insert(1, '-u')
         return cmd
 
-    def is_header(self, fname):
+    def is_header(self, fname: str) -> bool:
         return is_header(fname)
 
-    def is_source(self, fname):
+    def is_source(self, fname: str) -> bool:
         return is_source(fname)
 
-    def is_assembly(self, fname):
+    def is_assembly(self, fname: str) -> bool:
         return is_assembly(fname)
 
-    def is_llvm_ir(self, fname):
+    def is_llvm_ir(self, fname: str) -> bool:
         return is_llvm_ir(fname)
 
-    def is_object(self, fname):
+    def is_object(self, fname: str) -> bool:
         return is_object(fname)
 
     @lru_cache(maxsize=None)
-    def is_library(self, fname):
+    def is_library(self, fname: str) -> bool:
         return is_library(fname)
 
-    def lookup_binary_entry(self, for_machine: MachineChoice, name: str):
+    def lookup_binary_entry(self, for_machine: MachineChoice, name: str) -> T.Optional[T.List[str]]:
         return self.binaries[for_machine].lookup_entry(
             for_machine,
             self.is_cross_build(),
             name)
 
     @staticmethod
-    def get_gnu_compiler_defines(compiler):
+    def get_gnu_compiler_defines(compiler: T.List[str]) -> 'CPPDefinesDict':
         """
         Detect GNU compiler platform type (Apple, MinGW, Unix)
         """
@@ -873,7 +905,7 @@ class Environment:
         # Parse several lines of the type:
         # `#define ___SOME_DEF some_value`
         # and extract `___SOME_DEF`
-        defines = {}
+        defines = {}  # type: CPPDefinesDict
         for line in output.split('\n'):
             if not line:
                 continue
@@ -887,24 +919,29 @@ class Environment:
         return defines
 
     @staticmethod
-    def get_gnu_version_from_defines(defines):
+    def get_gnu_version_from_defines(defines: 'CPPDefinesDict') -> str:
         dot = '.'
         major = defines.get('__GNUC__', '0')
         minor = defines.get('__GNUC_MINOR__', '0')
         patch = defines.get('__GNUC_PATCHLEVEL__', '0')
+        assert isinstance(major, str), 'for mypy'
+        assert isinstance(minor, str), 'for mypy'
+        assert isinstance(patch, str), 'for mypy'
         return dot.join((major, minor, patch))
 
     @staticmethod
-    def get_lcc_version_from_defines(defines):
+    def get_lcc_version_from_defines(defines: 'CPPDefinesDict') -> str:
         dot = '.'
         generation_and_major = defines.get('__LCC__', '100')
+        assert isinstance(generation_and_major, str), 'for mypy'
         generation = generation_and_major[:1]
         major = generation_and_major[1:]
         minor = defines.get('__LCC_MINOR__', '0')
+        assert isinstance(minor, str), 'for mypy'
         return dot.join((generation, major, minor))
 
     @staticmethod
-    def get_clang_compiler_defines(compiler):
+    def get_clang_compiler_defines(compiler: T.List[str]) -> 'CPPDefinesDict':
         """
         Get the list of Clang pre-processor defines
         """
@@ -912,7 +949,7 @@ class Environment:
         p, output, error = Popen_safe(args, write='', stdin=subprocess.PIPE)
         if p.returncode != 0:
             raise EnvironmentException('Unable to get clang pre-processor defines:\n' + output + error)
-        defines = {}
+        defines = {}  # type: CPPDefinesDict
         for line in output.split('\n'):
             if not line:
                 continue
@@ -925,16 +962,16 @@ class Environment:
                 defines[rest[0]] = rest[1]
         return defines
 
-    def _get_compilers(self, lang, for_machine):
+    def _get_compilers(self, lang: str, for_machine: 'MachineChoice') -> T.Tuple[T.List[T.List[str]], T.List[str], T.Optional['ExternalProgram']]:
         '''
         The list of compilers is detected in the exact same way for
         C, C++, ObjC, ObjC++, Fortran, CS so consolidate it here.
         '''
         value = self.lookup_binary_entry(for_machine, lang)
         if value is not None:
-            compilers, ccache = BinaryTable.parse_entry(value)
+            compiler, ccache = BinaryTable.parse_entry(value)
             # Return value has to be a list of compiler 'choices'
-            compilers = [compilers]
+            compilers = [compiler]  # type: T.Union[T.List[str], T.List[T.List[str]]]
         else:
             if not self.machines.matches_build_machine(for_machine):
                 raise EnvironmentException('{!r} compiler binary not defined in cross or native file'.format(lang))
@@ -946,9 +983,11 @@ class Environment:
         else:
             exe_wrap = self.get_exe_wrapper()
 
-        return compilers, ccache, exe_wrap
+        return [[c] if isinstance(c, str) else c for c in compilers], ccache, exe_wrap
 
-    def _handle_exceptions(self, exceptions, binaries, bintype='compiler'):
+    def _handle_exceptions(self, exceptions: T.Dict[str, T.Union[str, Exception]], binaries: object,
+                           bintype: str = 'compiler') -> T.NoReturn:
+        # TODO: binaries really should be StrProto(Protocol): __str__(self) -> str: ...
         errmsg = 'Unknown {}(s): {}'.format(bintype, binaries)
         if exceptions:
             errmsg += '\nThe follow exceptions were encountered:'
@@ -956,7 +995,7 @@ class Environment:
                 errmsg += '\nRunning "{0}" gave "{1}"'.format(c, e)
         raise EnvironmentException(errmsg)
 
-    def _guess_win_linker(self, compiler: T.List[str], comp_class: Compiler,
+    def _guess_win_linker(self, compiler: T.List[str], comp_class: T.Type[Compiler],
                           for_machine: MachineChoice, *,
                           use_linker_prefix: bool = True, invoked_directly: bool = True,
                           extra_args: T.Optional[T.List[str]] = None) -> 'DynamicLinker':
@@ -1020,7 +1059,7 @@ class Environment:
                 "%PATH% variable to resolve this.")
         raise EnvironmentException('Unable to determine dynamic linker')
 
-    def _guess_nix_linker(self, compiler: T.List[str], comp_class: T.Type[Compiler],
+    def _guess_nix_linker(self, compiler: T.List[str], comp_class: T.Type[CompilerType],
                           for_machine: MachineChoice, *,
                           extra_args: T.Optional[T.List[str]] = None) -> 'DynamicLinker':
         """Helper for guessing what linker to use on Unix-Like OSes.
@@ -1048,11 +1087,11 @@ class Environment:
         _, o, e = Popen_safe(compiler + check_args)
         v = search_version(o + e)
         if o.startswith('LLD'):
-            linker = LLVMDynamicLinker(
-                compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)  # type: DynamicLinker
+            return LLVMDynamicLinker(
+                compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
         elif 'Snapdragon' in e and 'LLVM' in e:
-            linker = QualcommLLVMDynamicLinker(
-                compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)  # type: DynamicLinker
+            return QualcommLLVMDynamicLinker(
+                compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
         elif e.startswith('lld-link: '):
             # The LLD MinGW frontend didn't respond to --version before version 9.0.0,
             # and produced an error message about failing to link (when no object
@@ -1070,7 +1109,7 @@ class Environment:
                 _, o, e = Popen_safe([linker_cmd, '--version'])
                 v = search_version(o)
 
-            linker = LLVMDynamicLinker(compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
+            return LLVMDynamicLinker(compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
         # first is for apple clang, second is for real gcc, the third is icc
         elif e.endswith('(use -v to see invocation)\n') or 'macosx_version' in e or 'ld: unknown option:' in e:
             if isinstance(comp_class.LINKER_PREFIX, str):
@@ -1083,13 +1122,13 @@ class Environment:
                     break
             else:
                 v = 'unknown version'
-            linker = AppleDynamicLinker(compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
+            return AppleDynamicLinker(compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
         elif 'GNU' in o:
             if 'gold' in o:
-                cls = GnuGoldDynamicLinker
+                cls = GnuGoldDynamicLinker  # type: T.Union[T.Type[GnuGoldDynamicLinker], T.Type[GnuBFDDynamicLinker]]
             else:
                 cls = GnuBFDDynamicLinker
-            linker = cls(compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
+            return cls(compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
         elif 'Solaris' in e or 'Solaris' in o:
             for line in (o+e).split('\n'):
                 if 'ld: Software Generation Utilities' in line:
@@ -1097,7 +1136,7 @@ class Environment:
                     break
             else:
                 v = 'unknown version'
-            linker = SolarisDynamicLinker(
+            return SolarisDynamicLinker(
                 compiler, for_machine, comp_class.LINKER_PREFIX, override,
                 version=v)
         elif 'ld: 0706-012 The -- flag is not recognized' in e:
@@ -1105,22 +1144,19 @@ class Environment:
                 _, _, e = Popen_safe(compiler + [comp_class.LINKER_PREFIX + '-V'] + extra_args)
             else:
                 _, _, e = Popen_safe(compiler + comp_class.LINKER_PREFIX + ['-V'] + extra_args)
-            linker = AIXDynamicLinker(
+            return AIXDynamicLinker(
                 compiler, for_machine, comp_class.LINKER_PREFIX, override,
                 version=search_version(e))
-        else:
-            raise EnvironmentException('Unable to determine dynamic linker')
-        return linker
 
-    def _detect_c_or_cpp_compiler(self, lang: str, for_machine: MachineChoice) -> Compiler:
-        popen_exceptions = {}
+        raise EnvironmentException('Unable to determine dynamic linker')
+
+    def _detect_c_or_cpp_compiler(self, lang: str, for_machine: MachineChoice) -> 'CompilerType':
+        popen_exceptions = {}  # type: T.Dict[str, T.Union[str, Exception]]
         compilers, ccache, exe_wrap = self._get_compilers(lang, for_machine)
         is_cross = self.is_cross_build(for_machine)
         info = self.machines[for_machine]
 
         for compiler in compilers:
-            if isinstance(compiler, str):
-                compiler = [compiler]
             compiler_name = os.path.basename(compiler[0])
 
             if not set(['cl', 'cl.exe', 'clang-cl', 'clang-cl.exe']).isdisjoint(compiler):
@@ -1169,14 +1205,14 @@ class Environment:
             full_version = out.split('\n', 1)[0]
             version = search_version(out)
 
-            guess_gcc_or_lcc = False
+            guess_gcc_or_lcc = ''
             if 'Free Software Foundation' in out or 'xt-' in out:
                 guess_gcc_or_lcc = 'gcc'
             if 'e2k' in out and 'lcc' in out:
                 guess_gcc_or_lcc = 'lcc'
             if 'Microchip Technology' in out:
                 # this output has "Free Software Foundation" in its version
-                guess_gcc_or_lcc = False
+                guess_gcc_or_lcc = ''
 
             if guess_gcc_or_lcc:
                 defines = self.get_gnu_compiler_defines(compiler)
@@ -1223,11 +1259,11 @@ class Environment:
                 # So, searching for the 'Component' in out although we know it is
                 # present in second line, as we are not sure about the
                 # output format in future versions
-                arm_ver_str = re.search('.*Component.*', out)
-                if arm_ver_str is None:
+                arm_ver = re.search('.*Component.*', out)
+                if arm_ver is None:
                     popen_exceptions[' '.join(compiler)] = 'version string not found'
                     continue
-                arm_ver_str = arm_ver_str.group(0)
+                arm_ver_str = str(arm_ver.group(0))
                 # Override previous values
                 version = search_version(arm_ver_str)
                 full_version = arm_ver_str
@@ -1376,15 +1412,11 @@ class Environment:
         return self._detect_c_or_cpp_compiler('cpp', for_machine)
 
     def detect_cuda_compiler(self, for_machine):
-        popen_exceptions = {}
+        popen_exceptions = {}  # type: T.Dict[str, T.Union[str, Exception]]
         is_cross = self.is_cross_build(for_machine)
         compilers, ccache, exe_wrap = self._get_compilers('cuda', for_machine)
         info = self.machines[for_machine]
         for compiler in compilers:
-            if isinstance(compiler, str):
-                compiler = [compiler]
-            else:
-                raise EnvironmentException()
             arg = '--version'
             try:
                 p, out, err = Popen_safe(compiler + [arg])
@@ -1415,13 +1447,11 @@ class Environment:
         raise EnvironmentException('Could not find suitable CUDA compiler: "' + ' '.join(compilers) + '"')
 
     def detect_fortran_compiler(self, for_machine: MachineChoice):
-        popen_exceptions = {}
+        popen_exceptions = {}  # type: T.Dict[str, T.Union[str, Exception]]
         compilers, ccache, exe_wrap = self._get_compilers('fortran', for_machine)
         is_cross = self.is_cross_build(for_machine)
         info = self.machines[for_machine]
         for compiler in compilers:
-            if isinstance(compiler, str):
-                compiler = [compiler]
             for arg in ['--version', '-V']:
                 try:
                     p, out, err = Popen_safe(compiler + [arg])
@@ -1432,7 +1462,7 @@ class Environment:
                 version = search_version(out)
                 full_version = out.split('\n', 1)[0]
 
-                guess_gcc_or_lcc = False
+                guess_gcc_or_lcc = ''
                 if 'GNU Fortran' in out:
                     guess_gcc_or_lcc = 'gcc'
                 if 'e2k' in out and 'lcc' in out:
@@ -1536,21 +1566,24 @@ class Environment:
     def get_scratch_dir(self):
         return self.scratch_dir
 
-    def detect_objc_compiler(self, for_machine: MachineInfo) -> 'Compiler':
+    def detect_objc_compiler(self, for_machine: 'MachineChoice') -> 'Compiler':
         return self._detect_objc_or_objcpp_compiler(for_machine, True)
 
-    def detect_objcpp_compiler(self, for_machine: MachineInfo) -> 'Compiler':
+    def detect_objcpp_compiler(self, for_machine: 'MachineChoice') -> 'Compiler':
         return self._detect_objc_or_objcpp_compiler(for_machine, False)
 
+<<<<<<< HEAD
     def _detect_objc_or_objcpp_compiler(self, for_machine: MachineChoice, objc: bool) -> 'Compiler':
         popen_exceptions = {}
+=======
+    def _detect_objc_or_objcpp_compiler(self, for_machine: 'MachineChoice', objc: bool) -> 'Compiler':
+        popen_exceptions = {}  # type: T.Dict[str, T.Union[str, Exception]]
+>>>>>>> f3a93acab... environment: Fix most mypy violations
         compilers, ccache, exe_wrap = self._get_compilers('objc' if objc else 'objcpp', for_machine)
         is_cross = self.is_cross_build(for_machine)
         info = self.machines[for_machine]
 
         for compiler in compilers:
-            if isinstance(compiler, str):
-                compiler = [compiler]
             arg = ['--version']
             try:
                 p, out, err = Popen_safe(compiler + arg)
@@ -1614,11 +1647,9 @@ class Environment:
 
     def detect_cs_compiler(self, for_machine):
         compilers, ccache, exe_wrap = self._get_compilers('cs', for_machine)
-        popen_exceptions = {}
+        popen_exceptions = {}  # type: T.Dict[str, T.Union[str, Exception]]
         info = self.machines[for_machine]
         for comp in compilers:
-            if not isinstance(comp, list):
-                comp = [comp]
             try:
                 p, out, err = Popen_safe(comp + ['--version'])
             except OSError as e:
@@ -1657,7 +1688,7 @@ class Environment:
         raise EnvironmentException('Unknown compiler "' + ' '.join(exelist) + '"')
 
     def detect_rust_compiler(self, for_machine):
-        popen_exceptions = {}
+        popen_exceptions = {}  # type: T.Dict[str, T.Union[str, Exception]]
         compilers, ccache, exe_wrap = self._get_compilers('rust', for_machine)
         is_cross = self.is_cross_build(for_machine)
         info = self.machines[for_machine]
@@ -1667,8 +1698,6 @@ class Environment:
         override = self.lookup_binary_entry(for_machine, 'rust_ld')
 
         for compiler in compilers:
-            if isinstance(compiler, str):
-                compiler = [compiler]
             arg = ['--version']
             try:
                 p, out = Popen_safe(compiler + arg)[0:2]
@@ -1749,7 +1778,7 @@ class Environment:
         if is_msvc and arch == 'x86':
             arch = 'x86_mscoff'
 
-        popen_exceptions = {}
+        popen_exceptions = {}  # type: T.Dict[str, T.Union[str, Exception]]
         is_cross = self.is_cross_build(for_machine)
         results, ccache, exe_wrap = self._get_compilers('d', for_machine)
         for exelist in results:
@@ -1757,8 +1786,6 @@ class Environment:
             # We prefer LDC over GDC unless overridden with the DC
             # environment variable because LDC has a much more
             # up to date language version at time (2016).
-            if not isinstance(exelist, list):
-                exelist = [exelist]
             if os.path.basename(exelist[-1]).startswith(('ldmd', 'gdmd')):
                 raise EnvironmentException(
                     'Meson does not support {} as it is only a DMD frontend for another compiler.'
@@ -1899,7 +1926,7 @@ class Environment:
             self.coredata.process_new_compiler(lang, comp, self)
         return comp
 
-    def detect_static_linker(self, compiler):
+    def detect_static_linker(self, compiler: Compiler) -> 'StaticLinker':
         linker = self.lookup_binary_entry(compiler.for_machine, 'ar')
         if linker is not None:
             linkers = [linker]
@@ -1923,12 +1950,12 @@ class Environment:
                     linkers = defaults
             elif isinstance(compiler, IntelClCCompiler):
                 # Intel has it's own linker that acts like microsoft's lib
-                linkers = ['xilib']
+                linkers = [['xilib']]
             elif isinstance(compiler, (PGICCompiler, PGIFortranCompiler)) and mesonlib.is_windows():
                 linkers = [['ar']]  # For PGI on Windows, "ar" is just a wrapper calling link/lib.
             else:
                 linkers = defaults
-        popen_exceptions = {}
+        popen_exceptions = {}  # type: T.Dict[str, T.Union[Exception, str]]
         for linker in linkers:
             if not {'lib', 'lib.exe', 'llvm-lib', 'llvm-lib.exe', 'xilib', 'xilib.exe'}.isdisjoint(linker):
                 arg = '/?'
@@ -1950,10 +1977,13 @@ class Environment:
             if p.returncode == 0 and ('armar' in linker or 'armar.exe' in linker):
                 return ArmarLinker(linker)
             if 'DMD32 D Compiler' in out or 'DMD64 D Compiler' in out:
+                assert isinstance(compiler, compilers.DCompiler), 'for mypy'
                 return DLinker(linker, compiler.arch)
             if 'LDC - the LLVM D compiler' in out:
+                assert isinstance(compiler, compilers.DCompiler), 'for mypy'
                 return DLinker(linker, compiler.arch)
             if 'GDC' in out and ' based on D ' in out:
+                assert isinstance(compiler, compilers.DCompiler), 'for mypy'
                 return DLinker(linker, compiler.arch)
             if err.startswith('Renesas') and ('rlink' in linker or 'rlink.exe' in linker):
                 return CcrxLinker(linker)
@@ -1972,10 +2002,10 @@ class Environment:
         self._handle_exceptions(popen_exceptions, linkers, 'linker')
         raise EnvironmentException('Unknown static linker "{}"'.format(' '.join(linkers)))
 
-    def get_source_dir(self):
+    def get_source_dir(self) -> T.Optional[str]:
         return self.source_dir
 
-    def get_build_dir(self):
+    def get_build_dir(self) -> T.Optional[str]:
         return self.build_dir
 
     def get_import_lib_dir(self) -> str:
@@ -2019,7 +2049,7 @@ class Environment:
     def get_datadir(self) -> str:
         return self.coredata.get_builtin_option('datadir')
 
-    def get_compiler_system_dirs(self, for_machine: MachineChoice):
+    def get_compiler_system_dirs(self, for_machine: MachineChoice) -> T.List[str]:
         for comp in self.coredata.compilers[for_machine].values():
             if isinstance(comp, compilers.ClangCompiler):
                 index = 1
@@ -2035,10 +2065,10 @@ class Environment:
         p, out, _ = Popen_safe(comp.get_exelist() + ['-print-search-dirs'])
         if p.returncode != 0:
             raise mesonlib.MesonException('Could not calculate system search dirs')
-        out = out.split('\n')[index].lstrip('libraries: =').split(':')
-        return [os.path.normpath(p) for p in out]
+        split = out.split('\n')[index].lstrip('libraries: =').split(':')
+        return [os.path.normpath(p) for p in split]
 
-    def need_exe_wrapper(self, for_machine: MachineChoice = MachineChoice.HOST):
+    def need_exe_wrapper(self, for_machine: MachineChoice = MachineChoice.HOST) -> bool:
         value = self.properties[for_machine].get('needs_exe_wrapper', None)
         if value is not None:
             return value
