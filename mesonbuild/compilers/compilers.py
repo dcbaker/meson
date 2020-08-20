@@ -413,6 +413,9 @@ class Compiler(metaclass=abc.ABCMeta):
     LINKER_PREFIX = None  # type: T.Union[None, str, T.List[str]]
     INVOKES_LINKER = True
 
+    # TODO: these could be forward declarations once we drop 3.6 support
+    language = 'unset'
+
     def __init__(self, exelist, version, for_machine: MachineChoice, info: 'MachineInfo',
                  linker: T.Optional['DynamicLinker'] = None, **kwargs):
         if isinstance(exelist, str):
