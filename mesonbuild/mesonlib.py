@@ -63,7 +63,7 @@ if os.path.basename(sys.executable) == 'meson.exe':
     python_command = [sys.executable, 'runpython']
 else:
     python_command = [sys.executable]
-meson_command = None
+meson_command = None  # type: T.Optional[T.List[str]]
 
 GIT = shutil.which('git')
 def git(cmd: T.List[str], workingdir: str, **kwargs: T.Any) -> subprocess.CompletedProcess:
