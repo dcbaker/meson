@@ -52,9 +52,6 @@ class JavaCompiler(BasicLinkerIsCompilerMixin, Compiler):
             subdir = './'
         return ['-d', subdir, '-s', subdir]
 
-    def get_coverage_args(self):
-        return []
-
     def get_std_exe_link_args(self):
         return []
 

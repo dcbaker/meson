@@ -74,9 +74,6 @@ class CsCompiler(BasicLinkerIsCompilerMixin, Compiler):
     def get_compile_only_args(self):
         return []
 
-    def get_coverage_args(self):
-        return []
-
     def get_std_exe_link_args(self):
         return []
 

@@ -86,9 +86,6 @@ class BasicLinkerIsCompilerMixin:
         m = 'Linker {} does not support position-independent executable'
         raise mesonlib.EnvironmentException(m.format(self.id))
 
-    def get_undefined_link_args(self) -> T.List[str]:
-        return []
-
     def get_coverage_link_args(self) -> T.List[str]:
         m = "Linker {} doesn't implement coverage data generation.".format(self.id)
         raise mesonlib.EnvironmentException(m)
