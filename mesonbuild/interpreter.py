@@ -1093,7 +1093,7 @@ class CompilerHolder(InterpreterObject):
                              'get_argument_syntax': self.get_argument_syntax_method,
                              })
 
-    def _dep_msg(self, deps, endl):
+    def _dep_msg(self, deps: T.List['Dependency'], endl: str) -> str:
         msg_single = 'with dependency {}'
         msg_many = 'with dependencies {}'
         if not deps:
@@ -1142,7 +1142,8 @@ class CompilerHolder(InterpreterObject):
         args += mesonlib.stringlistify(kwargs.get('args', []))
         return args
 
-    def determine_dependencies(self, kwargs, endl=':'):
+    # TODO: really need a TypedDict for this...
+    def determine_dependencies(self, kwargs: T.Dict[str, T.Any], endl: str = ':') -> T.Tuple[T.List['Dependency'], str]:
         deps = kwargs.get('dependencies', None)
         if deps is not None:
             deps = listify(deps)
