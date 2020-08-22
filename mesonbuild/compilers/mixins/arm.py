@@ -63,8 +63,14 @@ armclang_optimization_args = {
 
 
 class ArmCompiler:
-    # Functionality that is common to all ARM family compilers.
-    def __init__(self):
+
+    """Functionality that is common to all ARM family compilers."""
+
+    if T.TYPE_CHECKING:
+        is_cross = True
+        can_compile_suffixes = set()  # type: T.Set[str]
+
+    def __init__(self) -> None:
         if not self.is_cross:
             raise mesonlib.EnvironmentException('armcc supports only cross-compilation.')
         self.id = 'arm'
@@ -127,21 +133,27 @@ class ArmCompiler:
 
 
 class ArmclangCompiler:
-    def __init__(self):
+
+    if T.TYPE_CHECKING:
+        can_compile_suffixes = set()  # type: T.Set[str]
+        is_cross = True
+        version = '0'
+
+    def __init__(self) -> None:
         if not self.is_cross:
             raise mesonlib.EnvironmentException('armclang supports only cross-compilation.')
         # Check whether 'armlink' is available in path
-        self.linker_exe = 'armlink'
+        self.linker_exe = ['armlink']
         args = '--vsn'
         try:
             p, stdo, stderr = mesonlib.Popen_safe(self.linker_exe, args)
         except OSError as e:
-            err_msg = 'Unknown linker\nRunning "{0}" gave \n"{1}"'.format(' '.join([self.linker_exe] + [args]), e)
+            err_msg = 'Unknown linker\nRunning "{0}" gave \n"{1}"'.format(' '.join(self.linker_exe + [args]), e)
             raise mesonlib.EnvironmentException(err_msg)
         # Verify the armlink version
         ver_str = re.search('.*Component.*', stdo)
         if ver_str:
-            ver_str = ver_str.group(0)
+            ver_str = str(ver_str.group(0))
         else:
             raise mesonlib.EnvironmentException('armlink version string not found')
         assert ver_str  # makes mypy happy
