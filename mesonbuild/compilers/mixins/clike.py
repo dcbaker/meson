@@ -38,6 +38,7 @@ from .. import compilers
 from .visualstudio import VisualStudioLikeCompiler
 
 if T.TYPE_CHECKING:
+    from ...dependencies import Dependency
     from ...environment import Environment
 
 GROUP_FLAGS = re.compile(r'''\.so (?:\.[0-9]+)? (?:\.[0-9]+)? (?:\.[0-9]+)?$ |
@@ -244,7 +245,7 @@ class CLikeCompiler:
         return tuple(retval)
 
     @functools.lru_cache()
-    def get_program_dirs(self, env):
+    def get_program_dirs(self, env: 'Environment') -> T.List[str]:
         '''
         Programs used by the compiler. Also where toolchain DLLs such as
         libstdc++-6.dll are found with MinGW.
@@ -334,14 +335,19 @@ class CLikeCompiler:
         code = 'int main(void) { int class=0; return class; }\n'
         return self.sanity_check_impl(work_dir, environment, 'sanitycheckc.c', code)
 
-    def check_header(self, hname: str, prefix: str, env, *, extra_args=None, dependencies=None):
+    def check_header(self, hname: str, prefix: str, env: 'Environment', *,
+                     extra_args: T.Optional[T.List[str]] = None,
+                     dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[bool, bool]:
         fargs = {'prefix': prefix, 'header': hname}
         code = '''{prefix}
         #include <{header}>'''
         return self.compiles(code.format(**fargs), env, extra_args=extra_args,
                              dependencies=dependencies)
 
-    def has_header(self, hname: str, prefix: str, env, *, extra_args=None, dependencies=None, disable_cache: bool = False):
+    def has_header(self, hname: str, prefix: str, env: 'Environment', *,
+                   extra_args: T.Optional[T.List[str]] = None,
+                   dependencies: T.Optional[T.List['Dependency']] = None,
+                   disable_cache: bool = False) -> T.Tuple[bool, bool]:
         fargs = {'prefix': prefix, 'header': hname}
         code = '''{prefix}
         #ifdef __has_include
@@ -354,7 +360,10 @@ class CLikeCompiler:
         return self.compiles(code.format(**fargs), env, extra_args=extra_args,
                              dependencies=dependencies, mode='preprocess', disable_cache=disable_cache)
 
-    def has_header_symbol(self, hname: str, symbol: str, prefix: str, env, *, extra_args=None, dependencies=None):
+    def has_header_symbol(self, hname: str, symbol: str, prefix: str,
+                          env: 'Environment', *,
+                          extra_args: T.Optional[T.List[str]] = None,
+                          dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[bool, bool]:
         fargs = {'prefix': prefix, 'header': hname, 'symbol': symbol}
         t = '''{prefix}
         #include <{header}>
@@ -440,23 +449,34 @@ class CLikeCompiler:
         args = cargs + extra_args + largs
         return args
 
-    def compiles(self, code: str, env, *,
+    def compiles(self, code: str, env: 'Environment', *,
                  extra_args: T.Sequence[T.Union[T.Sequence[str], str]] = None,
-                 dependencies=None, mode: str = 'compile', disable_cache: bool = False) -> T.Tuple[bool, bool]:
+                 dependencies: T.Optional[T.List['Dependency']] = None,
+                 mode: str = 'compile',
+                 disable_cache: bool = False) -> T.Tuple[bool, bool]:
         with self._build_wrapper(code, env, extra_args, dependencies, mode, disable_cache=disable_cache) as p:
             return p.returncode == 0, p.cached
 
-    def _build_wrapper(self, code: str, env, extra_args, dependencies=None, mode: str = 'compile', want_output: bool = False, disable_cache: bool = False, temp_dir: str = None) -> T.Tuple[bool, bool]:
+    def _build_wrapper(self, code: str, env: 'Environment', extra_args,
+                       dependencies=None, mode: str = 'compile', want_output:
+                       bool = False, disable_cache: bool = False,
+                       temp_dir: str = None) -> T.Tuple[bool, bool]:
         args = self._get_compiler_check_args(env, extra_args, dependencies, mode)
         if disable_cache or want_output:
             return self.compile(code, extra_args=args, mode=mode, want_output=want_output, temp_dir=env.scratch_dir)
         return self.cached_compile(code, env.coredata, extra_args=args, mode=mode, temp_dir=env.scratch_dir)
 
-    def links(self, code, env, *, extra_args=None, dependencies=None, disable_cache=False):
+    def links(self, code: str, env: 'Environment', *,
+              extra_args: T.Sequence[T.Union[T.Sequence[str], str]] = None,
+              dependencies: T.Optional[T.List['Dependency']] = None,
+              mode: str = 'compile',
+              disable_cache: bool = False) -> T.Tuple[bool, bool]:
         return self.compiles(code, env, extra_args=extra_args,
                              dependencies=dependencies, mode='link', disable_cache=disable_cache)
 
-    def run(self, code: str, env, *, extra_args=None, dependencies=None):
+    def run(self, code: str, env: 'Environment', *,
+            extra_args: T.Optional[T.List[str]] = None,
+            dependencies: T.Optional[T.List['Dependency']] = None) -> compilers.RunResult:
         need_exe_wrapper = env.need_exe_wrapper(self.for_machine)
         if need_exe_wrapper and self.exe_wrapper is None:
             raise compilers.CrossNoRunException('Can not run test applications in this cross environment.')
