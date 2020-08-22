@@ -27,7 +27,7 @@ from ... import mlog
 
 if T.TYPE_CHECKING:
     from ...coredata import UserOption  # noqa: F401
-    from ...environment import Environment
+    from ...environment import Environment, MachineInfo
 
 # XXX: prevent circular references.
 # FIXME: this really is a posix interface not a c-like interface
@@ -136,6 +136,12 @@ class GnuLikeCompiler(metaclass=abc.ABCMeta):
     and ICC. Certain functionality between them is different and requires
     that the actual concrete subclass define their own implementation.
     """
+
+    # FIXME: This is the < 3.6 way to tell mypy about attributes defined in the class heirarchy
+    if T.TYPE_CHECKING:
+        exelist = []  # type: T.List[str]
+        info = MachineInfo('', '', '', '')
+        language = ''
 
     LINKER_PREFIX = '-Wl,'
 
@@ -321,6 +327,8 @@ class GnuCompiler(GnuLikeCompiler):
     GnuCompiler represents an actual GCC in its many incarnations.
     Compilers imitating GCC (Clang/Intel) should use the GnuLikeCompiler ABC.
     """
+
+    version: str
 
     def __init__(self, defines: T.Dict[str, str]):
         super().__init__()
