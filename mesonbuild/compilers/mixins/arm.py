@@ -139,6 +139,8 @@ class ArmclangCompiler:
         is_cross = True
         version = '0'
 
+        def get_pch_name(self, name: str) -> str: ...
+
     def __init__(self) -> None:
         if not self.is_cross:
             raise mesonlib.EnvironmentException('armclang supports only cross-compilation.')
@@ -151,18 +153,17 @@ class ArmclangCompiler:
             err_msg = 'Unknown linker\nRunning "{0}" gave \n"{1}"'.format(' '.join(self.linker_exe + [args]), e)
             raise mesonlib.EnvironmentException(err_msg)
         # Verify the armlink version
-        ver_str = re.search('.*Component.*', stdo)
-        if ver_str:
-            ver_str = str(ver_str.group(0))
+        _ver_str = re.search('.*Component.*', stdo)
+        if _ver_str:
+            ver_str = str(_ver_str.group(0))
         else:
             raise mesonlib.EnvironmentException('armlink version string not found')
-        assert ver_str  # makes mypy happy
         # Using the regular expression from environment.search_version,
         # which is used for searching compiler version
         version_regex = r'(?<!(\d|\.))(\d{1,2}(\.\d+)+(-[a-zA-Z0-9]+)?)'
-        linker_ver = re.search(version_regex, ver_str)
-        if linker_ver:
-            linker_ver = linker_ver.group(0)
+        _linker_ver = re.search(version_regex, ver_str)
+        if _linker_ver:
+            linker_ver = _linker_ver.group(0)
         if not mesonlib.version_compare(self.version, '==' + linker_ver):
             raise mesonlib.EnvironmentException('armlink version does not match with compiler version')
         self.id = 'armclang'
