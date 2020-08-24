@@ -2640,7 +2640,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         guessed_dependencies = []
         # TODO The get_library_naming requirement currently excludes link targets that use d or fortran as their main linker
         if hasattr(linker, 'get_library_naming'):
-            search_dirs = tuple(search_dirs) + tuple(linker.get_library_dirs(self.environment))
+            search_dirs = search_dirs + linker.get_library_dirs(self.environment)
             static_patterns = linker.get_library_naming(self.environment, LibType.STATIC, strict=True)
             shared_patterns = linker.get_library_naming(self.environment, LibType.SHARED, strict=True)
             for libname in libs:

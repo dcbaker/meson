@@ -991,27 +991,31 @@ class Compiler(metaclass=abc.ABCMeta):
     def get_preprocess_only_args(self) -> T.List[str]:
         raise EnvironmentError('This compiler does not have a preprocessor')
 
+    def get_default_include_dirs(self) -> T.List[str]:
+        return []
 
-def get_largefile_args(compiler: Compiler) -> T.List[str]:
-    '''
-    Enable transparent large-file-support for 32-bit UNIX systems
-    '''
-    if not (compiler.get_argument_syntax() == 'msvc' or compiler.info.is_darwin()):
-        # Enable large-file support unconditionally on all platforms other
-        # than macOS and MSVC. macOS is now 64-bit-only so it doesn't
-        # need anything special, and MSVC doesn't have automatic LFS.
-        # You must use the 64-bit counterparts explicitly.
-        # glibc, musl, and uclibc, and all BSD libcs support this. On Android,
-        # support for transparent LFS is available depending on the version of
-        # Bionic: https://github.com/android/platform_bionic#32-bit-abi-bugs
-        # https://code.google.com/p/android/issues/detail?id=64613
-        #
-        # If this breaks your code, fix it! It's been 20+ years!
-        return ['-D_FILE_OFFSET_BITS=64']
-        # We don't enable -D_LARGEFILE64_SOURCE since that enables
-        # transitionary features and must be enabled by programs that use
-        # those features explicitly.
-    return []
+    def get_largefile_args(self) -> T.List[str]:
+        '''Enable transparent large-file-support for 32-bit UNIX systems'''
+        if not (self.get_argument_syntax() == 'msvc' or self.info.is_darwin()):
+            # Enable large-file support unconditionally on all platforms other
+            # than macOS and MSVC. macOS is now 64-bit-only so it doesn't
+            # need anything special, and MSVC doesn't have automatic LFS.
+            # You must use the 64-bit counterparts explicitly.
+            # glibc, musl, and uclibc, and all BSD libcs support this. On Android,
+            # support for transparent LFS is available depending on the version of
+            # Bionic: https://github.com/android/platform_bionic#32-bit-abi-bugs
+            # https://code.google.com/p/android/issues/detail?id=64613
+            #
+            # If this breaks your code, fix it! It's been 20+ years!
+            return ['-D_FILE_OFFSET_BITS=64']
+            # We don't enable -D_LARGEFILE64_SOURCE since that enables
+            # transitionary features and must be enabled by programs that use
+            # those features explicitly.
+        return []
+
+    def get_library_dirs(self, env: 'Environment',
+                         elf_class: T.Optional[int] = None) -> T.List[str]:
+        raise EnvironmentException('{} does not support get_library_dirs'.format(self.id))
 
 
 def get_args_from_envvars(lang: str,

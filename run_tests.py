@@ -267,8 +267,6 @@ def run_mtest_inprocess(commandlist):
     return returncode, mystdout.getvalue(), mystderr.getvalue()
 
 def clear_meson_configure_class_caches():
-    compilers.CCompiler.library_dirs_cache = {}
-    compilers.CCompiler.program_dirs_cache = {}
     compilers.CCompiler.find_library_cache = {}
     compilers.CCompiler.find_framework_cache = {}
     dependencies.PkgConfigDependency.pkgbin_cache = {}
