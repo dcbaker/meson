@@ -142,6 +142,10 @@ class GnuLikeCompiler(metaclass=abc.ABCMeta):
         exelist = []  # type: T.List[str]
         info = MachineInfo('', '', '', '')
         language = ''
+        def has_function(self, typename: str, prefix: str, env: 'Environment', *,
+                        extra_args: T.Optional[T.List[str]] = None,
+                        dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[bool, bool]: ...
+        def has_multi_arguments(self, args: T.List[str], env: 'Environment') -> T.Tuple[bool, bool]: ...
 
     LINKER_PREFIX = '-Wl,'
 
