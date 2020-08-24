@@ -24,7 +24,7 @@ from . import mesonlib
 
 if T.TYPE_CHECKING:
     from .linkers import StaticLinker
-    from .compilers import Compiler
+    from .compilers import CompilerType
 
 UNIXY_COMPILER_INTERNAL_LIBS = ['m', 'c', 'pthread', 'dl', 'rt']  # type: T.List[str]
 # execinfo is a compiler lib on FreeBSD and NetBSD
@@ -107,7 +107,7 @@ class CompilerArgs(collections.abc.MutableSequence):
     # TODO: these should probably move too
     always_dedup_args = tuple('-l' + lib for lib in UNIXY_COMPILER_INTERNAL_LIBS)  # type : T.Tuple[str, ...]
 
-    def __init__(self, compiler: T.Union['Compiler', 'StaticLinker'],
+    def __init__(self, compiler: T.Union['CompilerType', 'StaticLinker'],
                  iterable: T.Optional[T.Iterable[str]] = None):
         self.compiler = compiler
         self._container = list(iterable) if iterable is not None else []  # type: T.List[str]
