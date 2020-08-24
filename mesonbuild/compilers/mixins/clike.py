@@ -20,6 +20,8 @@ of this is to have mixin's, which are classes that are designed *not* to be
 standalone, they only work through inheritance.
 """
 
+import contextlib
+import collections
 import functools
 import glob
 import itertools
@@ -38,6 +40,7 @@ from .. import compilers
 from .visualstudio import VisualStudioLikeCompiler
 
 if T.TYPE_CHECKING:
+    from ...coredata import CoreData
     from ...dependencies import Dependency, ExternalProgram
     from ...environment import Environment
     from ...linkers import DynamicLinker
@@ -131,6 +134,16 @@ class CLikeCompiler:
         def remove_linkerlike_args(self, args: T.Sequence[str]) -> T.List[str]: ...
         @classmethod
         def use_linker_args(cls, linker: str) -> T.List[str]: ...
+        @contextlib.contextmanager
+        def compile(self, code: 'mesonlib.FileOrString',
+                    extra_args: T.Optional[T.Sequence[str]] = None,
+                    *, mode: str = 'link', want_output: bool = False,
+                    temp_dir: T.Optional[str] = None) -> T.Iterator[T.Optional[compilers.CompileResult]]: ...
+        @contextlib.contextmanager
+        def cached_compile(self, code: str, cdata: 'CoreData', *,
+                          extra_args: T.Optional[T.Sequence[str]] = None,
+                          mode: str = 'link',
+                          temp_dir: T.Optional[str] = None) -> T.Iterator[T.Optional[compilers.CompileResult]]: ...
 
     # TODO: Replace this manual cache with functools.lru_cache
     find_library_cache = {}    # type: T.Dict[T.Tuple[T.Tuple[str, ...], str, T.Tuple[str, ...], str, LibType], T.Optional[T.List[str]]]
@@ -358,8 +371,8 @@ class CLikeCompiler:
         return self.sanity_check_impl(work_dir, environment, 'sanitycheckc.c', code)
 
     def check_header(self, hname: str, prefix: str, env: 'Environment', *,
-                     extra_args: T.Optional[T.List[str]] = None,
-                     dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[bool, bool]:
+                     extra_args: T.Optional[T.Sequence[str]] = None,
+                     dependencies: T.Optional[T.Sequence['Dependency']] = None) -> T.Tuple[bool, bool]:
         fargs = {'prefix': prefix, 'header': hname}
         code = '''{prefix}
         #include <{header}>'''
@@ -367,8 +380,8 @@ class CLikeCompiler:
                              dependencies=dependencies)
 
     def has_header(self, hname: str, prefix: str, env: 'Environment', *,
-                   extra_args: T.Optional[T.List[str]] = None,
-                   dependencies: T.Optional[T.List['Dependency']] = None,
+                   extra_args: T.Optional[T.Sequence[str]] = None,
+                   dependencies: T.Optional[T.Sequence['Dependency']] = None,
                    disable_cache: bool = False) -> T.Tuple[bool, bool]:
         fargs = {'prefix': prefix, 'header': hname}
         code = '''{prefix}
@@ -384,8 +397,8 @@ class CLikeCompiler:
 
     def has_header_symbol(self, hname: str, symbol: str, prefix: str,
                           env: 'Environment', *,
-                          extra_args: T.Optional[T.List[str]] = None,
-                          dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[bool, bool]:
+                          extra_args: T.Optional[T.Sequence[str]] = None,
+                          dependencies: T.Optional[T.Sequence['Dependency']] = None) -> T.Tuple[bool, bool]:
         fargs = {'prefix': prefix, 'header': hname, 'symbol': symbol}
         t = '''{prefix}
         #include <{header}>
@@ -437,8 +450,9 @@ class CLikeCompiler:
         cargs += self.get_compiler_args_for_mode(mode)
         return cargs, largs
 
-    def _get_compiler_check_args(self, env: 'Environment', extra_args: T.Optional[T.List[str]],
-                                 dependencies: T.Optional[T.Union['Dependency', T.List['Dependency']]],
+    def _get_compiler_check_args(self, env: 'Environment',
+                                 extra_args: T.Optional[T.Sequence[T.Union[T.Sequence[str], str]]],
+                                 dependencies: T.Optional[T.Union['Dependency', T.Sequence['Dependency']]],
                                  mode: str = 'compile') -> T.List[str]:
         # TODO: the caller should handle the listfing of these arguments
         if extra_args is None:
@@ -449,7 +463,7 @@ class CLikeCompiler:
 
         if dependencies is None:
             dependencies = []
-        elif not isinstance(dependencies, list):
+        elif not isinstance(dependencies, collections.abc.Sequence):
             dependencies = [dependencies]
         # Collect compiler arguments
         cargs = self.compiler_args()  # type: arglist.CompilerArgs
@@ -477,33 +491,38 @@ class CLikeCompiler:
 
     def compiles(self, code: str, env: 'Environment', *,
                  extra_args: T.Sequence[T.Union[T.Sequence[str], str]] = None,
-                 dependencies: T.Optional[T.List['Dependency']] = None,
+                 dependencies: T.Optional[T.Sequence['Dependency']] = None,
                  mode: str = 'compile',
                  disable_cache: bool = False) -> T.Tuple[bool, bool]:
         with self._build_wrapper(code, env, extra_args, dependencies, mode, disable_cache=disable_cache) as p:
             return p.returncode == 0, p.cached
 
-    def _build_wrapper(self, code: str, env: 'Environment', extra_args,
-                       dependencies: T.Optional[T.List['Dependency']] = None,
-                       mode: str = 'compile', want_output:
-                       bool = False, disable_cache: bool = False,
-                       temp_dir: str = None) -> T.Tuple[bool, bool]:
+    @contextlib.contextmanager
+    def _build_wrapper(self, code: str, env: 'Environment',
+                       extra_args: T.Sequence[T.Union[T.Sequence[str], str]],
+                       dependencies: T.Optional[T.Sequence['Dependency']] = None,
+                       mode: str = 'compile', want_output: bool = False,
+                       disable_cache: bool = False,
+                       temp_dir: str = None) -> T.Iterator[compilers.CompileResult]:
         args = self._get_compiler_check_args(env, extra_args, dependencies, mode)
         if disable_cache or want_output:
-            return self.compile(code, extra_args=args, mode=mode, want_output=want_output, temp_dir=env.scratch_dir)
-        return self.cached_compile(code, env.coredata, extra_args=args, mode=mode, temp_dir=env.scratch_dir)
+            with self.compile(code, extra_args=args, mode=mode, want_output=want_output, temp_dir=env.scratch_dir) as r:
+                yield r
+        else:
+            with self.cached_compile(code, env.coredata, extra_args=args, mode=mode, temp_dir=env.scratch_dir) as r:
+                yield r
 
     def links(self, code: str, env: 'Environment', *,
               extra_args: T.Sequence[T.Union[T.Sequence[str], str]] = None,
-              dependencies: T.Optional[T.List['Dependency']] = None,
+              dependencies: T.Optional[T.Sequence['Dependency']] = None,
               mode: str = 'compile',
               disable_cache: bool = False) -> T.Tuple[bool, bool]:
         return self.compiles(code, env, extra_args=extra_args,
                              dependencies=dependencies, mode='link', disable_cache=disable_cache)
 
     def run(self, code: str, env: 'Environment', *,
-            extra_args: T.Optional[T.List[str]] = None,
-            dependencies: T.Optional[T.List['Dependency']] = None) -> compilers.RunResult:
+            extra_args: T.Optional[T.Sequence[str]] = None,
+            dependencies: T.Optional[T.Sequence['Dependency']] = None) -> compilers.RunResult:
         need_exe_wrapper = env.need_exe_wrapper(self.for_machine)
         if need_exe_wrapper and self.exe_wrapper is None:
             raise compilers.CrossNoRunException('Can not run test applications in this cross environment.')
@@ -529,7 +548,9 @@ class CLikeCompiler:
         mlog.debug(se)
         return compilers.RunResult(True, pe.returncode, so, se)
 
-    def _compile_int(self, expression, prefix, env, extra_args, dependencies):
+    def _compile_int(self, expression: str, prefix: str, env: 'Environment',
+                     extra_args: T.Optional[T.Sequence[str]],
+                     dependencies: T.Optional[T.Sequence['Dependency']]) -> T.Iterator[bool]:
         fargs = {'prefix': prefix, 'expression': expression}
         t = '''#include <stdio.h>
         {prefix}

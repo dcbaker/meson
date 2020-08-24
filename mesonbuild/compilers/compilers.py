@@ -629,36 +629,36 @@ class Compiler(metaclass=abc.ABCMeta):
 
     def compiles(self, code: str, env: 'Environment', *,
                  extra_args: T.Sequence[T.Union[T.Sequence[str], str]] = None,
-                 dependencies: T.Optional[T.List['Dependency']] = None,
+                 dependencies: T.Optional[T.Sequence['Dependency']] = None,
                  mode: str = 'compile',
                  disable_cache: bool = False) -> T.Tuple[bool, bool]:
         raise EnvironmentException('Language %s does not support compile checks.' % self.get_display_language())
 
     def links(self, code: str, env: 'Environment', *,
               extra_args: T.Sequence[T.Union[T.Sequence[str], str]] = None,
-              dependencies: T.Optional[T.List['Dependency']] = None,
+              dependencies: T.Optional[T.Sequence['Dependency']] = None,
               mode: str = 'compile',
               disable_cache: bool = False) -> T.Tuple[bool, bool]:
         raise EnvironmentException('Language %s does not support link checks.' % self.get_display_language())
 
     def run(self, code: str, env: 'Environment', *,
-            extra_args: T.Optional[T.List[str]] = None,
-            dependencies: T.Optional[T.List['Dependency']] = None) -> RunResult:
+            extra_args: T.Optional[T.Sequence[str]] = None,
+            dependencies: T.Optional[T.Sequence['Dependency']] = None) -> RunResult:
         raise EnvironmentException('Language %s does not support run checks.' % self.get_display_language())
 
     def sizeof(self, typename: str, prefix: str, env: 'Environment', *,
-               extra_args: T.Optional[T.List[str]] = None,
-               dependencies: T.Optional[T.List['Dependency']] = None) -> int:
+               extra_args: T.Optional[T.Sequence[str]] = None,
+               dependencies: T.Optional[T.Sequence['Dependency']] = None) -> int:
         raise EnvironmentException('Language %s does not support sizeof checks.' % self.get_display_language())
 
     def alignment(self, typename: str, prefix: str, env: 'Environment', *,
-                 extra_args: T.Optional[T.List[str]] = None,
-                 dependencies: T.Optional[T.List['Dependency']] = None) -> int:
+                 extra_args: T.Optional[T.Sequence[str]] = None,
+                 dependencies: T.Optional[T.Sequence['Dependency']] = None) -> int:
         raise EnvironmentException('Language %s does not support alignment checks.' % self.get_display_language())
 
     def has_function(self, typename: str, prefix: str, env: 'Environment', *,
-                     extra_args: T.Optional[T.List[str]] = None,
-                     dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[bool, bool]:
+                     extra_args: T.Optional[T.Sequence[str]] = None,
+                     dependencies: T.Optional[T.Sequence['Dependency']] = None) -> T.Tuple[bool, bool]:
         """See if a function exists.
 
         Returns a two item tuple of bools. The first bool is whether the
@@ -727,6 +727,7 @@ class Compiler(metaclass=abc.ABCMeta):
     def compile(self, code: 'mesonlib.FileOrString', extra_args: T.Optional[T.List[str]] = None,
                 *, mode: str = 'link', want_output: bool = False,
                 temp_dir: T.Optional[str] = None) -> T.Iterator[T.Optional[CompileResult]]:
+        # TODO: there isn't really any reason for this to be a contextmanager
         if extra_args is None:
             extra_args = []
         try:
@@ -787,6 +788,8 @@ class Compiler(metaclass=abc.ABCMeta):
                        extra_args: T.Optional[T.List[str]] = None,
                        mode: str = 'link',
                        temp_dir: T.Optional[str] = None) -> T.Iterator[T.Optional[CompileResult]]:
+        # TODO: There's isn't really any reason for this to be a context manager
+
         # Calculate the key
         textra_args = tuple(extra_args) if extra_args is not None else tuple()  # type: T.Tuple[str, ...]
         key = (tuple(self.exelist), self.version, code, textra_args, mode)  # type: coredata.CompilerCheckCacheKey
