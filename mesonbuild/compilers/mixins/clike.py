@@ -20,7 +20,6 @@ of this is to have mixin's, which are classes that are designed *not* to be
 standalone, they only work through inheritance.
 """
 
-import contextlib
 import collections
 import functools
 import glob
@@ -490,57 +489,53 @@ class CLikeCompiler:
         return list(args)
 
     def compiles(self, code: str, env: 'Environment', *,
-                 extra_args: T.Sequence[T.Union[T.Sequence[str], str]] = None,
-                 dependencies: T.Optional[T.Sequence['Dependency']] = None,
+                 extra_args: T.Iterable[T.Union[T.Iterable[str], str]] = None,
+                 dependencies: T.Optional[T.Iterable['Dependency']] = None,
                  mode: str = 'compile',
                  disable_cache: bool = False) -> T.Tuple[bool, bool]:
-        with self._build_wrapper(code, env, extra_args, dependencies, mode, disable_cache=disable_cache) as p:
-            return p.returncode == 0, p.cached
+        p = self._build_wrapper(code, env, extra_args, dependencies, mode, disable_cache=disable_cache)
+        return p.returncode == 0, p.cached
 
-    @contextlib.contextmanager
     def _build_wrapper(self, code: str, env: 'Environment',
-                       extra_args: T.Sequence[T.Union[T.Sequence[str], str]],
-                       dependencies: T.Optional[T.Sequence['Dependency']] = None,
+                       extra_args: T.Iterable[T.Union[T.Iterable[str], str]],
+                       dependencies: T.Optional[T.Iterable['Dependency']] = None,
                        mode: str = 'compile', want_output: bool = False,
                        disable_cache: bool = False,
-                       temp_dir: str = None) -> T.Iterator[compilers.CompileResult]:
+                       temp_dir: str = None) -> compilers.CompileResult:
         args = self._get_compiler_check_args(env, extra_args, dependencies, mode)
         if disable_cache or want_output:
-            with self.compile(code, extra_args=args, mode=mode, want_output=want_output, temp_dir=env.scratch_dir) as r:
-                yield r
-        else:
-            with self.cached_compile(code, env.coredata, extra_args=args, mode=mode, temp_dir=env.scratch_dir) as r:
-                yield r
+            return self.compile(code, extra_args=args, mode=mode, want_output=want_output, temp_dir=env.scratch_dir)
+        return self.cached_compile(code, env.coredata, extra_args=args, mode=mode, temp_dir=env.scratch_dir)
 
     def links(self, code: str, env: 'Environment', *,
-              extra_args: T.Sequence[T.Union[T.Sequence[str], str]] = None,
-              dependencies: T.Optional[T.Sequence['Dependency']] = None,
+              extra_args: T.Iterable[T.Union[T.Iterable[str], str]] = None,
+              dependencies: T.Optional[T.Iterable['Dependency']] = None,
               mode: str = 'compile',
               disable_cache: bool = False) -> T.Tuple[bool, bool]:
         return self.compiles(code, env, extra_args=extra_args,
                              dependencies=dependencies, mode='link', disable_cache=disable_cache)
 
     def run(self, code: str, env: 'Environment', *,
-            extra_args: T.Optional[T.Sequence[str]] = None,
-            dependencies: T.Optional[T.Sequence['Dependency']] = None) -> compilers.RunResult:
+            extra_args: T.Optional[T.Iterable[str]] = None,
+            dependencies: T.Optional[T.Iterable['Dependency']] = None) -> compilers.RunResult:
         need_exe_wrapper = env.need_exe_wrapper(self.for_machine)
         if need_exe_wrapper and self.exe_wrapper is None:
             raise compilers.CrossNoRunException('Can not run test applications in this cross environment.')
-        with self._build_wrapper(code, env, extra_args, dependencies, mode='link', want_output=True) as p:
-            if p.returncode != 0:
-                mlog.debug('Could not compile test file %s: %d\n' % (
-                    p.input_name,
-                    p.returncode))
-                return compilers.RunResult(False)
-            if need_exe_wrapper:
-                cmdlist = self.exe_wrapper + [p.output_name]
-            else:
-                cmdlist = p.output_name
-            try:
-                pe, so, se = mesonlib.Popen_safe(cmdlist)
-            except Exception as e:
-                mlog.debug('Could not run: %s (error: %s)\n' % (cmdlist, e))
-                return compilers.RunResult(False)
+        p = self._build_wrapper(code, env, extra_args, dependencies, mode='link', want_output=True)
+        if p.returncode != 0:
+            mlog.debug('Could not compile test file %s: %d\n' % (
+                p.input_name,
+                p.returncode))
+            return compilers.RunResult(False)
+        if need_exe_wrapper:
+            cmdlist = self.exe_wrapper + [p.output_name]
+        else:
+            cmdlist = p.output_name
+        try:
+            pe, so, se = mesonlib.Popen_safe(cmdlist)
+        except Exception as e:
+            mlog.debug('Could not run: %s (error: %s)\n' % (cmdlist, e))
+            return compilers.RunResult(False)
 
         mlog.debug('Program stdout:\n')
         mlog.debug(so)
@@ -954,24 +949,24 @@ class CLikeCompiler:
         '''
         args = self.get_compiler_check_args()
         n = 'symbols_have_underscore_prefix'
-        with self._build_wrapper(code, env, extra_args=args, mode='compile', want_output=True, temp_dir=env.scratch_dir) as p:
-            if p.returncode != 0:
-                m = 'BUG: Unable to compile {!r} check: {}'
-                raise RuntimeError(m.format(n, p.stdo))
-            if not os.path.isfile(p.output_name):
-                m = 'BUG: Can\'t find compiled test code for {!r} check'
-                raise RuntimeError(m.format(n))
-            with open(p.output_name, 'rb') as o:
-                for line in o:
-                    # Check if the underscore form of the symbol is somewhere
-                    # in the output file.
-                    if b'_' + symbol_name in line:
-                        mlog.debug("Symbols have underscore prefix: YES")
-                        return True
-                    # Else, check if the non-underscored form is present
-                    elif symbol_name in line:
-                        mlog.debug("Symbols have underscore prefix: NO")
-                        return False
+        p = self._build_wrapper(code, env, extra_args=args, mode='compile', want_output=True, temp_dir=env.scratch_dir)
+        if p.returncode != 0:
+            m = 'BUG: Unable to compile {!r} check: {}'
+            raise RuntimeError(m.format(n, p.stdo))
+        if not os.path.isfile(p.output_name):
+            m = 'BUG: Can\'t find compiled test code for {!r} check'
+            raise RuntimeError(m.format(n))
+        with open(p.output_name, 'rb') as o:
+            for line in o:
+                # Check if the underscore form of the symbol is somewhere
+                # in the output file.
+                if b'_' + symbol_name in line:
+                    mlog.debug("Symbols have underscore prefix: YES")
+                    return True
+                # Else, check if the non-underscored form is present
+                elif symbol_name in line:
+                    mlog.debug("Symbols have underscore prefix: NO")
+                    return False
         raise RuntimeError('BUG: {!r} check failed unexpectedly'.format(n))
 
     def _get_patterns(self, env, prefixes, suffixes, shared=False):

@@ -147,12 +147,12 @@ class BlocksDependency(ExternalDependency):
                 return callback();
             }'''
 
-        with self.clib_compiler.compile(source, extra_args=self.compile_args + self.link_args) as p:
-            if p.returncode != 0:
-                mlog.log(mlog.red('ERROR:'), 'Compiler does not support blocks extension.')
-                return
+        p = self.clib_compiler.compile(source, extra_args=self.compile_args + self.link_args)
+        if p.returncode != 0:
+            mlog.log(mlog.red('ERROR:'), 'Compiler does not support blocks extension.')
+            return
 
-            self.is_found = True
+        self.is_found = True
 
 
 class Python3DependencySystem(ExternalDependency):

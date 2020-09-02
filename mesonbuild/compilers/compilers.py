@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import abc
-import contextlib, os.path, re, tempfile
+import os.path, re, tempfile
 import itertools
 import typing as T
 from functools import lru_cache
@@ -723,10 +723,9 @@ class Compiler(metaclass=abc.ABCMeta):
         """Return an appropriate CompilerArgs instance for this class."""
         return CompilerArgs(self, args)
 
-    @contextlib.contextmanager
     def compile(self, code: 'mesonlib.FileOrString', extra_args: T.Optional[T.List[str]] = None,
                 *, mode: str = 'link', want_output: bool = False,
-                temp_dir: T.Optional[str] = None) -> T.Iterator[T.Optional[CompileResult]]:
+                temp_dir: T.Optional[str] = None) -> T.Optional[CompileResult]:
         # TODO: there isn't really any reason for this to be a contextmanager
         if extra_args is None:
             extra_args = []
@@ -776,18 +775,17 @@ class Compiler(metaclass=abc.ABCMeta):
                 ret.input_name = srcname
                 if want_output:
                     ret.output_name = output
-                yield ret
+                return ret
         except OSError:
             # On Windows antivirus programs and the like hold on to files so
             # they can't be deleted. There's not much to do in this case. Also,
             # catch OSError because the directory is then no longer empty.
-            yield None
+            return None
 
-    @contextlib.contextmanager
     def cached_compile(self, code: str, cdata: coredata.CoreData, *,
                        extra_args: T.Optional[T.List[str]] = None,
                        mode: str = 'link',
-                       temp_dir: T.Optional[str] = None) -> T.Iterator[T.Optional[CompileResult]]:
+                       temp_dir: T.Optional[str] = None) -> T.Optional[CompileResult]:
         # TODO: There's isn't really any reason for this to be a context manager
 
         # Calculate the key
@@ -803,11 +801,11 @@ class Compiler(metaclass=abc.ABCMeta):
             mlog.debug('Code:\n', code)
             mlog.debug('Cached compiler stdout:\n', p.stdout)
             mlog.debug('Cached compiler stderr:\n', p.stderr)
-            yield p
-        else:
-            with self.compile(code, extra_args=extra_args, mode=mode, want_output=False, temp_dir=temp_dir) as p:
-                cdata.compiler_check_cache[key] = p
-                yield p
+            return p
+
+        p = self.compile(code, extra_args=extra_args, mode=mode, want_output=False, temp_dir=temp_dir)
+        cdata.compiler_check_cache[key] = p
+        return p
 
     def get_colorout_args(self, colortype: str) -> T.List[str]:
         # TODO: colortype can probably be an emum

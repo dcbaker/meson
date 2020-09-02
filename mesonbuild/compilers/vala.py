@@ -100,11 +100,11 @@ class ValaCompiler(Compiler):
             extra_flags += self.get_compile_only_args()
         else:
             extra_flags += environment.coredata.get_external_link_args(self.for_machine, self.language)
-        with self.cached_compile(code, environment.coredata, extra_args=extra_flags, mode='compile') as p:
-            if p.returncode != 0:
-                msg = 'Vala compiler {!r} can not compile programs' \
-                      ''.format(self.name_string())
-                raise EnvironmentException(msg)
+        p = self.cached_compile(code, environment.coredata, extra_args=extra_flags, mode='compile')
+        if p.returncode != 0:
+            msg = 'Vala compiler {!r} can not compile programs' \
+                    ''.format(self.name_string())
+            raise EnvironmentException(msg)
 
     def get_buildtype_args(self, buildtype):
         if buildtype == 'debug' or buildtype == 'debugoptimized' or buildtype == 'minsize':
@@ -122,9 +122,9 @@ class ValaCompiler(Compiler):
             args += env.coredata.get_external_args(self.for_machine, self.language)
             vapi_args = ['--pkg', libname]
             args += vapi_args
-            with self.cached_compile(code, env.coredata, extra_args=args, mode='compile') as p:
-                if p.returncode == 0:
-                    return vapi_args
+            p = self.cached_compile(code, env.coredata, extra_args=args, mode='compile')
+            if p.returncode == 0:
+                return vapi_args
         # Not found? Try to find the vapi file itself.
         for d in extra_dirs:
             vapi = os.path.join(d, libname + '.vapi')
