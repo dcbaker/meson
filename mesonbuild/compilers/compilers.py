@@ -682,8 +682,10 @@ class Compiler(metaclass=abc.ABCMeta):
         raise EnvironmentException('Language {} does not support library finding.'.format(self.get_display_language()))
 
     def get_library_naming(self, env: 'Environment', libtype: LibType,
-                           strict: bool = False) -> T.Tuple[str, ...]:
-        return ()
+                           strict: bool = False) -> T.Optional[T.Tuple[str, ...]]:
+        raise EnvironmentException(
+            'Language {} does not support get_library_naming.'.format(
+                self.get_display_language()))
 
     def get_program_dirs(self, env: 'Environment') -> T.List[str]:
         return []

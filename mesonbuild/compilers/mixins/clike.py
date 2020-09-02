@@ -130,19 +130,17 @@ class CLikeCompiler:
         def get_display_language(self) -> str: ...
         def get_largefile_args(self) -> T.List[str]: ...
         def get_pch_suffix(self) -> str: ...
-        def remove_linkerlike_args(self, args: T.Sequence[str]) -> T.List[str]: ...
+        def remove_linkerlike_args(self, args: T.Iterable[str]) -> T.List[str]: ...
         @classmethod
         def use_linker_args(cls, linker: str) -> T.List[str]: ...
-        @contextlib.contextmanager
         def compile(self, code: 'mesonlib.FileOrString',
-                    extra_args: T.Optional[T.Sequence[str]] = None,
+                    extra_args: T.Optional[T.Iterable[str]] = None,
                     *, mode: str = 'link', want_output: bool = False,
                     temp_dir: T.Optional[str] = None) -> T.Iterator[T.Optional[compilers.CompileResult]]: ...
-        @contextlib.contextmanager
         def cached_compile(self, code: str, cdata: 'CoreData', *,
-                          extra_args: T.Optional[T.Sequence[str]] = None,
+                          extra_args: T.Optional[T.Iterable[str]] = None,
                           mode: str = 'link',
-                          temp_dir: T.Optional[str] = None) -> T.Iterator[T.Optional[compilers.CompileResult]]: ...
+                          temp_dir: T.Optional[str] = None) -> T.Optional[compilers.CompileResult]: ...
 
     # TODO: Replace this manual cache with functools.lru_cache
     find_library_cache = {}    # type: T.Dict[T.Tuple[T.Tuple[str, ...], str, T.Tuple[str, ...], str, LibType], T.Optional[T.List[str]]]
@@ -370,8 +368,8 @@ class CLikeCompiler:
         return self.sanity_check_impl(work_dir, environment, 'sanitycheckc.c', code)
 
     def check_header(self, hname: str, prefix: str, env: 'Environment', *,
-                     extra_args: T.Optional[T.Sequence[str]] = None,
-                     dependencies: T.Optional[T.Sequence['Dependency']] = None) -> T.Tuple[bool, bool]:
+                     extra_args: T.Optional[T.Iterable[str]] = None,
+                     dependencies: T.Optional[T.Iterable['Dependency']] = None) -> T.Tuple[bool, bool]:
         fargs = {'prefix': prefix, 'header': hname}
         code = '''{prefix}
         #include <{header}>'''
@@ -379,8 +377,8 @@ class CLikeCompiler:
                              dependencies=dependencies)
 
     def has_header(self, hname: str, prefix: str, env: 'Environment', *,
-                   extra_args: T.Optional[T.Sequence[str]] = None,
-                   dependencies: T.Optional[T.Sequence['Dependency']] = None,
+                   extra_args: T.Optional[T.Iterable[str]] = None,
+                   dependencies: T.Optional[T.Iterable['Dependency']] = None,
                    disable_cache: bool = False) -> T.Tuple[bool, bool]:
         fargs = {'prefix': prefix, 'header': hname}
         code = '''{prefix}
@@ -396,8 +394,8 @@ class CLikeCompiler:
 
     def has_header_symbol(self, hname: str, symbol: str, prefix: str,
                           env: 'Environment', *,
-                          extra_args: T.Optional[T.Sequence[str]] = None,
-                          dependencies: T.Optional[T.Sequence['Dependency']] = None) -> T.Tuple[bool, bool]:
+                          extra_args: T.Optional[T.Iterable[str]] = None,
+                          dependencies: T.Optional[T.Iterable['Dependency']] = None) -> T.Tuple[bool, bool]:
         fargs = {'prefix': prefix, 'header': hname, 'symbol': symbol}
         t = '''{prefix}
         #include <{header}>
@@ -450,8 +448,8 @@ class CLikeCompiler:
         return cargs, largs
 
     def _get_compiler_check_args(self, env: 'Environment',
-                                 extra_args: T.Optional[T.Sequence[T.Union[T.Sequence[str], str]]],
-                                 dependencies: T.Optional[T.Union['Dependency', T.Sequence['Dependency']]],
+                                 extra_args: T.Optional[T.Iterable[T.Union[T.Iterable[str], str]]],
+                                 dependencies: T.Optional[T.Union['Dependency', T.Iterable['Dependency']]],
                                  mode: str = 'compile') -> T.List[str]:
         # TODO: the caller should handle the listfing of these arguments
         if extra_args is None:
@@ -462,7 +460,7 @@ class CLikeCompiler:
 
         if dependencies is None:
             dependencies = []
-        elif not isinstance(dependencies, collections.abc.Sequence):
+        elif not isinstance(dependencies, collections.abc.Iterable):
             dependencies = [dependencies]
         # Collect compiler arguments
         cargs = self.compiler_args()  # type: arglist.CompilerArgs
@@ -544,8 +542,8 @@ class CLikeCompiler:
         return compilers.RunResult(True, pe.returncode, so, se)
 
     def _compile_int(self, expression: str, prefix: str, env: 'Environment',
-                     extra_args: T.Optional[T.Sequence[str]],
-                     dependencies: T.Optional[T.Sequence['Dependency']]) -> T.Iterator[bool]:
+                     extra_args: T.Optional[T.Iterable[str]],
+                     dependencies: T.Optional[T.Iterable['Dependency']]) -> T.Iterator[bool]:
         fargs = {'prefix': prefix, 'expression': expression}
         t = '''#include <stdio.h>
         {prefix}
@@ -986,7 +984,7 @@ class CLikeCompiler:
                 patterns.append(p + '{}.so.[0-9]*.[0-9]*')
         return patterns
 
-    def get_library_naming(self, env, libtype: LibType, strict=False):
+    def get_library_naming(self, env, libtype: LibType, strict=False) -> T.Tuple[str, ...]:
         '''
         Get library prefixes and suffixes for the target platform ordered by
         priority
@@ -1133,7 +1131,7 @@ class CLikeCompiler:
                 return [trial.as_posix()]
         return None
 
-    def find_library_impl(self, libname: str, env: 'Environment', extra_dirs: T.Sequence[str],
+    def find_library_impl(self, libname: str, env: 'Environment', extra_dirs: T.Iterable[str],
                          code: str, libtype: LibType) -> T.Optional[T.List[str]]:
         # These libraries are either built-in or invalid
         if libname in self.ignore_libs:
@@ -1192,7 +1190,7 @@ class CLikeCompiler:
         if self.links(code, env, extra_args=(extra_args + link_args), disable_cache=True)[0]:
             return link_args
 
-    def find_framework_impl(self, name: str, env: 'Environment', extra_dirs: T.Sequence[str],
+    def find_framework_impl(self, name: str, env: 'Environment', extra_dirs: T.Iterable[str],
                             allow_system: bool) -> T.Optional[T.List[str]]:
         if isinstance(extra_dirs, str):
             extra_dirs = [extra_dirs]
@@ -1206,7 +1204,7 @@ class CLikeCompiler:
             return None
         return value.copy()
 
-    def find_framework(self, name: str, env: 'Environment', extra_dirs: T.Sequence[str],
+    def find_framework(self, name: str, env: 'Environment', extra_dirs: T.Iterable[str],
                        allow_system: bool = True) -> T.Optional[T.List[str]]:
         '''
         Finds the framework with the specified name, and returns link args for
@@ -1235,14 +1233,14 @@ class CLikeCompiler:
     def thread_link_flags(self, env: 'Environment') -> T.List[str]:
         return self.linker.thread_flags(env)
 
-    def linker_to_compiler_args(self, args: T.Sequence[str]) -> T.List[str]:
+    def linker_to_compiler_args(self, args: T.Iterable[str]) -> T.List[str]:
         return list(args)
 
-    def has_arguments(self, args: T.Sequence[str], env: 'Environment', code: str,
+    def has_arguments(self, args: T.Iterable[str], env: 'Environment', code: str,
                       mode: str) -> T.Tuple[bool, bool]:
         return self.compiles(code, env, extra_args=args, mode=mode)
 
-    def has_multi_arguments(self, args: T.Sequence[str], env: 'Environment') -> T.List[str]:
+    def has_multi_arguments(self, args: T.Iterable[str], env: 'Environment') -> T.List[str]:
         new_args = []  # type: T.List[str]
         for arg in args:
             # some compilers, e.g. GCC, don't warn for unsupported warning-disable
