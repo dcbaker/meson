@@ -451,15 +451,10 @@ def detect_cpu(compilers: 'CompilersDict') -> str:
     # detect_cpu_family() above.
     return trial
 
-<<<<<<< HEAD
-def detect_system():
-    if sys.platform == 'cygwin':
-=======
 
 def detect_system() -> str:
     system = platform.system().lower()
     if system.startswith('cygwin'):
->>>>>>> f3a93acab... environment: Fix most mypy violations
         return 'cygwin'
     return platform.system().lower()
 
@@ -1059,7 +1054,7 @@ class Environment:
                 "%PATH% variable to resolve this.")
         raise EnvironmentException('Unable to determine dynamic linker')
 
-    def _guess_nix_linker(self, compiler: T.List[str], comp_class: T.Type[CompilerType],
+    def _guess_nix_linker(self, compiler: T.List[str], comp_class: T.Type['CompilerType'],
                           for_machine: MachineChoice, *,
                           extra_args: T.Optional[T.List[str]] = None) -> 'DynamicLinker':
         """Helper for guessing what linker to use on Unix-Like OSes.
@@ -1572,13 +1567,8 @@ class Environment:
     def detect_objcpp_compiler(self, for_machine: 'MachineChoice') -> 'Compiler':
         return self._detect_objc_or_objcpp_compiler(for_machine, False)
 
-<<<<<<< HEAD
-    def _detect_objc_or_objcpp_compiler(self, for_machine: MachineChoice, objc: bool) -> 'Compiler':
-        popen_exceptions = {}
-=======
     def _detect_objc_or_objcpp_compiler(self, for_machine: 'MachineChoice', objc: bool) -> 'Compiler':
         popen_exceptions = {}  # type: T.Dict[str, T.Union[str, Exception]]
->>>>>>> f3a93acab... environment: Fix most mypy violations
         compilers, ccache, exe_wrap = self._get_compilers('objc' if objc else 'objcpp', for_machine)
         is_cross = self.is_cross_build(for_machine)
         info = self.machines[for_machine]
