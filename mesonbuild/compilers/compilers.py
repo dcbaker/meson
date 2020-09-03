@@ -521,10 +521,10 @@ class Compiler(metaclass=abc.ABCMeta):
                                                build_dir: str) -> T.List[str]:
         raise EnvironmentException('%s does not support compute_parameters_with_absolute_paths ' % self.get_id())
 
-    def has_members(self, typename: str, membernames: T.Sequence[str],
+    def has_members(self, typename: str, membernames: T.Iterable[str],
                     prefix: str, env: 'Environment', *,
-                    extra_args: T.Optional[T.Sequence[str]] = None,
-                    dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[bool, bool]:
+                    extra_args: T.Optional[T.Iterable[str]] = None,
+                    dependencies: T.Optional[T.Iterable['Dependency']] = None) -> T.Tuple[bool, bool]:
         raise EnvironmentException('%s does not support has_member(s) ' % self.get_id())
 
     def has_type(self, typename: str, prefix: str, env: 'Environment',
@@ -657,8 +657,8 @@ class Compiler(metaclass=abc.ABCMeta):
         raise EnvironmentException('Language %s does not support alignment checks.' % self.get_display_language())
 
     def has_function(self, typename: str, prefix: str, env: 'Environment', *,
-                     extra_args: T.Optional[T.Sequence[str]] = None,
-                     dependencies: T.Optional[T.Sequence['Dependency']] = None) -> T.Tuple[bool, bool]:
+                     extra_args: T.Optional[T.Iterable[str]] = None,
+                     dependencies: T.Optional[T.Iterable['Dependency']] = None) -> T.Tuple[bool, bool]:
         """See if a function exists.
 
         Returns a two item tuple of bools. The first bool is whether the

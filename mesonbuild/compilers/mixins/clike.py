@@ -130,6 +130,7 @@ class CLikeCompiler:
         def get_display_language(self) -> str: ...
         def get_largefile_args(self) -> T.List[str]: ...
         def get_pch_suffix(self) -> str: ...
+        def get_id(self) -> str: ...
         def remove_linkerlike_args(self, args: T.Iterable[str]) -> T.List[str]: ...
         @classmethod
         def use_linker_args(cls, linker: str) -> T.List[str]: ...
@@ -450,7 +451,7 @@ class CLikeCompiler:
     def _get_compiler_check_args(self, env: 'Environment',
                                  extra_args: T.Optional[T.Iterable[T.Union[T.Iterable[str], str]]],
                                  dependencies: T.Optional[T.Union['Dependency', T.Iterable['Dependency']]],
-                                 mode: str = 'compile') -> T.List[str]:
+                                 mode: str = 'compile') -> arglist.CompilerArgs:
         # TODO: the caller should handle the listfing of these arguments
         if extra_args is None:
             extra_args = []
@@ -484,7 +485,7 @@ class CLikeCompiler:
             extra_args += ['/link']
 
         args = cargs + extra_args + largs
-        return list(args)
+        return args
 
     def compiles(self, code: str, env: 'Environment', *,
                  extra_args: T.Iterable[T.Union[T.Iterable[str], str]] = None,
@@ -551,7 +552,10 @@ class CLikeCompiler:
         return self.compiles(t.format(**fargs), env, extra_args=extra_args,
                              dependencies=dependencies)[0]
 
-    def cross_compute_int(self, expression, low, high, guess, prefix, env, extra_args, dependencies):
+    def cross_compute_int(self, expression: str, low: T.Optional[int], high: T.Optional[int],
+                          guess: T.Optional[int], prefix: str, env: 'Environment',
+                          extra_args: T.Optional[T.Iterable[str]] = None,
+                          dependencies: T.Optional[T.Iterable['Dependency']] = None) -> int:
         # Try user's guess first
         if isinstance(guess, int):
             if self._compile_int('%s == %d' % (expression, guess), prefix, env, extra_args, dependencies):
@@ -599,7 +603,10 @@ class CLikeCompiler:
 
         return low
 
-    def compute_int(self, expression, low, high, guess, prefix, env, *, extra_args=None, dependencies=None):
+    def compute_int(self, expression: str, low: T.Optional[int], high: T.Optional[int],
+                    guess: T.Optional[int], prefix: str, env: 'Environment', *,
+                    extra_args: T.Optional[T.Iterable[str]] = None,
+                    dependencies: T.Optional[T.Iterable['Dependency']] = None) -> int:
         if extra_args is None:
             extra_args = []
         if self.is_cross:
@@ -619,7 +626,9 @@ class CLikeCompiler:
             raise mesonlib.EnvironmentException('Could not run compute_int test binary.')
         return int(res.stdout)
 
-    def cross_sizeof(self, typename, prefix, env, *, extra_args=None, dependencies=None):
+    def cross_sizeof(self, typename: str, prefix: str, env: 'Environment', *,
+                     extra_args: T.Optional[T.Iterable[str]] = None,
+                     dependencies: T.Optional[T.Iterable['Dependency']] = None) -> int:
         if extra_args is None:
             extra_args = []
         fargs = {'prefix': prefix, 'type': typename}
@@ -634,7 +643,9 @@ class CLikeCompiler:
             return -1
         return self.cross_compute_int('sizeof(%s)' % typename, None, None, None, prefix, env, extra_args, dependencies)
 
-    def sizeof(self, typename, prefix, env, *, extra_args=None, dependencies=None):
+    def sizeof(self, typename: str, prefix: str, env: 'Environment', *,
+               extra_args: T.Optional[T.Iterable[str]] = None,
+               dependencies: T.Optional[T.Iterable['Dependency']] = None) -> int:
         if extra_args is None:
             extra_args = []
         fargs = {'prefix': prefix, 'type': typename}
@@ -655,7 +666,9 @@ class CLikeCompiler:
             raise mesonlib.EnvironmentException('Could not run sizeof test binary.')
         return int(res.stdout)
 
-    def cross_alignment(self, typename, prefix, env, *, extra_args=None, dependencies=None):
+    def cross_alignment(self, typename: str, prefix: str, env: 'Environment', *,
+                        extra_args: T.Optional[T.Iterable[str]] = None,
+                        dependencies: T.Optional[T.Iterable['Dependency']] = None) -> int:
         if extra_args is None:
             extra_args = []
         fargs = {'prefix': prefix, 'type': typename}
@@ -676,7 +689,9 @@ class CLikeCompiler:
         }};'''
         return self.cross_compute_int('offsetof(struct tmp, target)', None, None, None, t.format(**fargs), env, extra_args, dependencies)
 
-    def alignment(self, typename, prefix, env, *, extra_args=None, dependencies=None):
+    def alignment(self, typename: str, prefix: str, env: 'Environment', *,
+                  extra_args: T.Optional[T.Iterable[str]] = None,
+                  dependencies: T.Optional[T.Iterable['Dependency']] = None) -> int:
         if extra_args is None:
             extra_args = []
         if self.is_cross:
@@ -705,7 +720,10 @@ class CLikeCompiler:
             raise mesonlib.EnvironmentException('Could not determine alignment of %s. Sorry. You might want to file a bug.' % typename)
         return align
 
-    def get_define(self, dname, prefix, env, extra_args, dependencies, disable_cache=False):
+    def get_define(self, dname: str, prefix: str, env: 'Environment',
+                   extra_args: T.Optional[T.Iterable[str]],
+                   dependencies: T.Optional[T.Iterable['Dependency']],
+                   disable_cache: bool = False) -> T.Tuple[str, bool]:
         delim = '"MESON_GET_DEFINE_DELIMITER"'
         fargs = {'prefix': prefix, 'define': dname, 'delim': delim}
         code = '''
@@ -726,9 +744,13 @@ class CLikeCompiler:
         # Get the preprocessed value after the delimiter,
         # minus the extra newline at the end and
         # merge string literals.
-        return self.concatenate_string_literals(p.stdo.split(delim + '\n')[-1][:-1]), cached
+        return self.concatenate_string_literals(p.stdout.split(delim + '\n')[-1][:-1]), cached
 
-    def get_return_value(self, fname, rtype, prefix, env, extra_args, dependencies):
+    def get_return_value(self, fname: str, rtype: str, prefix: str,
+                         env: 'Environment', extra_args: T.Optional[T.Iterable[str]],
+                         dependencies: T.Optional[T.Iterable['Dependency']]) -> T.Union[str, int]:
+        # TODO: rtype should be an enum.
+        # TODO: maybe we can use overload to tell mypy when this will return int vs str?
         if rtype == 'string':
             fmt = '%s'
             cast = '(char*)'
@@ -756,9 +778,10 @@ class CLikeCompiler:
             except ValueError:
                 m = 'Return value of {}() is not an int'
                 raise mesonlib.EnvironmentException(m.format(fname))
+        assert False, 'Unreachable'
 
     @staticmethod
-    def _no_prototype_templ():
+    def _no_prototype_templ() -> T.Tuple[str, str]:
         """
         Try to find the function without a prototype from a header by defining
         our own dummy prototype and trying to link with the C library (and
@@ -793,7 +816,7 @@ class CLikeCompiler:
         return head, main
 
     @staticmethod
-    def _have_prototype_templ():
+    def _have_prototype_templ() -> T.Tuple[str, str]:
         """
         Returns a head-er and main() call that uses the headers listed by the
         user for the function prototype while checking if a function exists.
@@ -813,8 +836,11 @@ class CLikeCompiler:
         }}'''
         return head, main
 
-    def has_function(self, funcname, prefix, env, *, extra_args=None, dependencies=None):
-        """
+    def has_function(self, typename: str, prefix: str, env: 'Environment', *,
+                     extra_args: T.Optional[T.Iterable[str]] = None,
+                     dependencies: T.Optional[T.Iterable['Dependency']] = None) -> T.Tuple[bool, bool]:
+        """Determine if a function exists.
+
         First, this function looks for the symbol in the default libraries
         provided by the compiler (stdlib + a few others usually). If that
         fails, it checks if any of the headers specified in the prefix provide
@@ -825,7 +851,7 @@ class CLikeCompiler:
             extra_args = []
 
         # Short-circuit if the check is already provided by the cross-info file
-        varname = 'has function ' + funcname
+        varname = 'has function ' + typename
         varname = varname.replace(' ', '_')
         if self.is_cross:
             val = env.properties.host.get(varname, None)
@@ -834,7 +860,7 @@ class CLikeCompiler:
                     return val, False
                 raise mesonlib.EnvironmentException('Cross variable {0} is not a boolean.'.format(varname))
 
-        fargs = {'prefix': prefix, 'func': funcname}
+        fargs = {'prefix': prefix, 'func': typename}
 
         # glibc defines functions that are not available on Linux as stubs that
         # fail with ENOSYS (such as e.g. lchmod). In this case we want to fail
@@ -876,9 +902,9 @@ class CLikeCompiler:
         # are inlined by the compiler and you can't take their address, so we
         # need to look for them differently. On nice compilers like clang, we
         # can just directly use the __has_builtin() macro.
-        fargs['no_includes'] = '#include' not in prefix
-        is_builtin = funcname.startswith('__builtin_')
-        fargs['is_builtin'] = is_builtin
+        fargs['no_includes'] = str('#include' not in prefix)
+        is_builtin = typename.startswith('__builtin_')
+        fargs['is_builtin'] = str(is_builtin)
         fargs['__builtin_'] = '' if is_builtin else '__builtin_'
         t = '''{prefix}
         int main(void) {{
@@ -906,7 +932,10 @@ class CLikeCompiler:
         return self.links(t.format(**fargs), env, extra_args=extra_args,
                           dependencies=dependencies)
 
-    def has_members(self, typename, membernames, prefix, env, *, extra_args=None, dependencies=None):
+    def has_members(self, typename: str, membernames: T.Iterable[str],
+                    prefix: str, env: 'Environment', *,
+                    extra_args: T.Optional[T.Iterable[str]] = None,
+                    dependencies: T.Optional[T.Iterable['Dependency']] = None) -> T.Tuple[bool, bool]:
         if extra_args is None:
             extra_args = []
         fargs = {'prefix': prefix, 'type': typename, 'name': 'foo'}
@@ -1270,7 +1299,7 @@ class CLikeCompiler:
         return self.has_arguments(args, env, code, mode='link')
 
     @staticmethod
-    def concatenate_string_literals(s):
+    def concatenate_string_literals(s) -> str:
         pattern = re.compile(r'(?P<pre>.*([^\\]")|^")(?P<str1>([^\\"]|\\.)*)"\s+"(?P<str2>([^\\"]|\\.)*)(?P<post>".*)')
         ret = s
         m = pattern.match(ret)
