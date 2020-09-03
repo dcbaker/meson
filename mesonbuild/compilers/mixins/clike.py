@@ -136,7 +136,7 @@ class CLikeCompiler:
         def compile(self, code: 'mesonlib.FileOrString',
                     extra_args: T.Optional[T.Iterable[str]] = None,
                     *, mode: str = 'link', want_output: bool = False,
-                    temp_dir: T.Optional[str] = None) -> T.Iterator[T.Optional[compilers.CompileResult]]: ...
+                    temp_dir: T.Optional[str] = None) -> T.Optional[compilers.CompileResult]: ...
         def cached_compile(self, code: str, cdata: 'CoreData', *,
                           extra_args: T.Optional[T.Iterable[str]] = None,
                           mode: str = 'link',
@@ -543,7 +543,7 @@ class CLikeCompiler:
 
     def _compile_int(self, expression: str, prefix: str, env: 'Environment',
                      extra_args: T.Optional[T.Iterable[str]],
-                     dependencies: T.Optional[T.Iterable['Dependency']]) -> T.Iterator[bool]:
+                     dependencies: T.Optional[T.Iterable['Dependency']]) -> bool:
         fargs = {'prefix': prefix, 'expression': expression}
         t = '''#include <stdio.h>
         {prefix}
@@ -716,13 +716,13 @@ class CLikeCompiler:
         {delim}\n{define}'''
         args = self._get_compiler_check_args(env, extra_args, dependencies,
                                              mode='preprocess').to_native()
-        func = lambda: self.cached_compile(code.format(**fargs), env.coredata, extra_args=args, mode='preprocess')
         if disable_cache:
-            func = lambda: self.compile(code.format(**fargs), extra_args=args, mode='preprocess', temp_dir=env.scratch_dir)
-        with func() as p:
-            cached = p.cached
-            if p.returncode != 0:
-                raise mesonlib.EnvironmentException('Could not get define {!r}'.format(dname))
+            p = self.compile(code.format(**fargs), extra_args=args, mode='preprocess', temp_dir=env.scratch_dir)
+        else:
+            p = self.cached_compile(code.format(**fargs), env.coredata, extra_args=args, mode='preprocess')
+        cached = p.cached
+        if p.returncode != 0:
+            raise mesonlib.EnvironmentException('Could not get define {!r}'.format(dname))
         # Get the preprocessed value after the delimiter,
         # minus the extra newline at the end and
         # merge string literals.
