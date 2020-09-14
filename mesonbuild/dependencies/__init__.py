@@ -22,6 +22,7 @@ from .base import (  # noqa: F401
     DependencyFactory)
 from .dev import ValgrindDependency, gmock_factory, gtest_factory, llvm_factory, zlib_factory
 from .coarrays import coarray_factory
+from .languages import PHPConfigToolDependency
 from .mpi import mpi_factory
 from .scalapack import scalapack_factory
 from .misc import (
@@ -54,6 +55,9 @@ packages.update({
     'hdf5': HDF5Dependency,
     'mpi': mpi_factory,
     'scalapack': scalapack_factory,
+
+    # from languages
+    'php': PHPConfigToolDependency,
 
     # From misc:
     'blocks': BlocksDependency,

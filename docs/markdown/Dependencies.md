@@ -229,10 +229,11 @@ wmf_dep = dependency('libwmf', method : 'config-tool')
 ## Dependencies using config tools
 
 [CUPS](#cups), [LLVM](#llvm), [pcap](#pcap), [WxWidgets](#wxwidgets),
-[libwmf](#libwmf), [GCrypt](#libgcrypt), [GPGME](#gpgme), and GnuStep either do not provide pkg-config
-modules or additionally can be detected via a config tool
-(cups-config, llvm-config, libgcrypt-config, etc). Meson has native support for these
-tools, and they can be found like other dependencies:
+[libwmf](#libwmf), [GCrypt](#libgcrypt), [GPGME](#gpgme), and GnuStep either
+do not provide pkg-config modules or additionally can be detected via a
+config tool (cups-config, llvm-config, libgcrypt-config, etc). Meson has
+native support for these tools, and they can be found like other
+dependencies:
 
 ```meson
 pcap_dep = dependency('pcap', version : '>=1.0')
@@ -382,6 +383,12 @@ LLVM. Before this LLVM >= 3.9 would always dynamically link, while
 older versions would statically link, due to a quirk in `llvm-config`.
 
 `method` may be `auto`, `config-tool`, or `cmake`.
+
+## PHP
+
+*(added in 0.56.0)*
+
+`method` may be `auto` or `config-tool`.
 
 ### Modules, a.k.a. Components
 
