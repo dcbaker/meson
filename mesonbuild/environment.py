@@ -137,6 +137,9 @@ CompilersDict = T.Dict[str, Compiler]
 if T.TYPE_CHECKING:
     import argparse
 
+    RawOptionDict = T.Dict[coredata.OptionKey, T.Union[str, int, bool, T.List[str]]]
+
+
 def detect_gcovr(min_version='3.3', new_rootdir_version='4.2', log=False):
     gcovr_exe = 'gcovr'
     try:
@@ -579,7 +582,7 @@ class Environment:
         properties = PerMachineDefaultable()
 
         # We only need one of these as project options are not per machine
-        user_options = collections.defaultdict(dict)  # type: T.DefaultDict[str, T.Dict[str, object]]
+        project_options = {}  # type: RawOptionDict
 
         # meson builtin options, as passed through cross or native files
         meson_options = PerMachineDefaultable()  # type: PerMachineDefaultable[T.DefaultDict[str, T.Dict[str, object]]]
@@ -611,6 +614,17 @@ class Environment:
                     else:
                         project = ''
                     store[project].update(config.get(section, {}))
+
+        def load_options2(tag: str) -> T.Dict[coredata.OptionKey, T.Union[str, bool, int, T.List[str]]]:
+            values = {}  # T.Dict[coredata.OptionKey, T.Union[str, bool, int, T.List[str]]]
+            for section in config.keys():
+                if section.endswith(tag):
+                    key = coredata.OptionKey('')
+                    if ':' in section:
+                        key.subproject = section.split(':')[0]
+                    for k, v in config.get(section, {}).items():
+                        values[key.evolve(name=k)] = v
+            return values
 
         def split_base_options(mopts: T.DefaultDict[str, T.Dict[str, object]]) -> None:
             for k, v in list(mopts.get('', {}).items()):
@@ -657,7 +671,7 @@ class Environment:
             # Don't run this if there are any cross files, we don't want to use
             # the native values if we're doing a cross build
             if not self.coredata.cross_files:
-                load_options('project options', user_options)
+                project_options.update(load_options2('project options'))
             meson_options.build = collections.defaultdict(dict)
             if config.get('paths') is not None:
                 mlog.deprecation('The [paths] section is deprecated, use the [built-in options] section instead.')
@@ -678,7 +692,7 @@ class Environment:
                 machines.host = MachineInfo.from_literal(config['host_machine'])
             if 'target_machine' in config:
                 machines.target = MachineInfo.from_literal(config['target_machine'])
-            load_options('project options', user_options)
+            project_options.update(load_options2('project options'))
             meson_options.host = collections.defaultdict(dict)
             compiler_options.host = collections.defaultdict(dict)
             if config.get('paths') is not None:
@@ -694,7 +708,7 @@ class Environment:
         self.machines = machines.default_missing()
         self.binaries = binaries.default_missing()
         self.properties = properties.default_missing()
-        self.user_options = user_options
+        self.project_options = project_options
         self.meson_options = meson_options.default_missing()
         self.base_options = _base_options
         self.compiler_options = compiler_options.default_missing()
@@ -729,26 +743,23 @@ class Environment:
         # TODO: validate all of this
         all_builtins = set(coredata.BUILTIN_OPTIONS) | set(coredata.BUILTIN_OPTIONS_PER_MACHINE) | set(coredata.builtin_dir_noprefix_options)
         for k, v in options.cmd_line_options.items():
-            try:
-                subproject, k = k.split(':')
-            except ValueError:
-                subproject = ''
+            okey = coredata.OptionKey.from_string(k)
             if k in base_options:
-                self.base_options[k] = v
+                self.base_options[okey.name] = v
             elif k.startswith(lang_prefixes):
-                lang, key = k.split('_', 1)
+                lang, key = okey.name.split('_', 1)
                 self.compiler_options.host[lang][key] = v
             elif k in all_builtins or k.startswith('backend_'):
-                self.meson_options.host[subproject][k] = v
+                self.meson_options.host[okey.subproject][okey.name] = v
             elif k.startswith('build.'):
                 k = k.lstrip('build.')
                 if k in coredata.BUILTIN_OPTIONS_PER_MACHINE:
                     if self.meson_options.build is None:
                         self.meson_options.build = collections.defaultdict(dict)
-                    self.meson_options.build[subproject][k] = v
+                    self.meson_options.build[okey.subproject][okey.name] = v
             else:
-                assert not k.startswith('build.')
-                self.user_options[subproject][k] = v
+                assert okey.machine is MachineChoice.HOST
+                self.project_options[okey] = v
 
         # Warn if the user is using two different ways of setting build-type
         # options that override each other

@@ -926,7 +926,7 @@ class CoreData:
             if k in BUILTIN_OPTIONS_PER_MACHINE:
                 options[make_key('build.{}'.format(k))] = v
 
-        options.update({make_key(k): v for k, v in env.user_options.get(subproject, {}).items()})
+        options.update({str(k): v for k, v in env.project_options.items() if k.subproject == subproject})
 
         # Some options (namely the compiler options) are not preasant in
         # coredata until the compiler is fully initialized. As such, we need to
