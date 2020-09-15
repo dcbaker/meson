@@ -911,15 +911,14 @@ class CoreData:
 
         # TODO: validate these
         from .compilers import all_languages, base_options
-        lang_prefixes = tuple('{}_'.format(l) for l in all_languages)
         # split arguments that can be set now, and those that cannot so they
         # can be set later, when they've been initialized.
         for k, v in default_options.items():
-            if k.startswith(lang_prefixes):
-                lang, key = k.split('_', 1)
-                for machine in MachineChoice:
-                    if key not in env.compiler_options[machine][lang]:
-                        env.compiler_options[machine][lang][key] = v
+            key = OptionKey.from_string(k)
+            if key.language:
+                for key in [key, key.as_build()]:
+                    if key not in env.compiler_options:
+                        env.compiler_options[key] = v
             elif k in base_options:
                 if not subproject and k not in env.base_options:
                     env.base_options[k] = v
@@ -972,8 +971,9 @@ class CoreData:
                 env.is_cross_build(),
                 env.properties[for_machine]).items():
             # prefixed compiler options affect just this machine
-            if k in env.compiler_options[for_machine].get(lang, {}):
-                o.set_value(env.compiler_options[for_machine][lang][k])
+            key = OptionKey(k, machine=for_machine, language=lang)
+            if key in env.compiler_options:
+                o.set_value(env.compiler_options[key])
             self.compiler_options[for_machine][lang].setdefault(k, o)
 
     def process_new_compiler(self, lang: str, comp: 'Compiler', env: 'Environment') -> None:
@@ -982,9 +982,9 @@ class CoreData:
         self.compilers[comp.for_machine][lang] = comp
 
         for k, o in comp.get_options().items():
-            # prefixed compiler options affect just this machine
-            if k in env.compiler_options[comp.for_machine].get(lang, {}):
-                o.set_value(env.compiler_options[comp.for_machine][lang][k])
+            key = OptionKey(k, machine=comp.for_machine, language=lang)
+            if key in env.compiler_options:
+                o.set_value(env.compiler_options[key])
             self.compiler_options[comp.for_machine][lang].setdefault(k, o)
 
         enabled_opts = []

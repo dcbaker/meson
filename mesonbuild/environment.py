@@ -601,8 +601,7 @@ class Environment:
         _base_options = {}  # type: T.Dict[str, object]
 
         # Per language compiler arguments
-        compiler_options = PerMachineDefaultable()  # type: PerMachineDefaultable[T.DefaultDict[str, T.Dict[str, object]]]
-        compiler_options.build = collections.defaultdict(dict)
+        compiler_options = collections.OrderedDict()  # type: RawOptionDict
 
         ## Read in native file(s) to override build machine configuration
 
@@ -619,24 +618,26 @@ class Environment:
                         values[t] = v
             return values
 
-        def move_compiler_options(properties: Properties, compopts: T.Dict[str, T.DefaultDict[str, object]]) -> None:
-            for k, v in properties.properties.copy().items():
+        def move_compiler_options(machine: MachineChoice) -> None:
+            for k, v in properties[machine].properties.copy().items():
+                key = coredata.OptionKey('', machine=machine)
                 for lang in all_languages:
                     if k == '{}_args'.format(lang):
-                        if 'args' not in compopts[lang]:
-                            compopts[lang]['args'] = v
+                        key = key.evolve('args', language=lang)
+                        if key not in compiler_options:
+                            compiler_options[key] = v
                         else:
                             mlog.warning('Ignoring {}_args in [properties] section for those in the [built-in options]'.format(lang))
                     elif k == '{}_link_args'.format(lang):
-                        if 'link_args' not in compopts[lang]:
-                            compopts[lang]['link_args'] = v
+                        key = key.evolve('link_args', language=lang)
+                        if key not in compiler_options:
+                            compiler_options[key] = v
                         else:
                             mlog.warning('Ignoring {}_link_args in [properties] section in favor of the [built-in options] section.')
                     else:
                         continue
                     mlog.deprecation('{} in the [properties] section of the machine file is deprecated, use the [built-in options] section.'.format(k))
-                    del properties.properties[k]
-                    break
+                    del properties[machine].properties[k]
 
         if self.coredata.config_files is not None:
             config = coredata.parse_machine_files(self.coredata.config_files)
@@ -651,7 +652,7 @@ class Environment:
                 mlog.deprecation('The [paths] section is deprecated, use the [built-in options] section instead.')
                 builtin_options.update(load_options('paths', coredata.OptionKey('', machine=MachineChoice.BUILD)))
             builtin_options.update(load_options('built-in options', coredata.OptionKey('', machine=MachineChoice.BUILD)))
-            move_compiler_options(properties.build, compiler_options.build)
+            move_compiler_options(MachineChoice.BUILD)
 
         ## Read in cross file(s) to override host machine configuration
 
@@ -664,16 +665,18 @@ class Environment:
             if 'target_machine' in config:
                 machines.target = MachineInfo.from_literal(config['target_machine'])
             project_options.update(load_options('project options'))
-            compiler_options.host = collections.defaultdict(dict)
             if config.get('paths') is not None:
                 mlog.deprecation('The [paths] section is deprecated, use the [built-in options] section instead.')
                 builtin_options.update(load_options('paths'))
             builtin_options.update(load_options('built-in options'))
-            move_compiler_options(properties.host, compiler_options.host)
+            move_compiler_options(MachineChoice.HOST)
         else:
             for k, v in list(builtin_options.items()):
                 if k.machine is MachineChoice.BUILD:
                     builtin_options[k.as_host()] = v
+            for k, v in list(compiler_options.items()):
+                if k.machine is MachineChoice.BUILD:
+                    compiler_options[k.as_host()] = v
 
         # Split base options out of the builtin_options. They're stored separately
         for k, v in list(builtin_options.items()):  # make a list() to avoid mutating the dict we're iterating
@@ -690,11 +693,7 @@ class Environment:
                 if k.subproject:
                     del builtin_options[k]
                     continue
-                if compiler_options[k.machine] is None:
-                    compiler_options[k.machine] = collections.defaultdict(dict)
-                if k.language not in compiler_options[k.machine]:
-                    compiler_options[k.machine][k.language] = collections.defaultdict(dict)
-                compiler_options[k.machine][k.language][k.name] = v
+                compiler_options[k] = v
                 del builtin_options[k]
 
         ## "freeze" now initialized configuration, and "save" to the class.
@@ -705,7 +704,7 @@ class Environment:
         self.project_options = project_options
         self.builtin_options = builtin_options
         self.base_options = _base_options
-        self.compiler_options = compiler_options.default_missing()
+        self.compiler_options = compiler_options
 
         # Some options default to environment variables if they are
         # unset, set those now.
@@ -744,7 +743,7 @@ class Environment:
                     self.base_options[okey.name] = v
             elif okey.language:
                 if okey.subproject == '':  # not allowed per-subproject yet
-                    self.compiler_options.host[okey.language][okey.name] = v
+                    self.compiler_options[okey] = v
             elif okey.name in all_builtins or k.startswith('backend_'):
                 self.builtin_options[okey] = v
             else:
