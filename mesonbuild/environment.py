@@ -585,7 +585,7 @@ class Environment:
         project_options = {}  # type: RawOptionDict
 
         # meson builtin options, as passed through cross or native files
-        meson_options = PerMachineDefaultable()  # type: PerMachineDefaultable[T.DefaultDict[str, T.Dict[str, object]]]
+        builtin_options = collections.OrderedDict()  # type: RawOptionDict
 
         ## Setup build machine defaults
 
@@ -606,43 +606,17 @@ class Environment:
 
         ## Read in native file(s) to override build machine configuration
 
-        def load_options(tag: str, store: T.Dict[str, T.Any]) -> None:
+        def load_options(tag: str, keybase: T.Optional[coredata.OptionKey] = None) -> 'RawOptionDict':
+            keybase = keybase.copy() if keybase else coredata.OptionKey('')
+            values = {}  # type: RawOptionDict
             for section in config.keys():
                 if section.endswith(tag):
-                    if ':' in section:
-                        project = section.split(':')[0]
-                    else:
-                        project = ''
-                    store[project].update(config.get(section, {}))
-
-        def load_options2(tag: str) -> T.Dict[coredata.OptionKey, T.Union[str, bool, int, T.List[str]]]:
-            values = {}  # T.Dict[coredata.OptionKey, T.Union[str, bool, int, T.List[str]]]
-            for section in config.keys():
-                if section.endswith(tag):
-                    key = coredata.OptionKey('')
+                    key = keybase.copy()
                     if ':' in section:
                         key.subproject = section.split(':')[0]
                     for k, v in config.get(section, {}).items():
                         values[key.evolve(name=k)] = v
             return values
-
-        def split_base_options(mopts: T.DefaultDict[str, T.Dict[str, object]]) -> None:
-            for k, v in list(mopts.get('', {}).items()):
-                if k in base_options:
-                    _base_options[k] = v
-                    del mopts[k]
-
-        lang_prefixes = tuple('{}_'.format(l) for l in all_languages)
-        def split_compiler_options(mopts: T.DefaultDict[str, T.Dict[str, object]], machine: MachineChoice) -> None:
-            for k, v in list(mopts.get('', {}).items()):
-                if k.startswith(lang_prefixes):
-                    lang, key = k.split('_', 1)
-                    if compiler_options[machine] is None:
-                        compiler_options[machine] = collections.defaultdict(dict)
-                    if lang not in compiler_options[machine]:
-                        compiler_options[machine][lang] = collections.defaultdict(dict)
-                    compiler_options[machine][lang][key] = v
-                    del mopts[''][k]
 
         def move_compiler_options(properties: Properties, compopts: T.Dict[str, T.DefaultDict[str, object]]) -> None:
             for k, v in properties.properties.copy().items():
@@ -671,15 +645,11 @@ class Environment:
             # Don't run this if there are any cross files, we don't want to use
             # the native values if we're doing a cross build
             if not self.coredata.cross_files:
-                project_options.update(load_options2('project options'))
-            meson_options.build = collections.defaultdict(dict)
+                project_options.update(load_options('project options'))
             if config.get('paths') is not None:
                 mlog.deprecation('The [paths] section is deprecated, use the [built-in options] section instead.')
-                load_options('paths', meson_options.build)
-            load_options('built-in options', meson_options.build)
-            if not self.coredata.cross_files:
-                split_base_options(meson_options.build)
-            split_compiler_options(meson_options.build, MachineChoice.BUILD)
+                builtin_options.update(load_options('paths', coredata.OptionKey('', machine=MachineChoice.BUILD)))
+            builtin_options.update(load_options('built-in options', coredata.OptionKey('', machine=MachineChoice.BUILD)))
             move_compiler_options(properties.build, compiler_options.build)
 
         ## Read in cross file(s) to override host machine configuration
@@ -692,16 +662,40 @@ class Environment:
                 machines.host = MachineInfo.from_literal(config['host_machine'])
             if 'target_machine' in config:
                 machines.target = MachineInfo.from_literal(config['target_machine'])
-            project_options.update(load_options2('project options'))
-            meson_options.host = collections.defaultdict(dict)
+            project_options.update(load_options('project options'))
             compiler_options.host = collections.defaultdict(dict)
             if config.get('paths') is not None:
                 mlog.deprecation('The [paths] section is deprecated, use the [built-in options] section instead.')
-                load_options('paths', meson_options.host)
-            load_options('built-in options', meson_options.host)
-            split_base_options(meson_options.host)
-            split_compiler_options(meson_options.host, MachineChoice.HOST)
+                builtin_options.update(load_options('paths'))
+            builtin_options.update(load_options('built-in options'))
             move_compiler_options(properties.host, compiler_options.host)
+        else:
+            for k, v in list(builtin_options.items()):
+                if k.machine is MachineChoice.BUILD:
+                    builtin_options[k.as_host()] = v
+
+        # Split base options out of the builtin_options. They're stored separately
+        for k, v in list(builtin_options.items()):  # make a list() to avoid mutating the dict we're iterating
+            if k.name in base_options:
+                if k.machine is MachineChoice.BUILD and not self.coredata.cross_files:
+                    continue
+                _base_options[k.name] = v
+                del builtin_options[k]
+
+        # Move compiler options out of builtin_options and into the compiler_options
+        lang_prefixes = tuple('{}_'.format(l) for l in all_languages)
+        for k, v in list(builtin_options.items()):
+            if k.subproject:
+                # Currently we don't support compiler options per-subproject
+                continue
+            if k.name.startswith(lang_prefixes):
+                lang, key = k.name.split('_', 1)
+                if compiler_options[k.machine] is None:
+                    compiler_options[k.machine] = collections.defaultdict(dict)
+                if lang not in compiler_options[k.machine]:
+                    compiler_options[k.machine][lang] = collections.defaultdict(dict)
+                compiler_options[k.machine][lang][key] = v
+                del builtin_options[k]
 
         ## "freeze" now initialized configuration, and "save" to the class.
 
@@ -709,7 +703,7 @@ class Environment:
         self.binaries = binaries.default_missing()
         self.properties = properties.default_missing()
         self.project_options = project_options
-        self.meson_options = meson_options.default_missing()
+        self.builtin_options = builtin_options
         self.base_options = _base_options
         self.compiler_options = compiler_options.default_missing()
 
@@ -726,11 +720,12 @@ class Environment:
                 p_list = list(mesonlib.OrderedSet(p_env.split(':')))
 
                 key = 'pkg_config_path'
+                optkey = coredata.OptionKey(key, machine=for_machine)
 
                 if self.first_invocation:
                     # Environment variables override config
-                    self.meson_options[for_machine][''][key] = p_list
-                elif self.meson_options[for_machine][''].get(key, []) != p_list:
+                    self.builtin_options[optkey] = p_list
+                elif self.builtin_options.get(optkey, []) != p_list:
                     mlog.warning(
                         p_env_var,
                         'environment variable does not match configured',
@@ -744,27 +739,25 @@ class Environment:
         all_builtins = set(coredata.BUILTIN_OPTIONS) | set(coredata.BUILTIN_OPTIONS_PER_MACHINE) | set(coredata.builtin_dir_noprefix_options)
         for k, v in options.cmd_line_options.items():
             okey = coredata.OptionKey.from_string(k)
-            if k in base_options:
-                self.base_options[okey.name] = v
-            elif k.startswith(lang_prefixes):
-                lang, key = okey.name.split('_', 1)
-                self.compiler_options.host[lang][key] = v
-            elif k in all_builtins or k.startswith('backend_'):
-                self.meson_options.host[okey.subproject][okey.name] = v
-            elif k.startswith('build.'):
-                k = k.lstrip('build.')
-                if k in coredata.BUILTIN_OPTIONS_PER_MACHINE:
-                    if self.meson_options.build is None:
-                        self.meson_options.build = collections.defaultdict(dict)
-                    self.meson_options.build[okey.subproject][okey.name] = v
+            if okey.name in base_options:
+                if okey.subproject == '':
+                    self.base_options[okey.name] = v
+            elif okey.name.startswith(lang_prefixes):
+                if okey.subproject == '':
+                    lang, key = okey.name.split('_', 1)
+                    self.compiler_options.host[lang][key] = v
+            elif okey.name in all_builtins or k.startswith('backend_'):
+                self.builtin_options[okey] = v
             else:
-                assert okey.machine is MachineChoice.HOST
+                assert okey.machine is MachineChoice.HOST, repr(okey)
                 self.project_options[okey] = v
 
         # Warn if the user is using two different ways of setting build-type
         # options that override each other
-        if meson_options.build and 'buildtype' in meson_options.build[''] and \
-           ('optimization' in meson_options.build[''] or 'debug' in meson_options.build['']):
+        okey1 = coredata.OptionKey('buildtype')
+        okey2 = coredata.OptionKey('debug')
+        okey3 = coredata.OptionKey('optimization')
+        if okey1 in self.builtin_options and (okey2 in self.builtin_options or okey3 in self.builtin_options):
             mlog.warning('Recommend using either -Dbuildtype or -Doptimization + -Ddebug. '
                          'Using both is redundant since they override each other. '
                          'See: https://mesonbuild.com/Builtin-options.html#build-type-options')

@@ -849,7 +849,7 @@ class CoreData:
         return res
 
     def copy_build_options_from_regular_ones(self):
-        assert(not self.is_cross_build())
+        assert not self.is_cross_build()
         for k, o in self.builtins_per_machine.host.items():
             self.builtins_per_machine.build[k].set_value(o.value)
         for lang, host_opts in self.compiler_options.host.items():
@@ -917,29 +917,37 @@ class CoreData:
             else:
                 options[make_key(k)] = v
 
-        for k, v in chain(env.meson_options.host.get('', {}).items(),
-                          env.meson_options.host.get(subproject, {}).items()):
-            options[make_key(k)] = v
-
-        for k, v in chain(env.meson_options.build.get('', {}).items(),
-                          env.meson_options.build.get(subproject, {}).items()):
-            if k in BUILTIN_OPTIONS_PER_MACHINE:
-                options[make_key('build.{}'.format(k))] = v
+        for k, v in env.builtin_options.items():
+            if k.subproject not in {subproject, ''}:
+                continue
+            if k.machine is MachineChoice.BUILD and k.name not in BUILTIN_OPTIONS_PER_MACHINE:
+                continue
+            if (subproject and k.name in BUILTIN_OPTIONS and not BUILTIN_OPTIONS[k.name].yielding and
+                    k.subproject == '' and k.evolve(subproject=subproject) in env.builtin_options):
+                # Don't use the superproject option if there is a subproject version
+                continue
+            options[str(k)] = v
 
         options.update({str(k): v for k, v in env.project_options.items() if k.subproject == subproject})
 
         # Some options (namely the compiler options) are not preasant in
         # coredata until the compiler is fully initialized. As such, we need to
-        # put those options into env.meson_options, only if they're not already
+        # put those options into env.builtin_options, only if they're not already
         # in there, as the machine files and command line have precendence.
         for k, v in default_options.items():
-            if k in BUILTIN_OPTIONS and not BUILTIN_OPTIONS[k].yielding:
+            key = OptionKey.from_string(k)
+            if key.subproject and subproject:
+                mlog.warning('Cannot set supbroject defaults from other subprojects')
                 continue
-            for machine in MachineChoice:
-                if machine is MachineChoice.BUILD and not self.is_cross_build():
-                    continue
-                if k not in env.meson_options[machine][subproject]:
-                    env.meson_options[machine][subproject][k] = v
+            key = key.evolve(subproject=subproject)
+            if key.name in BUILTIN_OPTIONS and not BUILTIN_OPTIONS[key.name].yielding:
+                continue
+            if key not in env.builtin_options:
+                env.builtin_options[key] = v
+            if self.is_cross_build():
+                key = key.as_build()
+                if key not in env.builtin_options:
+                    env.builtin_options[key] = v
 
         self.set_options(options, subproject=subproject)
 
