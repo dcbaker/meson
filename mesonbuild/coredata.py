@@ -915,11 +915,12 @@ class CoreData:
         # can be set later, when they've been initialized.
         for k, v in default_options.items():
             key = OptionKey.from_string(k)
-            if key.language:
+            classifier = classify_argument(key)
+            if classifier is ArgumentGroup.COMPILER:
                 for key in [key, key.as_build()]:
                     if key not in env.compiler_options:
                         env.compiler_options[key] = v
-            elif k in base_options:
+            elif classifier is ArgumentGroup.BASE:
                 if not subproject and k not in env.base_options:
                     env.base_options[k] = v
             else:
