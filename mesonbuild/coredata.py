@@ -62,20 +62,15 @@ class ArgumentGroup(enum.Enum):
 def classify_argument(key: 'OptionKey') -> ArgumentGroup:
     """Classify arguments into groups so we know which dict to assign them to."""
 
-    from .compilers import all_languages, base_options
+    from .compilers import base_options
     all_builtins = set(BUILTIN_OPTIONS) | set(BUILTIN_OPTIONS_PER_MACHINE) | set(builtin_dir_noprefix_options)
-    lang_prefixes = tuple('{}_'.format(l) for l in all_languages)
 
     if key.name in base_options:
         assert key.machine is MachineChoice.HOST
         return ArgumentGroup.BASE
-    elif key.name.startswith(lang_prefixes):
+    elif key.language is not None:
         return ArgumentGroup.COMPILER
     elif key.name in all_builtins:
-        # if for_machine is MachineChoice.BUILD:
-        #     if option in BUILTIN_OPTIONS_PER_MACHINE:
-        #         return ArgumentGroup.BUILTIN
-        #     raise MesonException('Argument {} is not allowed per-machine'.format(option))
         return ArgumentGroup.BUILTIN
     elif key.name.startswith('backend_'):
         return ArgumentGroup.BACKEND
@@ -94,34 +89,38 @@ class OptionKey:
     """
 
     def __init__(self, name: str, subproject: str = '',
-                 machine: MachineChoice = MachineChoice.HOST):
+                 machine: MachineChoice = MachineChoice.HOST,
+                 language: T.Optional[str] = None):
         self.name = name
         self.subproject = subproject
         self.machine = machine
+        self.language = language
 
     def __hash__(self) -> int:
-        return hash((self.name, self.subproject, self.machine))
+        return hash((self.name, self.subproject, self.machine, self.language))
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, OptionKey):
             return (
                 self.name == other.name and
                 self.subproject == other.subproject and
-                self.machine is other.machine)
+                self.machine is other.machine and
+                self.language == other.language)
         return NotImplemented
 
     def __str__(self) -> str:
+        out = self.name
+        if self.language:
+            out = '{}_{}'.format(self.language, out)
         if self.machine is MachineChoice.BUILD:
-            out = 'build.{}'.format(self.name)
-        else:
-            out = self.name
+            out = 'build.{}'.format(out)
         if self.subproject:
             out = '{}:{}'.format(self.subproject, out)
         return out
 
     def __repr__(self) -> str:
-        return 'OptionKey("{}", "{}", {!r})'.format(
-            self.name, self.subproject, self.machine
+        return 'OptionKey("{}", "{}", {!r}, "{}")'.format(
+            self.name, self.subproject, self.machine, self.language
         )
 
     @classmethod
@@ -131,6 +130,9 @@ class OptionKey:
         This takes strings like `mysubproject:build.myoption` and Creates an
         OptionKey out of them.
         """
+        from .compilers import all_languages
+        langs = tuple('{}_'.format(c) for c in all_languages)
+
         try:
             subproject, raw2 = raw.split(':')
         except ValueError:
@@ -142,17 +144,21 @@ class OptionKey:
         else:
             opt = raw2
             for_machine = MachineChoice.HOST
+        if opt.startswith(langs):
+            lang, opt = opt.split('_', 1)
+        else:
+            lang = None
         assert ':' not in opt
         assert 'build.' not in opt
 
-        return cls(opt, subproject, for_machine)
+        return cls(opt, subproject, for_machine, lang)
 
     def copy(self) -> 'OptionKey':
         """Return a copy of the OptionKey."""
-        return OptionKey(self.name, self.subproject, self.machine)
+        return OptionKey(self.name, self.subproject, self.machine, self.language)
 
     def evolve(self, name: T.Optional[str] = None, subproject: T.Optional[str] = None,
-               machine: T.Optional[MachineChoice] = None) -> 'OptionKey':
+               machine: T.Optional[MachineChoice] = None, language: T.Optional[str] = None) -> 'OptionKey':
         """Create a new copy of this key, but with alterted members.
 
         For example:
@@ -169,6 +175,9 @@ class OptionKey:
             new.subproject = subproject
         if machine is not None:
             new.machine = machine
+        if language is not None:
+            # This is tricky, language is valid as none, but we need to have a way to ignore it...
+            new.language = language
         return new
 
     def as_root(self) -> 'OptionKey':

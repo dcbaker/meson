@@ -615,7 +615,8 @@ class Environment:
                     if ':' in section:
                         key.subproject = section.split(':')[0]
                     for k, v in config.get(section, {}).items():
-                        values[key.evolve(name=k)] = v
+                        t = coredata.OptionKey.from_string(k).evolve(machine=key.machine, subproject=key.subproject)
+                        values[t] = v
             return values
 
         def move_compiler_options(properties: Properties, compopts: T.Dict[str, T.DefaultDict[str, object]]) -> None:
@@ -683,18 +684,17 @@ class Environment:
                 del builtin_options[k]
 
         # Move compiler options out of builtin_options and into the compiler_options
-        lang_prefixes = tuple('{}_'.format(l) for l in all_languages)
         for k, v in list(builtin_options.items()):
-            if k.subproject:
+            if k.language:
                 # Currently we don't support compiler options per-subproject
-                continue
-            if k.name.startswith(lang_prefixes):
-                lang, key = k.name.split('_', 1)
+                if k.subproject:
+                    del builtin_options[k]
+                    continue
                 if compiler_options[k.machine] is None:
                     compiler_options[k.machine] = collections.defaultdict(dict)
-                if lang not in compiler_options[k.machine]:
-                    compiler_options[k.machine][lang] = collections.defaultdict(dict)
-                compiler_options[k.machine][lang][key] = v
+                if k.language not in compiler_options[k.machine]:
+                    compiler_options[k.machine][k.language] = collections.defaultdict(dict)
+                compiler_options[k.machine][k.language][k.name] = v
                 del builtin_options[k]
 
         ## "freeze" now initialized configuration, and "save" to the class.
@@ -742,10 +742,9 @@ class Environment:
             if okey.name in base_options:
                 if okey.subproject == '':
                     self.base_options[okey.name] = v
-            elif okey.name.startswith(lang_prefixes):
-                if okey.subproject == '':
-                    lang, key = okey.name.split('_', 1)
-                    self.compiler_options.host[lang][key] = v
+            elif okey.language:
+                if okey.subproject == '':  # not allowed per-subproject yet
+                    self.compiler_options.host[okey.language][okey.name] = v
             elif okey.name in all_builtins or k.startswith('backend_'):
                 self.builtin_options[okey] = v
             else:
