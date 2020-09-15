@@ -8298,7 +8298,7 @@ class NativeFileTests(BasePlatformTests):
     def test_builtin_options_subprojects_inherits_parent_override(self):
         # If the buildfile says subproject(... default_library: shared), ensure that's overwritten
         testcase = os.path.join(self.common_test_dir, '230 persubproject options')
-        config = self.helper_create_native_file({'built-in options': {'default_library': 'both'}})
+        config = self.helper_create_native_file({'built-in options': {'default_library': 'static'}})
 
         with self.assertRaises(subprocess.CalledProcessError) as cm:
             self.init(testcase, extra_args=['--native-file', config])
