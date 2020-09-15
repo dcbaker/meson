@@ -2451,12 +2451,11 @@ class Interpreter(InterpreterBase):
     def get_non_matching_default_options(self) -> T.Iterator[T.Tuple[str, str, coredata.UserOption]]:
         env = self.environment
         for def_opt_name, def_opt_value in self.project_default_options.items():
-            for opts in env.coredata.get_all_options():
-                cur_opt_value = opts.get(def_opt_name)
-                if cur_opt_value is not None:
-                    def_opt_value = env.coredata.validate_option_value(def_opt_name, def_opt_value)
-                    if def_opt_value != cur_opt_value.value:
-                        yield (def_opt_name, def_opt_value, cur_opt_value)
+            key = coredata.OptionKey.from_string(def_opt_name)
+            cur_opt = self.coredata.get_any_option(key)
+            def_opt_value = env.coredata.validate_option_value(def_opt_name, def_opt_value)
+            if def_opt_value != cur_opt.value:
+                yield def_opt_name, def_opt_value, cur_opt
 
     def build_func_dict(self):
         self.funcs.update({'add_global_arguments': self.func_add_global_arguments,

@@ -700,47 +700,67 @@ class CoreData:
                     '')
 
     def get_builtin_option(self, optname: str, subproject: str = '') -> T.Union[str, int, bool]:
-        raw_optname = optname
-        if subproject:
-            optname = subproject + ':' + optname
-        for opts in self._get_all_builtin_options():
-            v = opts.get(optname)
-            if v is None or v.yielding:
-                v = opts.get(raw_optname)
-            if v is None:
-                continue
-            if raw_optname == 'wrap_mode':
-                return WrapMode.from_string(v.value)
-            return v.value
-        raise RuntimeError('Tried to get unknown builtin option %s.' % raw_optname)
+        key = OptionKey(optname, subproject=subproject)
+        v = self.get_builtin_option_raw(key)
+        if key.name == 'wrap_mode':
+            return WrapMode.from_string(v.value)
+        return v.value
 
-    def _try_set_builtin_option(self, optname, value):
-        for opts in self._get_all_builtin_options():
-            opt = opts.get(optname)
-            if opt is None:
-                continue
-            if optname == 'prefix':
-                value = self.sanitize_prefix(value)
-            else:
-                prefix = self.builtins['prefix'].value
-                value = self.sanitize_dir_option_value(prefix, optname, value)
-            break
+    def get_builtin_option_raw(self, opt: OptionKey) -> T.Optional[UserOption]:
+        """Get the UserOption associated with an optoin tuple."""
+        assert opt.language is None
+        if opt.name in BUILTIN_OPTIONS_PER_MACHINE:
+            source = self.builtins_per_machine[opt.machine]
+            # The option needs to be looked up without the build. prefix,
+            opt = opt.as_host()
         else:
-            return False
-        opt.set_value(value)
-        # Make sure that buildtype matches other settings.
+            assert opt.machine is MachineChoice.HOST
+            source = self.builtins
+
+        try:
+            v = source[str(opt)]
+        except KeyError:
+            v = None
+
+        if v is None or v.yielding:
+            try:
+                v = source[str(opt.as_root())]
+            except KeyError:
+                raise MesonException('Tried to get unknown builtin option %s.' % repr(opt))
+
+        return v
+
+    def get_any_option(self, key: OptionKey) -> UserOption[_T]:
+        """Return an option object given a name, no matter where it's stored."""
+        classifier = classify_argument(key)
+        if classifier is ArgumentGroup.BASE:
+            return self.base_options[key.name]
+        elif classifier is ArgumentGroup.USER:
+            return self.user_options[str(key)]
+        elif classifier is ArgumentGroup.BUILTIN:
+            return self.get_builtin_option_raw(key)
+        elif classifier is ArgumentGroup.BACKEND:
+            return self.backend_options[key.name]
+        elif classifier is ArgumentGroup.COMPILER:
+            return self.compiler_options[key.machine][key.language][key.name]
+        raise MesonException('Unknown enum value {}'.format(classifier))
+
+    def set_any_option(self, key: OptionKey, value: T.Union[str, int, bool, T.List[str]]) -> UserOption[_T]:
+        """Return an option object given a name, no matter where it's stored."""
+        classifier = classify_argument(key)
+        if classifier is ArgumentGroup.BUILTIN:
+            self.set_builtin_option(str(key), value)
+        else:
+            self.get_any_option(key).set_value(value)
+
+    def set_builtin_option(self, optname: str, value: T.Union[str, int, bool, T.List[str]]) -> None:
+        self.get_builtin_option_raw(OptionKey.from_string(optname)).set_value(value)
         if optname == 'buildtype':
             self.set_others_from_buildtype(value)
-        else:
+        elif optname in {'debug', 'optimization'}:
             self.set_buildtype_from_others()
-        return True
 
-    def set_builtin_option(self, optname, value):
-        res = self._try_set_builtin_option(optname, value)
-        if not res:
-            raise RuntimeError('Tried to set unknown builtin option %s.' % optname)
-
-    def set_others_from_buildtype(self, value):
+    def set_others_from_buildtype(self, value: str) -> None:
         if value == 'plain':
             opt = '0'
             debug = False
@@ -759,12 +779,13 @@ class CoreData:
         else:
             assert(value == 'custom')
             return
-        self.builtins['optimization'].set_value(opt)
-        self.builtins['debug'].set_value(debug)
+        # Do *not* use set_builtin_option here to avoid infinite recursion
+        self.get_builtin_option_raw(OptionKey('optimization')).set_value(opt)
+        self.get_builtin_option_raw(OptionKey('debug')).set_value(debug)
 
-    def set_buildtype_from_others(self):
-        opt = self.builtins['optimization'].value
-        debug = self.builtins['debug'].value
+    def set_buildtype_from_others(self) -> None:
+        opt = self.get_builtin_option('optimization')
+        debug = self.get_builtin_option('debug')
         if opt == '0' and not debug:
             mode = 'plain'
         elif opt == '0' and debug:
@@ -777,7 +798,8 @@ class CoreData:
             mode = 'minsize'
         else:
             mode = 'custom'
-        self.builtins['buildtype'].set_value(mode)
+        # Do *not* use set_builtin_option here to avoid inifinite recursion
+        self.get_builtin_option_raw(OptionKey('buildtype')).set_value(mode)
 
     @classmethod
     def get_prefixed_options_per_machine(
@@ -804,30 +826,15 @@ class CoreData:
             for k1, v1 in v0.items():
                 yield (k0 + k1, v1)
 
-    def _get_all_nonbuiltin_options(self) -> T.Iterable[T.Dict[str, UserOption]]:
-        yield self.backend_options
-        yield self.user_options
-        yield dict(self.flatten_lang_iterator(self.get_prefixed_options_per_machine(self.compiler_options)))
-        yield self.base_options
-
-    def _get_all_builtin_options(self) -> T.Iterable[T.Dict[str, UserOption]]:
-        yield dict(self.get_prefixed_options_per_machine(self.builtins_per_machine))
-        yield self.builtins
-
-    def get_all_options(self) -> T.Iterable[T.Dict[str, UserOption]]:
-        yield from self._get_all_nonbuiltin_options()
-        yield from self._get_all_builtin_options()
-
-    def validate_option_value(self, option_name, override_value):
-        for opts in self.get_all_options():
-            opt = opts.get(option_name)
-            if opt is not None:
-                try:
-                    return opt.validate_value(override_value)
-                except MesonException as e:
-                    raise type(e)(('Validation failed for option %s: ' % option_name) + str(e)) \
-                        .with_traceback(sys.exc_info()[2])
-        raise MesonException('Tried to validate unknown option %s.' % option_name)
+    def validate_option_value(self, option_name: str, override_value):
+        try:
+            opt = self.get_any_option(OptionKey.from_string(option_name))
+        except KeyError:
+            raise MesonException('Tried to validate unknown option %s.' % option_name)
+        try:
+            return opt.validate_value(override_value)
+        except MesonException as e:
+            raise MesonException('Validation failed for option %s: ' % option_name) from e
 
     def get_external_args(self, for_machine: MachineChoice, lang):
         return self.compiler_options[for_machine][lang]['args'].value
@@ -871,27 +878,27 @@ class CoreData:
         if not self.is_cross_build():
             options = self.strip_build_option_names(options)
         # Set prefix first because it's needed to sanitize other options
+        # TODO: this should move to set_builtin_option
         if 'prefix' in options:
             prefix = self.sanitize_prefix(options['prefix'])
-            self.builtins['prefix'].set_value(prefix)
+            self.set_builtin_option('prefix', prefix)
             for key in builtin_dir_noprefix_options:
                 if key not in options:
-                    self.builtins[key].set_value(BUILTIN_OPTIONS[key].prefixed_default(key, prefix))
+                    self.set_builtin_option(key, BUILTIN_OPTIONS[key].prefixed_default(key, prefix))
+        else:
+            prefix = self.builtins['prefix'].value
 
         unknown_options = []
         for k, v in options.items():
-            if k == 'prefix':
+            key = OptionKey.from_string(k)
+            if key.name == 'prefix':
                 continue
-            if self._try_set_builtin_option(k, v):
-                continue
-            for opts in self._get_all_nonbuiltin_options():
-                tgt = opts.get(k)
-                if tgt is None:
-                    continue
-                tgt.set_value(v)
-                break
-            else:
-                unknown_options.append(k)
+            try:
+                if key.name in BUILTIN_DIR_OPTIONS or key.name in builtin_dir_noprefix_options:
+                    v = self.sanitize_dir_option_value(prefix, key.name, v)
+                self.set_any_option(key, v)
+            except KeyError:
+                unknown_options.append(str(key))
         if unknown_options and warn_unknown:
             unknown_options = ', '.join(sorted(unknown_options))
             sub = 'In subproject {}: '.format(subproject) if subproject else ''
