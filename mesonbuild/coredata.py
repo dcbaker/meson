@@ -902,11 +902,6 @@ class CoreData:
             self.copy_build_options_from_regular_ones()
 
     def set_default_options(self, default_options: 'T.OrderedDict[str, str]', subproject: str, env: 'Environment') -> None:
-        def make_key(key: str) -> str:
-            if subproject:
-                return '{}:{}'.format(subproject, key)
-            return key
-
         options = OrderedDict()
 
         # TODO: validate these
@@ -924,7 +919,7 @@ class CoreData:
                 if not subproject and k not in env.base_options:
                     env.base_options[k] = v
             else:
-                options[make_key(k)] = v
+                options[str(key.evolve(subproject=subproject))] = v
 
         for k, v in env.builtin_options.items():
             if k.subproject not in {subproject, ''}:
