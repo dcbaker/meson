@@ -47,6 +47,143 @@ default_yielding = False
 # Can't bind this near the class method it seems, sadly.
 _T = T.TypeVar('_T')
 
+
+class ArgumentGroup(enum.Enum):
+
+    """Enum used to specify what kind of argument a thing is."""
+
+    BUILTIN = 0
+    BASE = 1
+    COMPILER = 2
+    USER = 3
+    BACKEND = 4
+
+
+def classify_argument(key: 'OptionKey') -> ArgumentGroup:
+    """Classify arguments into groups so we know which dict to assign them to."""
+
+    from .compilers import all_languages, base_options
+    all_builtins = set(BUILTIN_OPTIONS) | set(BUILTIN_OPTIONS_PER_MACHINE) | set(builtin_dir_noprefix_options)
+    lang_prefixes = tuple('{}_'.format(l) for l in all_languages)
+
+    if key.name in base_options:
+        assert key.machine is MachineChoice.HOST
+        return ArgumentGroup.BASE
+    elif key.name.startswith(lang_prefixes):
+        return ArgumentGroup.COMPILER
+    elif key.name in all_builtins:
+        # if for_machine is MachineChoice.BUILD:
+        #     if option in BUILTIN_OPTIONS_PER_MACHINE:
+        #         return ArgumentGroup.BUILTIN
+        #     raise MesonException('Argument {} is not allowed per-machine'.format(option))
+        return ArgumentGroup.BUILTIN
+    elif key.name.startswith('backend_'):
+        return ArgumentGroup.BACKEND
+    else:
+        assert key.machine is MachineChoice.HOST
+        return ArgumentGroup.USER
+
+
+class OptionKey:
+
+    """Represents an option key in the various option dictionaries.
+
+    This provides a flexible, powerful way to map option names from their
+    external form (things like subproject:build.option) to something that
+    internally easier to reason about and produce.
+    """
+
+    def __init__(self, name: str, subproject: str = '',
+                 machine: MachineChoice = MachineChoice.HOST):
+        self.name = name
+        self.subproject = subproject
+        self.machine = machine
+
+    def __hash__(self) -> int:
+        return hash((self.name, self.subproject, self.machine))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, OptionKey):
+            return (
+                self.name == other.name and
+                self.subproject == other.subproject and
+                self.machine is other.machine)
+        return NotImplemented
+
+    def __str__(self) -> str:
+        if self.machine is MachineChoice.BUILD:
+            out = 'build.{}'.format(self.name)
+        else:
+            out = self.name
+        if self.subproject:
+            out = '{}:{}'.format(self.subproject, out)
+        return out
+
+    def __repr__(self) -> str:
+        return 'OptionKey("{}", "{}", {!r})'.format(
+            self.name, self.subproject, self.machine
+        )
+
+    @classmethod
+    def from_string(cls, raw: str) -> 'OptionKey':
+        """Parse the raw command line format into a three part tuple.
+
+        This takes strings like `mysubproject:build.myoption` and Creates an
+        OptionKey out of them.
+        """
+        try:
+            subproject, raw2 = raw.split(':')
+        except ValueError:
+            subproject, raw2 = '', raw
+
+        if raw2.startswith('build.'):
+            opt = raw2.lstrip('build.')
+            for_machine = MachineChoice.BUILD
+        else:
+            opt = raw2
+            for_machine = MachineChoice.HOST
+        assert ':' not in opt
+        assert 'build.' not in opt
+
+        return cls(opt, subproject, for_machine)
+
+    def copy(self) -> 'OptionKey':
+        """Return a copy of the OptionKey."""
+        return OptionKey(self.name, self.subproject, self.machine)
+
+    def evolve(self, name: T.Optional[str] = None, subproject: T.Optional[str] = None,
+               machine: T.Optional[MachineChoice] = None) -> 'OptionKey':
+        """Create a new copy of this key, but with alterted members.
+
+        For example:
+        >>> a = OptionKey('foo', '', MachineChoice.Host)
+        >>> b = a.copy()
+        >>> b.subproject = 'bar'
+        >>> b == a.evolve(subproject='bar)
+        True
+        """
+        new = self.copy()
+        if name is not None:
+            new.name = name
+        if subproject is not None:
+            new.subproject = subproject
+        if machine is not None:
+            new.machine = machine
+        return new
+
+    def as_root(self) -> 'OptionKey':
+        """Convenience method for key.evolve(subproject='')."""
+        return self.evolve(subproject='')
+
+    def as_build(self) -> 'OptionKey':
+        """Convenience method for key.evolve(machine=MachinceChoice.BUILD)."""
+        return self.evolve(machine=MachineChoice.BUILD)
+
+    def as_host(self) -> 'OptionKey':
+        """Convenience method for key.evolve(machine=MachinceChoice.HOST)."""
+        return self.evolve(machine=MachineChoice.HOST)
+
+
 class MesonVersionMismatchException(MesonException):
     '''Build directory generated with Meson version is incompatible with current version'''
     def __init__(self, old_version: str, current_version: str) -> None:
