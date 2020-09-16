@@ -21,6 +21,7 @@ from . import optinterpreter
 from . import compilers
 from .wrap import wrap, WrapMode
 from . import mesonlib
+from .coredata import OptionKey
 from .mesonlib import FileMode, MachineChoice, Popen_safe, listify, extract_as_list, has_path_sep, unholder
 from .dependencies import ExternalProgram
 from .dependencies import InternalDependency, Dependency, NotFoundDependency, DependencyException
@@ -4796,7 +4797,7 @@ Try setting b_lundef to false instead.'''.format(self.coredata.base_options['b_s
         return BothLibrariesHolder(shared_holder, static_holder, self)
 
     def build_library(self, node, args, kwargs):
-        default_library = self.coredata.get_builtin_option('default_library', self.subproject)
+        default_library = self.coredata.get_builtin_option(OptionKey('default_library', self.subproject))
         if default_library == 'shared':
             return self.build_target(node, args, kwargs, SharedLibraryHolder)
         elif default_library == 'static':

@@ -700,8 +700,9 @@ class CoreData:
                     'Default project to execute in Visual Studio',
                     '')
 
-    def get_builtin_option(self, optname: str, subproject: str = '') -> T.Union[str, int, bool, T.List[str], WrapMode]:
-        key = OptionKey(optname, subproject=subproject)
+    def get_builtin_option(self, key: T.Union[OptionKey, str]) -> T.Union[str, int, bool, T.List[str], WrapMode]:
+        if isinstance(key, str):
+            key = OptionKey.from_string(key)
         v = self.get_builtin_option_raw(key)
         if key.name == 'wrap_mode':
             return WrapMode.from_string(v.value)

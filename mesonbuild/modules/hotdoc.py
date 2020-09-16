@@ -19,7 +19,7 @@ from collections import OrderedDict
 
 from mesonbuild import mesonlib
 from mesonbuild import mlog, build
-from mesonbuild.coredata import MesonException
+from mesonbuild.coredata import MesonException, OptionKey
 from . import ModuleReturnValue
 from . import ExtensionModule
 from . import get_include_args
@@ -326,7 +326,7 @@ class HotdocTargetBuilder:
         for path in self.include_paths.keys():
             self.cmd.extend(['--include-path', path])
 
-        if self.state.environment.coredata.get_builtin_option('werror', self.state.subproject):
+        if self.state.environment.coredata.get_builtin_option(OptionKey('werror', self.state.subproject)):
             self.cmd.append('--fatal-warning')
         self.generate_hotdoc_config()
 

@@ -29,6 +29,7 @@ from .. import build
 from .. import dependencies
 from .. import mesonlib
 from .. import mlog
+from ..coredata import OptionKey
 from ..compilers import languages_using_ldflags
 from ..mesonlib import (
     File, MachineChoice, MesonException, OrderedSet, OptionOverrideProxy,
@@ -226,7 +227,7 @@ class Backend:
         if option_name in target.option_overrides_base:
             override = target.option_overrides_base[option_name]
             return self.environment.coredata.validate_option_value(option_name, override)
-        return self.environment.coredata.get_builtin_option(option_name, target.subproject)
+        return self.environment.coredata.get_builtin_option(OptionKey(option_name, target.subproject))
 
     def get_target_filename_for_linking(self, target):
         # On some platforms (msvc for instance), the file that is used for
