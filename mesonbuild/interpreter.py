@@ -2455,7 +2455,7 @@ class Interpreter(InterpreterBase):
             cur_opt = self.coredata.get_any_option(def_opt_name)
             def_opt_value = env.coredata.validate_option_value(str(def_opt_name), def_opt_value)
             if def_opt_value != cur_opt.value:
-                yield def_opt_name, def_opt_value, cur_opt
+                yield str(def_opt_name), def_opt_value, cur_opt
 
     def build_func_dict(self):
         self.funcs.update({'add_global_arguments': self.func_add_global_arguments,
@@ -3013,46 +3013,28 @@ external dependencies (including libraries) must go to "dependencies".''')
         mlog.log()
         return result
 
-    def get_option_internal(self, optname):
-        raw_optname = optname
-        if self.is_subproject():
-            optname = self.subproject + ':' + optname
+    def get_option_internal(self, optname: str):
+        key = OptionKey.from_string(optname).evolve(subproject=self.subproject)
+        opt = self.coredata.get_any_option(key)
 
-
-        for opts in [
-                self.coredata.base_options, compilers.base_options, self.coredata.builtins,
-                dict(self.coredata.get_prefixed_options_per_machine(self.coredata.builtins_per_machine)),
-                dict(self.coredata.flatten_lang_iterator(
-                    self.coredata.get_prefixed_options_per_machine(self.coredata.compiler_options))),
-        ]:
-            v = opts.get(optname)
-            if v is None or v.yielding:
-                v = opts.get(raw_optname)
-            if v is not None:
-                return v
-
-        try:
-            opt = self.coredata.user_options[optname]
-            if opt.yielding and ':' in optname and raw_optname in self.coredata.user_options:
-                popt = self.coredata.user_options[raw_optname]
-                if type(opt) is type(popt):
-                    opt = popt
+        if coredata.classify_argument(key) is coredata.ArgumentGroup.USER:
+            if opt.yielding and opt.subproject:
+                super_opt = self.coredata.get_any_option(key.as_root())
+                if type(opt) is type(super_opt):
+                    opt = super_opt
                 else:
                     # Get class name, then option type as a string
-                    opt_type = opt.__class__.__name__[4:][:-6].lower()
-                    popt_type = popt.__class__.__name__[4:][:-6].lower()
+                    opt_type = type(opt).__name__[4:][:-6].lower()
+                    popt_type = type(super_opt).__name__[4:][:-6].lower()
                     # This is not a hard error to avoid dependency hell, the workaround
                     # when this happens is to simply set the subproject's option directly.
                     mlog.warning('Option {0!r} of type {1!r} in subproject {2!r} cannot yield '
                                  'to parent option of type {3!r}, ignoring parent value. '
                                  'Use -D{2}:{0}=value to set the value for this option manually'
-                                 '.'.format(raw_optname, opt_type, self.subproject, popt_type),
+                                 '.'.format(key.name, opt_type, self.subproject, popt_type),
                                  location=self.current_node)
-            return opt
-        except KeyError:
-            pass
 
-        raise InterpreterException('Tried to access unknown option "%s".' % optname)
+        return opt
 
     @stringArgs
     @noKwargs

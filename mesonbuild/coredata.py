@@ -804,16 +804,6 @@ class CoreData:
         self.get_builtin_option_raw(OptionKey('buildtype')).set_value(mode)
 
     @classmethod
-    def get_prefixed_options_per_machine(
-        cls,
-        options_per_machine # : PerMachine[T.Dict[str, _V]]]
-    ) -> T.Iterable[T.Tuple[str, _V]]:
-        return cls._flatten_pair_iterator(
-            (for_machine.get_prefix(), options_per_machine[for_machine])
-            for for_machine in iter(MachineChoice)
-        )
-
-    @classmethod
     def flatten_lang_iterator(
         cls,
         outer # : T.Iterable[T.Tuple[str, T.Dict[str, _V]]]
