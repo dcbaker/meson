@@ -207,6 +207,13 @@ class Conf:
                     self.yielding_options.add(str(k))
                 self.all_subprojects.add(k.subproject)
 
+        project_options = collections.defaultdict(dict)  # type: T.DefaultDict[str, T.Dict[str, str]]
+        for k, v in self.coredata.user_options.items():
+            project_options[k.subproject][str(k.as_root())] = v
+            if v.yielding and k.subproject and k.as_root() in self.coredata.builtins:
+                self.yielding_options.add(str(k))
+            self.all_subprojects.add(k.subproject)
+
         def insert_build_prefix(k):
             idx = k.find(':')
             if idx < 0:
@@ -220,7 +227,6 @@ class Conf:
             dict(self.coredata.flatten_lang_iterator(
                 (insert_build_prefix(k), o)
                 for k, o in self.coredata.compiler_options.build.items())))
-        project_options = self.split_options_per_subproject(self.coredata.user_options)
         show_build_options = self.default_values_only or self.build.environment.is_cross_build()
 
         self.add_section('Main project options')

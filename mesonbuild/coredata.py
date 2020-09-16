@@ -530,7 +530,7 @@ class CoreData:
         self.version = version
         self.builtins = {} # type: KeyedOptionDictType
         self.backend_options = {} # type: OptionDictType
-        self.user_options = {} # type: OptionDictType
+        self.user_options = {} # type: KeyedOptionDictType
         self.compiler_options = PerMachine(
             defaultdict(dict),
             defaultdict(dict),
@@ -730,7 +730,7 @@ class CoreData:
         if classifier is ArgumentGroup.BASE:
             return self.base_options[key.name]
         elif classifier is ArgumentGroup.USER:
-            return self.user_options[str(key)]
+            return self.user_options[key]
         elif classifier is ArgumentGroup.BUILTIN:
             return self.get_builtin_option_raw(key)
         elif classifier is ArgumentGroup.BACKEND:
@@ -826,7 +826,7 @@ class CoreData:
     def get_external_link_args(self, for_machine: MachineChoice, lang):
         return self.compiler_options[for_machine][lang]['link_args'].value
 
-    def merge_user_options(self, options: T.Dict[str, T.Union[str, bool, int]]) -> None:
+    def merge_user_options(self, options: 'KeyedOptionDictType') -> None:
         for (name, value) in options.items():
             if name not in self.user_options:
                 self.user_options[name] = value
@@ -936,7 +936,7 @@ class CoreData:
                 # dict, but they do need to be put into env.builtin_options
                 if k.subproject == subproject:
                     options[k] = v
-                else:
+                if k not in env.project_options:
                     env.project_options[k] = v
             else:
                 options[k] = v

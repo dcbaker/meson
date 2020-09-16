@@ -226,9 +226,8 @@ class OptionInterpreter:
             raise OptionException('Option names can only contain letters, numbers or dashes.')
         if is_invalid_name(opt_name):
             raise OptionException('Option name %s is reserved.' % opt_name)
-        if self.subproject != '':
-            opt_name = self.subproject + ':' + opt_name
-        opt = option_types[opt_type](opt_name, kwargs.pop('description', ''), kwargs)
+        key = coredata.OptionKey(opt_name, self.subproject)
+        opt = option_types[opt_type](str(key), kwargs.pop('description', ''), kwargs)
         if opt.description == '':
-            opt.description = opt_name
-        self.options[opt_name] = opt
+            opt.description = str(key)
+        self.options[key] = opt

@@ -3696,8 +3696,8 @@ recommended as it is not supported on some platforms''')
         obj = mesonbuild.coredata.load(self.builddir)
         self.assertEqual(obj.get_builtin_option('default_library'), 'static')
         self.assertEqual(obj.get_builtin_option('warning_level'), '1')
-        self.assertEqual(obj.user_options['set_sub_opt'].value, True)
-        self.assertEqual(obj.user_options['subp:subp_opt'].value, 'default3')
+        self.assertEqual(obj.user_options[OptionKey('set_sub_opt')].value, True)
+        self.assertEqual(obj.user_options[OptionKey('subp_opt', 'subp')].value, 'default3')
         self.wipe()
 
         # warning_level is special, it's --warnlevel instead of --warning-level
@@ -3770,7 +3770,7 @@ recommended as it is not supported on some platforms''')
         # Test we can set subproject option
         self.init(testdir, extra_args=['-Dsubp:subp_opt=foo'])
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.user_options['subp:subp_opt'].value, 'foo')
+        self.assertEqual(obj.user_options[OptionKey('subp_opt', 'subp')].value, 'foo')
         self.wipe()
 
         # c_args value should be parsed with split_args
@@ -3785,7 +3785,7 @@ recommended as it is not supported on some platforms''')
 
         self.init(testdir, extra_args=['-Dset_percent_opt=myoption%'])
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.user_options['set_percent_opt'].value, 'myoption%')
+        self.assertEqual(obj.user_options[OptionKey('set_percent_opt')].value, 'myoption%')
         self.wipe()
 
         # Setting a 2nd time the same option should override the first value
