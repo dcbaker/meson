@@ -925,6 +925,22 @@ class CoreData:
             elif classifier is ArgumentGroup.BASE:
                 if not subproject and k not in env.base_options:
                     env.base_options[k] = v
+            elif classifier is ArgumentGroup.BUILTIN:
+                if key.subproject and subproject:
+                    mlog.warning('Cannot set supbroject defaults from other subprojects')
+                    continue
+
+                options[str(key.evolve(subproject=subproject))] = v
+
+                key = key.evolve(subproject=subproject)
+                if key.name in BUILTIN_OPTIONS and not BUILTIN_OPTIONS[key.name].yielding:
+                    continue
+                if key not in env.builtin_options:
+                    env.builtin_options[key] = v
+                if self.is_cross_build():
+                    key = key.as_build()
+                    if key not in env.builtin_options:
+                        env.builtin_options[key] = v
             else:
                 options[str(key.evolve(subproject=subproject))] = v
 
@@ -940,25 +956,6 @@ class CoreData:
             options[str(k)] = v
 
         options.update({str(k): v for k, v in env.project_options.items() if k.subproject == subproject})
-
-        # Some options (namely the compiler options) are not preasant in
-        # coredata until the compiler is fully initialized. As such, we need to
-        # put those options into env.builtin_options, only if they're not already
-        # in there, as the machine files and command line have precendence.
-        for k, v in default_options.items():
-            key = OptionKey.from_string(k)
-            if key.subproject and subproject:
-                mlog.warning('Cannot set supbroject defaults from other subprojects')
-                continue
-            key = key.evolve(subproject=subproject)
-            if key.name in BUILTIN_OPTIONS and not BUILTIN_OPTIONS[key.name].yielding:
-                continue
-            if key not in env.builtin_options:
-                env.builtin_options[key] = v
-            if self.is_cross_build():
-                key = key.as_build()
-                if key not in env.builtin_options:
-                    env.builtin_options[key] = v
 
         self.set_options(options, subproject=subproject)
 
