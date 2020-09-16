@@ -1404,9 +1404,9 @@ class DataTests(unittest.TestCase):
             else:
                 raise RuntimeError('Invalid debug value {!r} in row:\n{}'.format(debug, m.group()))
             env.coredata.set_builtin_option(OptionKey('buildtype'), buildtype)
-            self.assertEqual(env.coredata.builtins['buildtype'].value, buildtype)
-            self.assertEqual(env.coredata.builtins['optimization'].value, opt)
-            self.assertEqual(env.coredata.builtins['debug'].value, debug)
+            self.assertEqual(env.coredata.get_builtin_option('buildtype'), buildtype)
+            self.assertEqual(env.coredata.get_builtin_option('optimization'), opt)
+            self.assertEqual(env.coredata.get_builtin_option('debug'), debug)
 
     def test_cpu_families_documented(self):
         with open("docs/markdown/Reference-tables.md", encoding='utf-8') as f:
@@ -3694,8 +3694,8 @@ recommended as it is not supported on some platforms''')
         # configuration, and as a bonus, test that --profile-self works.
         self.init(testdir, extra_args=['--profile-self'])
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.builtins['default_library'].value, 'static')
-        self.assertEqual(obj.builtins['warning_level'].value, '1')
+        self.assertEqual(obj.get_builtin_option('default_library'), 'static')
+        self.assertEqual(obj.get_builtin_option('warning_level'), '1')
         self.assertEqual(obj.user_options['set_sub_opt'].value, True)
         self.assertEqual(obj.user_options['subp:subp_opt'].value, 'default3')
         self.wipe()
@@ -3704,19 +3704,19 @@ recommended as it is not supported on some platforms''')
         # for historical reasons
         self.init(testdir, extra_args=['--warnlevel=2'])
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.builtins['warning_level'].value, '2')
+        self.assertEqual(obj.get_builtin_option('warning_level'), '2')
         self.setconf('--warnlevel=3')
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.builtins['warning_level'].value, '3')
+        self.assertEqual(obj.get_builtin_option('warning_level'), '3')
         self.wipe()
 
         # But when using -D syntax, it should be 'warning_level'
         self.init(testdir, extra_args=['-Dwarning_level=2'])
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.builtins['warning_level'].value, '2')
+        self.assertEqual(obj.get_builtin_option('warning_level'), '2')
         self.setconf('-Dwarning_level=3')
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.builtins['warning_level'].value, '3')
+        self.assertEqual(obj.get_builtin_option('warning_level'), '3')
         self.wipe()
 
         # Mixing --option and -Doption is forbidden
@@ -3734,15 +3734,15 @@ recommended as it is not supported on some platforms''')
         # --default-library should override default value from project()
         self.init(testdir, extra_args=['--default-library=both'])
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.builtins['default_library'].value, 'both')
+        self.assertEqual(obj.get_builtin_option('default_library'), 'both')
         self.setconf('--default-library=shared')
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.builtins['default_library'].value, 'shared')
+        self.assertEqual(obj.get_builtin_option('default_library'), 'shared')
         if self.backend is Backend.ninja:
             # reconfigure target works only with ninja backend
             self.build('reconfigure')
             obj = mesonbuild.coredata.load(self.builddir)
-            self.assertEqual(obj.builtins['default_library'].value, 'shared')
+            self.assertEqual(obj.get_builtin_option('default_library'), 'shared')
         self.wipe()
 
         # Should warn on unknown options
@@ -3795,8 +3795,8 @@ recommended as it is not supported on some platforms''')
                                            '-Db_sanitize=address', '-Db_sanitize=thread',
                                            '-Dc_args=-Dfoo', '-Dc_args=-Dbar'])
             obj = mesonbuild.coredata.load(self.builddir)
-            self.assertEqual(obj.builtins['bindir'].value, 'bar')
-            self.assertEqual(obj.builtins['buildtype'].value, 'release')
+            self.assertEqual(obj.get_builtin_option('bindir'), 'bar')
+            self.assertEqual(obj.get_builtin_option('buildtype'), 'release')
             self.assertEqual(obj.base_options['b_sanitize'].value, 'thread')
             self.assertEqual(obj.compiler_options.host['c']['args'].value, ['-Dbar'])
             self.setconf(['--bindir=bar', '--bindir=foo',
@@ -3804,8 +3804,8 @@ recommended as it is not supported on some platforms''')
                           '-Db_sanitize=thread', '-Db_sanitize=address',
                           '-Dc_args=-Dbar', '-Dc_args=-Dfoo'])
             obj = mesonbuild.coredata.load(self.builddir)
-            self.assertEqual(obj.builtins['bindir'].value, 'foo')
-            self.assertEqual(obj.builtins['buildtype'].value, 'plain')
+            self.assertEqual(obj.get_builtin_option('bindir'), 'foo')
+            self.assertEqual(obj.get_builtin_option('buildtype'), 'plain')
             self.assertEqual(obj.base_options['b_sanitize'].value, 'address')
             self.assertEqual(obj.compiler_options.host['c']['args'].value, ['-Dfoo'])
             self.wipe()
@@ -3821,25 +3821,25 @@ recommended as it is not supported on some platforms''')
         # Verify default values when passing no args
         self.init(testdir)
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.builtins['warning_level'].value, '0')
+        self.assertEqual(obj.get_builtin_option('warning_level'), '0')
         self.wipe()
 
         # verify we can override w/ --warnlevel
         self.init(testdir, extra_args=['--warnlevel=1'])
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.builtins['warning_level'].value, '1')
+        self.assertEqual(obj.get_builtin_option('warning_level'), '1')
         self.setconf('--warnlevel=0')
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.builtins['warning_level'].value, '0')
+        self.assertEqual(obj.get_builtin_option('warning_level'), '0')
         self.wipe()
 
         # verify we can override w/ -Dwarning_level
         self.init(testdir, extra_args=['-Dwarning_level=1'])
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.builtins['warning_level'].value, '1')
+        self.assertEqual(obj.get_builtin_option('warning_level'), '1')
         self.setconf('-Dwarning_level=0')
         obj = mesonbuild.coredata.load(self.builddir)
-        self.assertEqual(obj.builtins['warning_level'].value, '0')
+        self.assertEqual(obj.get_builtin_option('warning_level'), '0')
         self.wipe()
 
     def test_feature_check_usage_subprojects(self):

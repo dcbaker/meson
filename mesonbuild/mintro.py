@@ -201,24 +201,22 @@ def list_buildoptions_from_source(intr: IntrospectionInterpreter) -> T.List[T.Di
 def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[str]] = None) -> T.List[T.Dict[str, T.Union[str, bool, int, T.List[str]]]]:
     optlist = []  # type: T.List[T.Dict[str, T.Union[str, bool, int, T.List[str]]]]
 
-    dir_option_names = list(cdata.BUILTIN_DIR_OPTIONS)
-    test_option_names = ['errorlogs',
-                         'stdsplit']
-    core_option_names = [k for k in coredata.builtins if k not in dir_option_names + test_option_names]
+    dir_option_names = set(cdata.BUILTIN_DIR_OPTIONS)
+    test_option_names = {'errorlogs',
+                         'stdsplit'}
 
-    dir_options = {k: o for k, o in coredata.builtins.items() if k in dir_option_names}
-    test_options = {k: o for k, o in coredata.builtins.items() if k in test_option_names}
-    core_options = {k: o for k, o in coredata.builtins.items() if k in core_option_names}
-
-    if subprojects:
-        # Add per subproject built-in options
-        sub_core_options = {}
-        for sub in subprojects:
-            for k, o in core_options.items():
-                if o.yielding:
-                    continue
-                sub_core_options[sub + ':' + k] = o
-        core_options.update(sub_core_options)
+    dir_options = {}  # type: cdata.OptionDictType
+    test_options = {}  # type: cdata.OptionDictType
+    core_options = {}  # type: cdata.OptionDictType
+    for k, v in coredata.builtins.items():
+        if k.name in dir_option_names:
+            dir_options[str(k)] = v
+        elif k.name in test_option_names:
+            test_options[str(k)] = v
+        else:
+            if k.subproject and v.yielding:
+                continue
+            core_options[str(k)] = v
 
     def add_keys(options: 'cdata.OptionDictType', section: str, machine: str = 'any') -> None:
         for key in sorted(options.keys()):
@@ -242,12 +240,6 @@ def list_buildoptions(coredata: cdata.CoreData, subprojects: T.Optional[T.List[s
             optlist.append(optdict)
 
     add_keys(core_options, 'core')
-    add_keys(coredata.builtins_per_machine.host, 'core', machine='host')
-    add_keys(
-        {'build.' + k: o for k, o in coredata.builtins_per_machine.build.items()},
-        'core',
-        machine='build',
-    )
     add_keys(coredata.backend_options, 'backend')
     add_keys(coredata.base_options, 'base')
     add_keys(

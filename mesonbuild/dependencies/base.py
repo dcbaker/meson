@@ -649,7 +649,8 @@ class PkgConfigDependency(ExternalDependency):
 
     @staticmethod
     def setup_env(env, environment, for_machine, extra_path=None):
-        extra_paths = environment.coredata.builtins_per_machine[for_machine]['pkg_config_path'].value
+        from ..coredata import OptionKey
+        extra_paths = environment.coredata.get_builtin_option(OptionKey('pkg_config_path', machine=for_machine))
         if extra_path:
             extra_paths.append(extra_path)
         sysroot = environment.properties[for_machine].get_sys_root()

@@ -445,16 +445,16 @@ class DependencyCache:
     successfully lookup by providing a simple get/put interface.
     """
 
-    def __init__(self, builtins_per_machine: PerMachine[T.Dict[str, UserOption[T.Any]]], for_machine: MachineChoice):
+    def __init__(self, builtins: 'KeyedOptionDictType', for_machine: MachineChoice):
         self.__cache = OrderedDict()  # type: T.MutableMapping[CacheKeyType, DependencySubCache]
-        self.__builtins_per_machine = builtins_per_machine
+        self.__builtins = builtins
         self.__for_machine = for_machine
 
     def __calculate_subkey(self, type_: DependencyCacheType) -> T.Tuple[T.Any, ...]:
         if type_ is DependencyCacheType.PKG_CONFIG:
-            return tuple(self.__builtins_per_machine[self.__for_machine]['pkg_config_path'].value)
+            return tuple(self.__builtins[OptionKey('pkg_config_path', machine=self.__for_machine)].value)
         elif type_ is DependencyCacheType.CMAKE:
-            return tuple(self.__builtins_per_machine[self.__for_machine]['cmake_prefix_path'].value)
+            return tuple(self.__builtins[OptionKey('cmake_prefix_path', machine=self.__for_machine)].value)
         assert type_ is DependencyCacheType.OTHER, 'Someone forgot to update subkey calculations for a new type'
         return tuple()
 
@@ -528,8 +528,7 @@ class CoreData:
         self.meson_command = meson_command
         self.target_guids = {}
         self.version = version
-        self.builtins = {} # type: OptionDictType
-        self.builtins_per_machine = PerMachine({}, {})
+        self.builtins = {} # type: KeyedOptionDictType
         self.backend_options = {} # type: OptionDictType
         self.user_options = {} # type: OptionDictType
         self.compiler_options = PerMachine(
@@ -540,8 +539,8 @@ class CoreData:
         self.cross_files = self.__load_config_files(options, scratch_dir, 'cross')
         self.compilers = PerMachine(OrderedDict(), OrderedDict())  # type: PerMachine[T.Dict[str, Compiler]]
 
-        build_cache = DependencyCache(self.builtins_per_machine, MachineChoice.BUILD)
-        host_cache = DependencyCache(self.builtins_per_machine, MachineChoice.BUILD)
+        build_cache = DependencyCache(self.builtins, MachineChoice.BUILD)
+        host_cache = DependencyCache(self.builtins, MachineChoice.HOST)
         self.deps = PerMachine(build_cache, host_cache)  # type: PerMachine[DependencyCache]
         self.compiler_check_cache = OrderedDict()  # type: T.Dict[CompilerCheckCacheKey, compiler.CompileResult]
 
@@ -673,17 +672,17 @@ class CoreData:
             self.add_builtin_option(self.builtins, OptionKey(key, subproject=subproject), opt)
         for for_machine in iter(MachineChoice):
             for key, opt in BUILTIN_OPTIONS_PER_MACHINE.items():
-                self.add_builtin_option(self.builtins_per_machine[for_machine], OptionKey(key, subproject=subproject), opt)
+                self.add_builtin_option(self.builtins, OptionKey(key, subproject=subproject, machine=for_machine), opt)
 
     def add_builtin_option(self, opts_map, key: OptionKey, opt):
         if key.subproject:
             if opt.yielding:
                 # This option is global and not per-subproject
                 return
-            value = opts_map[str(key)].value
+            value = opts_map[key.as_root()].value
         else:
             value = None
-        opts_map[str(key)] = opt.init_option(key, value, default_prefix())
+        opts_map[key] = opt.init_option(key, value, default_prefix())
 
     def init_backend_options(self, backend_name: str) -> None:
         if backend_name == 'ninja':
@@ -709,22 +708,17 @@ class CoreData:
     def get_builtin_option_raw(self, opt: OptionKey) -> T.Optional[UserOption]:
         """Get the UserOption associated with an optoin tuple."""
         assert opt.language is None
-        if opt.name in BUILTIN_OPTIONS_PER_MACHINE:
-            source = self.builtins_per_machine[opt.machine]
-            # The option needs to be looked up without the build. prefix,
-            opt = opt.as_host()
-        else:
+        if opt.name not in BUILTIN_OPTIONS_PER_MACHINE:
             assert opt.machine is MachineChoice.HOST
-            source = self.builtins
 
         try:
-            v = source[str(opt)]
+            v = self.builtins[opt]
         except KeyError:
             v = None
 
         if v is None or v.yielding:
             try:
-                v = source[str(opt.as_root())]
+                v = self.builtins[opt.as_root()]
             except KeyError:
                 raise MesonException('Tried to get unknown builtin option %s.' % repr(opt))
 
@@ -856,8 +850,9 @@ class CoreData:
 
     def copy_build_options_from_regular_ones(self):
         assert not self.is_cross_build()
-        for k, o in self.builtins_per_machine.host.items():
-            self.builtins_per_machine.build[k].set_value(o.value)
+        for k, o in list(self.builtins.items()):
+            if k.name in BUILTIN_OPTIONS_PER_MACHINE and k.machine is MachineChoice.HOST:
+                self.builtins[k.as_build()] = o
         for lang, host_opts in self.compiler_options.host.items():
             build_opts = self.compiler_options.build[lang]
             for k, o in host_opts.items():
@@ -878,7 +873,7 @@ class CoreData:
                 if k not in options:
                     self.set_builtin_option(k, BUILTIN_OPTIONS[key].prefixed_default(key, prefix))
         else:
-            prefix = self.builtins['prefix'].value
+            prefix = self.get_builtin_option('prefix')
 
         unknown_options = []
         for k, v in options.items():
@@ -907,6 +902,12 @@ class CoreData:
         # split arguments that can be set now, and those that cannot so they
         # can be set later, when they've been initialized.
         for k, v in default_options.items():
+            if subproject:
+                if k.subproject:
+                    mlog.warning('Cannot set supbroject defaults from other subprojects')
+                    continue
+                k = k.evolve(subproject=subproject)
+
             classifier = classify_argument(k)
             if classifier is ArgumentGroup.COMPILER:
                 for k in [k, k.as_build()]:
@@ -917,27 +918,23 @@ class CoreData:
                     env.base_options[k.name] = v
             elif classifier is ArgumentGroup.BUILTIN:
                 if k.subproject and subproject:
-                    mlog.warning('Cannot set supbroject defaults from other subprojects')
                     continue
 
                 # Options for subproject should be be put into the options
                 # dict, but they do need to be put into env.builtin_options
-                if not k.subproject:
+                if k.subproject == subproject:
                     options[k] = v
-
-                if subproject:
-                    k = k.evolve(subproject=subproject)
 
                 if k not in env.builtin_options:
                     env.builtin_options[k] = v
-                if self.is_cross_build():
+                if self.is_cross_build() and k in BUILTIN_OPTIONS_PER_MACHINE:
                     k = k.as_build()
                     if k not in env.builtin_options:
                         env.builtin_options[k] = v
             elif classifier is ArgumentGroup.USER:
                 # Options for subproject should be be put into the options
                 # dict, but they do need to be put into env.builtin_options
-                if not k.subproject:
+                if k.subproject == subproject:
                     options[k] = v
                 else:
                     env.project_options[k] = v

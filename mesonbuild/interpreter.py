@@ -77,7 +77,7 @@ class FeatureOptionHolder(InterpreterObject, ObjectHolder):
         InterpreterObject.__init__(self)
         ObjectHolder.__init__(self, option)
         if option.is_auto():
-            self.held_object = env.coredata.builtins['auto_features']
+            self.held_object = env.coredata.get_builtin_option('auto_features')
         self.name = name
         self.methods.update({'enabled': self.enabled_method,
                              'disabled': self.disabled_method,
@@ -2972,7 +2972,7 @@ external dependencies (including libraries) must go to "dependencies".''')
     def _do_subproject_cmake(self, dirname, subdir, subdir_abs, default_options, kwargs):
         with mlog.nested():
             new_build = self.build.copy()
-            prefix = self.coredata.builtins['prefix'].value
+            prefix = self.coredata.get_builtin_option('prefix')
 
             from .modules.cmake import CMakeSubprojectOptions
             options = kwargs.get('options', CMakeSubprojectOptions())

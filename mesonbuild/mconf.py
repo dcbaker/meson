@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import collections
 from . import coredata, environment, mesonlib, build, mintro, mlog
 from .ast import AstIDGenerator
 import typing as T
@@ -188,14 +189,23 @@ class Conf:
         if not self.default_values_only:
             print('  Build dir ', self.build_dir)
 
-        dir_option_names = list(coredata.BUILTIN_DIR_OPTIONS)
-        test_option_names = ['errorlogs',
-                             'stdsplit']
-        core_option_names = [k for k in self.coredata.builtins if k not in dir_option_names + test_option_names]
+        dir_option_names = set(coredata.BUILTIN_DIR_OPTIONS)
+        test_option_names = {'errorlogs',
+                             'stdsplit'}
 
-        dir_options = {k: o for k, o in self.coredata.builtins.items() if k in dir_option_names}
-        test_options = {k: o for k, o in self.coredata.builtins.items() if k in test_option_names}
-        core_options = {k: o for k, o in self.coredata.builtins.items() if k in core_option_names}
+        dir_options = {}  # type: T.Dict[str, str]
+        test_options = {}  # type: T.Dict[str, str]
+        core_options = collections.defaultdict(dict)  # type: T.DefaultDict[str, T.Dict[str, str]]
+        for k, v in self.coredata.builtins.items():
+            if k.name in dir_option_names:
+                dir_options[str(k)] = v
+            elif k.name in test_option_names:
+                test_options[str(k)] = v
+            else:
+                core_options[k.subproject][str(k.as_root())] = v
+                if v.yielding and k.subproject and k.as_root() in self.coredata.builtins:
+                    self.yielding_options.add(str(k))
+                self.all_subprojects.add(k.subproject)
 
         def insert_build_prefix(k):
             idx = k.find(':')
@@ -203,7 +213,6 @@ class Conf:
                 return 'build.' + k
             return k[:idx + 1] + 'build.' + k[idx + 1:]
 
-        core_options = self.split_options_per_subproject(core_options)
         host_compiler_options = self.split_options_per_subproject(
             dict(self.coredata.flatten_lang_iterator(
                 self.coredata.compiler_options.host.items())))
@@ -216,9 +225,6 @@ class Conf:
 
         self.add_section('Main project options')
         self.print_options('Core options', core_options[''])
-        self.print_options('', self.coredata.builtins_per_machine.host)
-        if show_build_options:
-            self.print_options('', {insert_build_prefix(k): o for k, o in self.coredata.builtins_per_machine.build.items()})
         self.print_options('Backend options', self.coredata.backend_options)
         self.print_options('Base options', self.coredata.base_options)
         self.print_options('Compiler options', host_compiler_options.get('', {}))

@@ -617,7 +617,7 @@ class BoostDependency(ExternalDependency):
         vscrt = ''
         try:
             crt_val = self.env.coredata.base_options['b_vscrt'].value
-            buildtype = self.env.coredata.builtins['buildtype'].value
+            buildtype = self.env.coredata.get_builtin_option('buildtype')
             vscrt = self.clib_compiler.get_crt_compile_args(crt_val, buildtype)[0]
         except (KeyError, IndexError, AttributeError):
             pass
