@@ -670,22 +670,20 @@ class CoreData:
     def init_builtins(self, subproject: str):
         # Create builtin options with default values
         for key, opt in BUILTIN_OPTIONS.items():
-            self.add_builtin_option(self.builtins, key, opt, subproject)
+            self.add_builtin_option(self.builtins, OptionKey(key, subproject=subproject), opt)
         for for_machine in iter(MachineChoice):
             for key, opt in BUILTIN_OPTIONS_PER_MACHINE.items():
-                self.add_builtin_option(self.builtins_per_machine[for_machine], key, opt, subproject)
+                self.add_builtin_option(self.builtins_per_machine[for_machine], OptionKey(key, subproject=subproject), opt)
 
-    def add_builtin_option(self, opts_map, key, opt, subproject):
-        if subproject:
+    def add_builtin_option(self, opts_map, key: OptionKey, opt):
+        if key.subproject:
             if opt.yielding:
                 # This option is global and not per-subproject
                 return
-            optname = subproject + ':' + key
-            value = opts_map[key].value
+            value = opts_map[str(key)].value
         else:
-            optname = key
             value = None
-        opts_map[optname] = opt.init_option(key, value, default_prefix())
+        opts_map[str(key)] = opt.init_option(key, value, default_prefix())
 
     def init_backend_options(self, backend_name: str) -> None:
         if backend_name == 'ninja':
@@ -956,8 +954,6 @@ class CoreData:
                 # Don't use the superproject option if there is a subproject version
                 continue
             options[k] = v
-
-        breakpoint()
 
         options.update({k: v for k, v in env.project_options.items() if k.subproject == subproject})
 
