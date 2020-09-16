@@ -3096,7 +3096,7 @@ external dependencies (including libraries) must go to "dependencies".''')
         if backend != self.backend.name:
             if self.backend.name.startswith('vs'):
                 mlog.log('Auto detected Visual Studio backend:', mlog.bold(self.backend.name))
-            self.coredata.set_builtin_option('backend', self.backend.name)
+            self.coredata.set_builtin_option(OptionKey('backend'), self.backend.name)
 
         # Only init backend options on first invocation otherwise it would
         # override values previously set from command line.

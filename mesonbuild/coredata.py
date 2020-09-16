@@ -750,15 +750,15 @@ class CoreData:
         """Return an option object given a name, no matter where it's stored."""
         classifier = classify_argument(key)
         if classifier is ArgumentGroup.BUILTIN:
-            self.set_builtin_option(str(key), value)
+            self.set_builtin_option(key, value)
         else:
             self.get_any_option(key).set_value(value)
 
-    def set_builtin_option(self, optname: str, value: T.Union[str, int, bool, T.List[str]]) -> None:
-        self.get_builtin_option_raw(OptionKey.from_string(optname)).set_value(value)
-        if optname == 'buildtype':
+    def set_builtin_option(self, key: OptionKey, value: T.Union[str, int, bool, T.List[str]]) -> None:
+        self.get_builtin_option_raw(key).set_value(value)
+        if key.name == 'buildtype':
             self.set_others_from_buildtype(value)
-        elif optname in {'debug', 'optimization'}:
+        elif key.name in {'debug', 'optimization'}:
             self.set_buildtype_from_others()
 
     def set_others_from_buildtype(self, value: str) -> None:
@@ -883,10 +883,11 @@ class CoreData:
         p = OptionKey('prefix')
         if p in options:
             prefix = self.sanitize_prefix(options[p])
-            self.set_builtin_option('prefix', prefix)
+            self.set_builtin_option(p, prefix)
             for key in builtin_dir_noprefix_options:
-                if OptionKey(key) not in options:
-                    self.set_builtin_option(key, BUILTIN_OPTIONS[key].prefixed_default(key, prefix))
+                k = OptionKey(key)
+                if k not in options:
+                    self.set_builtin_option(k, BUILTIN_OPTIONS[key].prefixed_default(key, prefix))
         else:
             prefix = self.builtins['prefix'].value
 
