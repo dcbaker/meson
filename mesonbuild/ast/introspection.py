@@ -65,7 +65,7 @@ class IntrospectionInterpreter(AstInterpreter):
         self.coredata = self.environment.get_coredata()
         self.option_file = os.path.join(self.source_root, self.subdir, 'meson_options.txt')
         self.backend = backend
-        self.default_options = {'backend': self.backend}
+        self.default_options = {cdata.OptionKey('backend'): self.backend}
         self.project_data = {}    # type: T.Dict[str, T.Any]
         self.targets = []         # type: T.List[T.Dict[str, T.Any]]
         self.dependencies = []    # type: T.List[T.Dict[str, T.Any]]

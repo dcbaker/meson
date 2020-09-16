@@ -737,19 +737,18 @@ class Environment:
         # TODO: validate all of this
         all_builtins = set(coredata.BUILTIN_OPTIONS) | set(coredata.BUILTIN_OPTIONS_PER_MACHINE) | set(coredata.builtin_dir_noprefix_options)
         for k, v in options.cmd_line_options.items():
-            okey = coredata.OptionKey.from_string(k)
-            classifier = coredata.classify_argument(okey)
+            classifier = coredata.classify_argument(k)
             if classifier is coredata.ArgumentGroup.BASE:
-                if okey.subproject == '':
-                    self.base_options[okey.name] = v
+                if k.subproject == '':
+                    self.base_options[k.name] = v
             elif classifier is coredata.ArgumentGroup.COMPILER:
-                if okey.subproject == '':  # not allowed per-subproject yet
-                    self.compiler_options[okey] = v
+                if k.subproject == '':  # not allowed per-subproject yet
+                    self.compiler_options[k] = v
             elif classifier in {coredata.ArgumentGroup.BUILTIN, coredata.ArgumentGroup.BACKEND}:
-                self.builtin_options[okey] = v
+                self.builtin_options[k] = v
             else:
-                assert okey.machine is MachineChoice.HOST, repr(okey)
-                self.project_options[okey] = v
+                assert k.machine is MachineChoice.HOST, repr(k)
+                self.project_options[k] = v
 
         # Warn if the user is using two different ways of setting build-type
         # options that override each other

@@ -2451,9 +2451,8 @@ class Interpreter(InterpreterBase):
     def get_non_matching_default_options(self) -> T.Iterator[T.Tuple[str, str, coredata.UserOption]]:
         env = self.environment
         for def_opt_name, def_opt_value in self.project_default_options.items():
-            key = coredata.OptionKey.from_string(def_opt_name)
-            cur_opt = self.coredata.get_any_option(key)
-            def_opt_value = env.coredata.validate_option_value(def_opt_name, def_opt_value)
+            cur_opt = self.coredata.get_any_option(def_opt_name)
+            def_opt_value = env.coredata.validate_option_value(str(def_opt_name), def_opt_value)
             if def_opt_value != cur_opt.value:
                 yield def_opt_name, def_opt_value, cur_opt
 
@@ -2861,8 +2860,8 @@ external dependencies (including libraries) must go to "dependencies".''')
             mlog.log('Subproject', mlog.bold(dirname), ':', 'skipped: feature', mlog.bold(feature), 'disabled')
             return self.disabled_subproject(dirname, disabled_feature=feature)
 
-        default_options = mesonlib.stringlistify(kwargs.get('default_options', []))
-        default_options = coredata.create_options_dict(default_options)
+        _default_options = mesonlib.stringlistify(kwargs.get('default_options', []))
+        default_options = coredata.create_options_dict(_default_options)
 
         if dirname == '':
             raise InterpreterException('Subproject dir name must not be empty.')
@@ -3104,7 +3103,7 @@ external dependencies (including libraries) must go to "dependencies".''')
         if self.environment.first_invocation:
             self.coredata.init_backend_options(backend)
 
-        options = {str(k): v for k, v in self.environment.builtin_options.items() if k.name.startswith('backend_') and k.subproject == ''}
+        options = {k: v for k, v in self.environment.builtin_options.items() if k.name.startswith('backend_') and k.subproject == ''}
         self.coredata.set_options(options)
 
     @stringArgs
