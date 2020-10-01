@@ -34,6 +34,7 @@ modules = [
     'mesonbuild/msetup.py',
     'mesonbuild/mtest.py',
     'mesonbuild/optinterpreter.py',
+    'mesonbuild/programs.py',
 
     'run_mypy.py',
     'tools'
