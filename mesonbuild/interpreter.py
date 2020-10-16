@@ -856,7 +856,7 @@ class BuildTargetHolder(TargetHolder):
         return self.held_object.name
 
 class ExecutableHolder(BuildTargetHolder):
-    def __init__(self, target, interp):
+    def __init__(self, target: build.Executable, interp: 'Interpreter'):
         super().__init__(target, interp)
 
 class StaticLibraryHolder(BuildTargetHolder):
@@ -2576,6 +2576,8 @@ class Interpreter(InterpreterBase):
                 self.process_new_values(v.sources[0])
             elif isinstance(v, InstallDir):
                 self.build.install_dirs.append(v)
+            elif isinstance(v, Test):
+                self.build.tests.append(v)
             elif hasattr(v, 'held_object'):
                 pass
             elif isinstance(v, (int, str, bool, Disabler)):
@@ -4104,7 +4106,7 @@ This will become a hard error in the future.''' % kwargs['input'], location=self
             env = env.held_object
         return env
 
-    def add_test(self, node, args, kwargs, is_base_test):
+    def make_test(self, node: mparser.BaseNode, args: T.List, kwargs: T.Dict[str, T.Any]):
         if len(args) != 2:
             raise InterpreterException('test expects 2 arguments, {} given'.format(len(args)))
         name = args[0]
@@ -4158,14 +4160,17 @@ This will become a hard error in the future.''' % kwargs['input'], location=self
         priority = kwargs.get('priority', 0)
         if not isinstance(priority, int):
             raise InterpreterException('Keyword argument priority must be an integer.')
-        t = Test(name, prj, suite, exe.held_object, depends, par, cmd_args,
-                 env, should_fail, timeout, workdir, protocol, priority)
+        return Test(name, prj, suite, exe.held_object, depends, par, cmd_args,
+                    env, should_fail, timeout, workdir, protocol, priority)
+
+    def add_test(self, node: mparser.BaseNode, args: T.List, kwargs: T.Dict[str, T.Any], is_base_test: bool):
+        t = self.make_test(node, args, kwargs)
         if is_base_test:
             self.build.tests.append(t)
-            mlog.debug('Adding test', mlog.bold(name, True))
+            mlog.debug('Adding test', mlog.bold(t.name, True))
         else:
             self.build.benchmarks.append(t)
-            mlog.debug('Adding benchmark', mlog.bold(name, True))
+            mlog.debug('Adding benchmark', mlog.bold(t.name, True))
 
     @FeatureNewKwargs('install_headers', '0.47.0', ['install_mode'])
     @permittedKwargs(permitted_kwargs['install_headers'])
