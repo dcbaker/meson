@@ -17,30 +17,32 @@
 
 import json
 import os
+import typing as T
 
 from . import ExtensionModule
-
 from .. import mlog
-
 from ..mesonlib import (
-    Popen_safe, MesonException
+    Popen_safe, MesonException, listify, unholder
 )
-
 from ..dependencies.base import (
-    ExternalProgram, DubDependency
+    ExternalProgram, DubDependency, NonExistingExternalProgram
 )
+from ..build import InvalidArguments
+from ..interpreterbase import typed_pos_args
 
-from ..interpreter import DependencyHolder
+if T.TYPE_CHECKING:
+    from ..interpreter import Interpreter, ModuleState
+
 
 class DlangModule(ExtensionModule):
-    class_dubbin = None
+    class_dubbin: T.Optional[ExternalProgram] = None
     init_dub = False
 
-    def __init__(self, interpreter):
+    def __init__(self, interpreter: 'Interpreter'):
         super().__init__(interpreter)
         self.snippets.add('generate_dub_file')
 
-    def _init_dub(self):
+    def _init_dub(self) -> None:
         if DlangModule.class_dubbin is None:
             self.dubbin = DubDependency.class_dubbin
             DlangModule.class_dubbin = self.dubbin
@@ -53,22 +55,26 @@ class DlangModule(ExtensionModule):
         else:
             self.dubbin = DlangModule.class_dubbin
 
-        if not self.dubbin:
-            if not self.dubbin:
-                raise MesonException('DUB not found.')
+        if not self.dubbin.found():
+            raise MesonException('DUB not found.')
 
-    def generate_dub_file(self, interpreter, state, args, kwargs):
+    def generate_dub_file(self, interpreter: 'Interpreter', state: 'ModuleState', args: T.List[T.Any], kwargs: T.Dict[str, T.Any]) -> None:
         if not DlangModule.init_dub:
             self._init_dub()
 
-        if len(args) < 2:
-            raise MesonException('Missing arguments')
+        if not len(args) == 2:
+            raise InvalidArguments('dlang_mod.generate_dub_file takes exactly 2 positional arguments')
+        name: str = args[0]
+        if not isinstance(name, str):
+            raise InvalidArguments('dlang_mod.generate_dub_file argument 1 must be a string')
+        path: str = args[1]
+        if not isinstance(path, str):
+            raise InvalidArguments('dlang_mod.generate_dub_file argument 2 must be a string')
 
-        config = {
-            'name': args[0]
-        }
+        # TODO: a typed dict would be much better for this
+        config: T.Dict[str, T.Union[str, T.Dict[str, str]]] = {'name': name}
 
-        config_path = os.path.join(args[1], 'dub.json')
+        config_path = os.path.join(path, 'dub.json')
         if os.path.exists(config_path):
             with open(config_path, 'r', encoding='utf8') as ofile:
                 try:
@@ -78,44 +84,29 @@ class DlangModule(ExtensionModule):
 
         warn_publishing = ['description', 'license']
         for arg in warn_publishing:
-            if arg not in kwargs and \
-               arg not in config:
+            if arg not in kwargs and arg not in config:
                 mlog.warning('Without', mlog.bold(arg), 'the DUB package can\'t be published')
 
         for key, value in kwargs.items():
             if key == 'dependencies':
-                config[key] = {}
-                if isinstance(value, list):
-                    for dep in value:
-                        if isinstance(dep, DependencyHolder):
-                            name = dep.method_call('name', [], [])
-                            ret, res = self._call_dubbin(['describe', name])
-                            if ret == 0:
-                                version = dep.method_call('version', [], [])
-                                if version is None:
-                                    config[key][name] = ''
-                                else:
-                                    config[key][name] = version
-                elif isinstance(value, DependencyHolder):
-                    name = value.method_call('name', [], [])
-                    ret, res = self._call_dubbin(['describe', name])
-                    if ret == 0:
-                        version = value.method_call('version', [], [])
-                        if version is None:
-                            config[key][name] = ''
-                        else:
-                            config[key][name] = version
+                _config: T.Dict[str, str] = {}
+                for dep in unholder(listify(value)):
+                    if isinstance(dep, DubDependency):
+                        ret, _ = self._call_dubbin(['describe', dep.name])
+                        if ret == 0:
+                            _config[name] = dep.version or ''
+                config[key] = _config
             else:
                 config[key] = value
 
         with open(config_path, 'w', encoding='utf8') as ofile:
             ofile.write(json.dumps(config, indent=4, ensure_ascii=False))
 
-    def _call_dubbin(self, args, env=None):
+    def _call_dubbin(self, args: T.List[str], env: T.Optional[T.Dict[str, str]] = None) -> T.Tuple[int, str]:
         p, out = Popen_safe(self.dubbin.get_command() + args, env=env)[0:2]
         return p.returncode, out.strip()
 
-    def check_dub(self):
+    def check_dub(self) -> ExternalProgram:
         dubbin = ExternalProgram('dub', silent=True)
         if dubbin.found():
             try:
@@ -125,17 +116,17 @@ class DlangModule(ExtensionModule):
                                  ''.format(' '.join(dubbin.get_command())))
                     # Set to False instead of None to signify that we've already
                     # searched for it and not found it
-                    dubbin = False
+                    dubbin = NonExistingExternalProgram('dub')
             except (FileNotFoundError, PermissionError):
-                dubbin = False
+                dubbin = NonExistingExternalProgram('dub')
         else:
-            dubbin = False
-        if dubbin:
+            dubbin = NonExistingExternalProgram('dub')
+        if dubbin.found():
             mlog.log('Found DUB:', mlog.bold(dubbin.get_path()),
                      '(%s)' % out.strip())
         else:
             mlog.log('Found DUB:', mlog.red('NO'))
         return dubbin
 
-def initialize(*args, **kwargs):
+def initialize(*args: T.Any, **kwargs: T.Any) -> DlangModule:
     return DlangModule(*args, **kwargs)

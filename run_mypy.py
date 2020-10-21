@@ -29,6 +29,7 @@ modules = [
     'mesonbuild/minit.py',
     'mesonbuild/mintro.py',
     'mesonbuild/mlog.py',
+    'mesonbuild/modules/dlang.py',
     'mesonbuild/modules/fs.py',
     'mesonbuild/modules/rust.py',
     'mesonbuild/mparser.py',
