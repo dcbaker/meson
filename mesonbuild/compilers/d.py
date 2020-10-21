@@ -617,6 +617,9 @@ class DCompiler(Compiler):
     def get_crt_link_args(self, crt_val: str, buildtype: str) -> T.List[str]:
         return []
 
+    def get_build_unittest_args(self) -> T.List[str]:
+        return [d_feature_args[self.id]['unittest']]
+
 
 class GnuDCompiler(GnuCompiler, DCompiler):
 

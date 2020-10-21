@@ -1205,6 +1205,10 @@ class Compiler(metaclass=abc.ABCMeta):
         # TODO: using a TypeDict here would improve this
         raise EnvironmentError('{} does not implement get_feature_args'.format(self.id))
 
+    def get_build_unittest_args(self) -> T.List[str]:
+        """Special compiler arguments for building unittests."""
+        raise EnvironmentError('{} does not implement get_build_unittest_args'.format(self.id))
+
 
 def get_args_from_envvars(lang: str,
                           for_machine: MachineChoice,
