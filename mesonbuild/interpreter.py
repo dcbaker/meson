@@ -3883,6 +3883,7 @@ external dependencies (including libraries) must go to "dependencies".''')
     @FeatureNewKwargs('executable', '0.42.0', ['implib'])
     @FeatureNewKwargs('executable', '0.56.0', ['win_subsystem'])
     @FeatureDeprecatedKwargs('executable', '0.56.0', ['gui_app'], extra_message="Use 'win_subsystem' instead.")
+    @FeatureDeprecatedKwargs('executable', '0.57.0', ['d_unittest'], extra_message="Use dlang_module.test instead.")
     @permittedKwargs(permitted_kwargs['executable'])
     def func_executable(self, node, args, kwargs):
         return self.build_target(node, args, kwargs, ExecutableHolder)

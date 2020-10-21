@@ -6,3 +6,6 @@ test('dapp_run', e, should_fail: true)
 e_test = executable('dapp_test', ['app.d', 'second_unit.d'],
     d_unittest: true)
 test('dapp_test', e_test)
+
+dmod = import('dlang')
+dmod.test('dapp_mod_test', e)

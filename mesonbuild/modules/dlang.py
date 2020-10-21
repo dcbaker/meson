@@ -1,4 +1,5 @@
 # Copyright 2018 The Meson development team
+# Copyright © 2020 Intel Corporation
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,10 +17,11 @@
 # are UI-related.
 
 import json
+from mesonbuild.interpreterbase import FeatureNew, permittedKwargs
 import os
 import typing as T
 
-from . import ExtensionModule
+from . import ExtensionModule, ModuleReturnValue
 from .. import mlog
 from ..mesonlib import (
     Popen_safe, listify, unholder
@@ -27,7 +29,8 @@ from ..mesonlib import (
 from ..dependencies.base import (
     ExternalProgram, DubDependency, NonExistingExternalProgram
 )
-from ..build import InvalidArguments
+from ..build import Executable, InvalidArguments, BuildTarget
+from ..interpreter import ExecutableHolder
 
 if T.TYPE_CHECKING:
     from ..interpreter import Interpreter, ModuleState
@@ -117,6 +120,60 @@ class DlangModule(ExtensionModule):
         else:
             mlog.log('Found DUB:', mlog.red('NO'))
         return dubbin
+
+    @FeatureNew('dlang_module.test', '0.57.0')
+    @permittedKwargs({'d_args', 'link_args'})
+    def test(self, state: 'ModuleState', args: T.List[T.Any], kwargs: T.Dict[str, T.Any]) -> ModuleReturnValue:
+        """Generate a Dlang unittest target from another target."""
+        if not len(args) == 2:
+            raise InvalidArguments('dlang_mod.test takes exactly 2 positional arguments')
+
+        name: str = args[0]
+        if not isinstance(name, str):
+            raise InvalidArguments('first argument (name) to dlang_md.test must be a string.')
+
+        target: BuildTarget = unholder(args[1])
+        if not isinstance(target, BuildTarget):
+            raise InvalidArguments('second argument (name) to dlang_md.test must be a build target (library or executable).')
+
+        d_args: T.List[str] = unholder(listify(kwargs.get('d_args', [])))
+        for a in d_args:
+            if not isinstance(a, str):
+                raise InvalidArguments('dlang_mod.test keyword argument "d_args" must be a string or lists of strings.')
+
+        link_args: T.List[str] = unholder(listify(kwargs.get('link_args', [])))
+        for a in link_args:
+            if not isinstance(a, str):
+                raise InvalidArguments('dlang_mod.test keyword argument "link_args" must be a string or lists of strings.')
+
+        if not 'd' in target.compilers:
+            raise InvalidArguments('second argument (name) todlang_md.test must use D language.')
+
+        # TODO: should probably test that unitest args aren't already in arguments?
+
+        dc = state.environment.coredata.compilers[target.for_machine]['d']
+
+        new_target = Executable(
+            name,
+            target.subdir,
+            state.subproject,
+            target.for_machine,
+            target.sources,
+            target.objects,
+            target.environment,
+            {
+                'd_args': d_args + dc.get_build_unittest_args(),
+                'link_args': link_args + dc.get_build_unittest_args(),
+                'install': False,
+            }
+        )
+
+        e = ExecutableHolder(new_target, self.interpreter)
+        test = self.interpreter.make_test(
+            self.interpreter.current_node, [name, e], {})
+
+        return ModuleReturnValue([], [e, test])
+
 
 def initialize(*args: T.Any, **kwargs: T.Any) -> DlangModule:
     return DlangModule(*args, **kwargs)

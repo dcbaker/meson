@@ -31,26 +31,46 @@ executable('myapp', 'app.d', d_debug: [3, 'DebugFeatureA'])
 
 ## Using embedded unittests
 
-If you are using embedded [unittest functions](https://dlang.org/spec/unittest.html), your source code needs
-to be compiled twice, once in regular
-mode, and once with unittests active. This is done by setting the
-`d_unittest` target property to `true`.
-Meson will only ever pass the respective compiler's `-unittest` flag,
-and never have the compiler generate an empty main function.
-If you need that feature in a portable way, create an empty `main()`
-function for unittests yourself, since the GNU D compiler
-does not have this feature.
+If you are using embedded [unittest
+functions](https://dlang.org/spec/unittest.html), your source code needs to
+be compiled twice, once in regular mode, and once with unittests active.
+
+### The old way
+
+Before meson 0.57, this was best done as follows:
+
+This is done by setting the `d_unittest` target property to `true`. Meson
+will only ever pass the respective compiler's `-unittest` flag, and never
+have the compiler generate an empty main function. If you need that feature
+in a portable way, create an empty `main()` function for unittests yourself,
+since the GNU D compiler does not have this feature.
 
 This is an example for using D unittests with Meson:
-```meson
+ ```meson
 project('myapp_tested', 'd')
 
-myapp_src = ['app.d', 'alpha.d', 'beta.d']
 executable('myapp', myapp_src)
+myapp_src = ['app.d', 'alpha.d', 'beta.d']
 
 test_exe = executable('myapp_test', myapp_src, d_unittest: true)
 test('myapptest', test_exe)
 ```
+
+### the new way
+
+Meson 0.57 added a `test` method to the `dlang` module. This can save you a
+lot of typing:
+
+```meson
+project('myapp_tested', 'd')
+
+myapp = executable('myapp', ['app.d', 'alpha.d', 'beta.d'])
+
+dlang = import('dlang')
+test('myapptest', test_exe)
+```
+
+Meson will take care of the rest for you.
 
 # Compiling D libraries and installing them
 

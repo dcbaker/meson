@@ -7,8 +7,7 @@ This module provides tools related to the D programming language.
 To use this module, just do: **`dlang = import('dlang')`**.
 You can, of course, replace the name `dlang` with anything else.
 
-The module only exposes one function, `generate_dub_file`, used to
-automatically generate Dub configuration files.
+The module has the following functions:
 
 ### generate_dub_file()
 This method only has two required arguments, the project name and the
@@ -41,3 +40,24 @@ initial one. The module will only update the values specified in
 
 Although not required, you will need to have a `description` and
 `license` if you want to publish the package in the [D package registry](https://code.dlang.org/).
+
+### test()
+*(new in 0.57.0)*
+
+This method creates a dlang unittest executable and test target from an
+existing D language build target. This simplifies using dlang's in-source
+test strategy.
+
+It takes two positional arguments, the first is the name of the test target
+as a string, the second is a build target of the D language (Executable, Library).
+
+It takes the following keyword arguments:
+  - `d_args`: arguments to compile the new d executable with (passed to executable)
+  - `link_args`: arguments to link the new d executable with (passed to executable)
+
+```meson
+exe = executable(...)
+
+dlang = import('dlang')
+dlang.test('exe_test', exe)
+```
