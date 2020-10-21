@@ -22,44 +22,32 @@ import typing as T
 from . import ExtensionModule
 from .. import mlog
 from ..mesonlib import (
-    Popen_safe, MesonException, listify, unholder
+    Popen_safe, listify, unholder
 )
 from ..dependencies.base import (
     ExternalProgram, DubDependency, NonExistingExternalProgram
 )
 from ..build import InvalidArguments
-from ..interpreterbase import typed_pos_args
 
 if T.TYPE_CHECKING:
     from ..interpreter import Interpreter, ModuleState
 
 
 class DlangModule(ExtensionModule):
-    class_dubbin: T.Optional[ExternalProgram] = None
-    init_dub = False
+    dubbin: T.Optional[ExternalProgram] = None
+    __init_dub = False
 
     def __init__(self, interpreter: 'Interpreter'):
         super().__init__(interpreter)
         self.snippets.add('generate_dub_file')
 
-    def _init_dub(self) -> None:
-        if DlangModule.class_dubbin is None:
-            self.dubbin = DubDependency.class_dubbin
-            DlangModule.class_dubbin = self.dubbin
-        else:
-            self.dubbin = DlangModule.class_dubbin
-
-        if DlangModule.class_dubbin is None:
-            self.dubbin = self.check_dub()
-            DlangModule.class_dubbin = self.dubbin
-        else:
-            self.dubbin = DlangModule.class_dubbin
-
-        if not self.dubbin.found():
-            raise MesonException('DUB not found.')
+    @classmethod
+    def _init_dub(cls) -> None:
+        cls.__init_dub = True
+        cls.dubbin = cls.__find_dub()
 
     def generate_dub_file(self, interpreter: 'Interpreter', state: 'ModuleState', args: T.List[T.Any], kwargs: T.Dict[str, T.Any]) -> None:
-        if not DlangModule.init_dub:
+        if not self.__init_dub:
             self._init_dub()
 
         if not len(args) == 2:
@@ -106,7 +94,9 @@ class DlangModule(ExtensionModule):
         p, out = Popen_safe(self.dubbin.get_command() + args, env=env)[0:2]
         return p.returncode, out.strip()
 
-    def check_dub(self) -> ExternalProgram:
+    @staticmethod
+    def __find_dub() -> ExternalProgram:
+        """try to find a working dub instlalation."""
         dubbin = ExternalProgram('dub', silent=True)
         if dubbin.found():
             try:
