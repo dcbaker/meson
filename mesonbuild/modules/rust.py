@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import typing as T
 
 from . import ExtensionModule, ModuleReturnValue
+from .. import cargo
 from .. import mlog
-from ..build import BuildTarget, Executable
-from ..interpreter import ExecutableHolder, permitted_kwargs
+from ..build import BuildTarget, Executable, InvalidArguments
+from ..dependencies import Dependency, ExternalLibrary
+from ..interpreter import ExecutableHolder, SubprojectHolder, permitted_kwargs
 from ..interpreterbase import InterpreterException, permittedKwargs, FeatureNew
-from ..mesonlib import stringlistify, unholder
+from ..mesonlib import stringlistify, unholder, listify
 
 if T.TYPE_CHECKING:
     from ..interpreter import ModuleState, Interpreter
@@ -33,6 +34,7 @@ class RustModule(ExtensionModule):
     @FeatureNew('rust module', '0.57.0')
     def __init__(self, interpreter: 'Interpreter') -> None:
         super().__init__(interpreter)
+        self.snippets.add('subproject')
 
     @permittedKwargs(permitted_kwargs['test'] | {'dependencies'} ^ {'protocol'})
     def test(self, state: 'ModuleState', args: T.List, kwargs: T.Dict) -> ModuleReturnValue:
@@ -131,6 +133,22 @@ class RustModule(ExtensionModule):
             self.interpreter.current_node, [name, e], kwargs)
 
         return ModuleReturnValue([], [e, test])
+
+    def subproject(self, interpreter: 'Interpreter', state: 'ModuleState',
+                   args: T.List, kwargs: T.Dict[str, T.Any]) -> SubprojectHolder:
+        """Create a subproject from a cargo manifest.
+
+        This method
+        """
+        if not cargo.HAS_TOML:
+            raise InterpreterException('cargo integration requires the python toml module.')
+        dirname: str = args[0]
+        if not isinstance(dirname, str):
+            raise InvalidArguments('rust.subproject "name" positional arugment must be a string.')
+
+        subp = interpreter.do_subproject(dirname, 'cargo', kwargs)
+
+        return subp
 
 
 def initialize(*args: T.List, **kwargs: T.Dict) -> RustModule:
