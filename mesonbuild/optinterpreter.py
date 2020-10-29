@@ -144,6 +144,9 @@ class OptionInterpreter:
         except mesonlib.MesonException as me:
             me.file = option_file
             raise me
+        self.process_ast(ast, option_file)
+
+    def process_ast(self, ast: mparser.CodeBlockNode, option_file: T.Optional[str] = None) -> None:
         if not isinstance(ast, mparser.CodeBlockNode):
             e = OptionException('Option file is malformed.')
             e.lineno = ast.lineno()
@@ -152,11 +155,17 @@ class OptionInterpreter:
         for cur in ast.lines:
             try:
                 self.evaluate_statement(cur)
-            except Exception as e:
+            except mesonlib.MesonException as e:
                 e.lineno = cur.lineno
                 e.colno = cur.colno
                 e.file = option_file
                 raise e
+            except Exception as e:
+                m = OptionException(str(e))
+                m.lineno = cur.lineno
+                m.colno = cur.colno
+                m.file = option_file
+                raise m from e
 
     def reduce_single(self, arg: T.Union[str, mparser.BaseNode]) -> T.Union[str, int, bool]:
         if isinstance(arg, str):
