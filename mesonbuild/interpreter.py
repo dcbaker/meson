@@ -35,6 +35,7 @@ from .interpreterbase import TYPE_var, TYPE_nkwargs
 from .modules import ModuleReturnValue, ExtensionModule
 from .cmake import CMakeInterpreter
 from .backend.backends import TestProtocol, Backend
+from .cargo import ManifestInterpreter
 
 from ._pathlib import Path, PurePath
 import os
@@ -2391,6 +2392,7 @@ class Interpreter(InterpreterBase):
                 default_project_options: T.Optional[T.Dict[str, str]] = None,
                 mock: bool = False,
                 ast: T.Optional[mparser.CodeBlockNode] = None,
+                opt_ast: T.Optional[mparser.CodeBlockNode] = None,
                 is_translated: bool = False,
             ) -> None:
         super().__init__(build.environment.get_source_dir(), subdir, subproject)
@@ -2415,6 +2417,7 @@ class Interpreter(InterpreterBase):
         elif ast is not None:
             self.ast = ast
             self.sanity_check_ast()
+        self.opt_ast = opt_ast  # TODO: sanity check?
         self.builtin.update({'meson': MesonMain(build, self)})
         self.generators = []
         self.visited_subdirs = {}
@@ -2560,6 +2563,8 @@ class Interpreter(InterpreterBase):
             return item
         elif isinstance(item, InterpreterObject):
             return item
+        elif isinstance(item, SubprojectHolder):
+            return item
         else:
             raise InterpreterException('Module returned a value of unknown type.')
 
@@ -2592,6 +2597,8 @@ class Interpreter(InterpreterBase):
             elif hasattr(v, 'held_object'):
                 pass
             elif isinstance(v, (int, str, bool, Disabler)):
+                pass
+            elif isinstance(v, Interpreter):
                 pass
             else:
                 raise InterpreterException('Module returned a value of unknown type.')
@@ -2945,6 +2952,8 @@ external dependencies (including libraries) must go to "dependencies".''')
                 return self._do_subproject_meson(subp_name, subdir, default_options, kwargs)
             elif method == 'cmake':
                 return self._do_subproject_cmake(subp_name, subdir, subdir_abs, default_options, kwargs)
+            elif method == 'cargo':
+                return self._do_subproject_cargo(subp_name, subdir, subdir_abs, kwargs)
             else:
                 raise InterpreterException('The method {} is invalid for the subproject {}'.format(method, subp_name))
         # Invalid code is always an error
@@ -2963,11 +2972,13 @@ external dependencies (including libraries) must go to "dependencies".''')
     def _do_subproject_meson(self, subp_name: str, subdir: str, default_options, kwargs,
                              ast: T.Optional[mparser.CodeBlockNode] = None,
                              build_def_files: T.Optional[T.List[str]] = None,
-                             is_translated: bool = False) -> SubprojectHolder:
+                             is_translated: bool = False,
+                             opt_ast: T.Optional[mparser.CodeBlockNode] = None) -> SubprojectHolder:
         with mlog.nested():
             new_build = self.build.copy()
             subi = Interpreter(new_build, self.backend, subp_name, subdir, self.subproject_dir,
-                               self.modules, default_options, ast=ast, is_translated=is_translated)
+                               self.modules, default_options, ast=ast, opt_ast=opt_ast,
+                               is_translated=is_translated)
             subi.subprojects = self.subprojects
 
             subi.subproject_stack = self.subproject_stack + [subp_name]
@@ -3000,6 +3011,40 @@ external dependencies (including libraries) must go to "dependencies".''')
         self.summary.update(subi.summary)
         return self.subprojects[subp_name]
 
+    def __print_generated_ast(self, subdir: str, ast: mparser.CodeBlockNode,
+                              opt_ast: T.Optional[mparser.CodeBlockNode] = None) -> None:
+        """Helper function to print a meson.build from generated ast."""
+        mlog.log()
+        with mlog.nested():
+            mlog.log('Processing generated meson AST')
+
+            # Debug print the generated meson file
+            from .ast import AstIndentationGenerator, AstPrinter
+            printer = AstPrinter()
+            ast.accept(AstIndentationGenerator())
+            ast.accept(printer)
+            printer.post_process()
+            meson_filename = os.path.join(self.build.environment.get_build_dir(), subdir, 'meson.build')
+            with open(meson_filename, "w") as f:
+                f.write(printer.result)
+
+            mlog.log('Build file:', meson_filename)
+            mlog.cmd_ci_include(meson_filename)
+
+            if opt_ast:
+                printer = AstPrinter()
+                opt_ast.accept(AstIndentationGenerator())
+                opt_ast.accept(printer)
+                printer.post_process()
+                meson_filename = os.path.join(self.build.environment.get_build_dir(), subdir, 'meson_options.txt')
+                with open(meson_filename, "w") as f:
+                    f.write(printer.result)
+
+                mlog.log('Build options file:', meson_filename)
+                mlog.cmd_ci_include(meson_filename)
+
+            mlog.log()
+
     def _do_subproject_cmake(self, subp_name, subdir, subdir_abs, default_options, kwargs):
         with mlog.nested():
             new_build = self.build.copy()
@@ -3020,26 +3065,28 @@ external dependencies (including libraries) must go to "dependencies".''')
             # Generate a meson ast and execute it with the normal do_subproject_meson
             ast = cm_int.pretend_to_be_meson(options.target_options)
 
-            mlog.log()
-            with mlog.nested():
-                mlog.log('Processing generated meson AST')
-
-                # Debug print the generated meson file
-                from .ast import AstIndentationGenerator, AstPrinter
-                printer = AstPrinter()
-                ast.accept(AstIndentationGenerator())
-                ast.accept(printer)
-                printer.post_process()
-                meson_filename = os.path.join(self.build.environment.get_build_dir(), subdir, 'meson.build')
-                with open(meson_filename, "w") as f:
-                    f.write(printer.result)
-
-                mlog.log('Build file:', meson_filename)
-                mlog.cmd_ci_include(meson_filename)
-                mlog.log()
+            self.__print_generated_ast(subdir, ast)
 
             result = self._do_subproject_meson(subp_name, subdir, default_options, kwargs, ast, cm_int.bs_files, is_translated=True)
             result.cm_interpreter = cm_int
+
+        mlog.log()
+        return result
+
+    def _do_subproject_cargo(self, subp_name: str, subdir: str, subdir_abs: str, kwargs: T.Dict[str, T.Any]) -> SubprojectHolder:
+        with mlog.nested():
+            new_build = self.build.copy()
+            prefix = self.coredata.builtins['prefix'].value
+            interp = ManifestInterpreter(new_build, Path(subdir), Path(subdir_abs), Path(prefix), new_build.environment, self.backend)
+
+            # Generate a meson ast and execute it with the normal do_subproject_meson
+            ast, opt_ast = interp.parse()
+            self.__print_generated_ast(subdir, ast, opt_ast)
+
+            result = self._do_subproject_meson(
+                subp_name, subdir, [], kwargs, ast, [interp.manifest_file],
+                opt_ast=opt_ast, is_translated=True)
+            # result.cm_interpreter = cm_int  # TODO: what do we need this for?
 
         mlog.log()
         return result
@@ -3156,9 +3203,12 @@ external dependencies (including libraries) must go to "dependencies".''')
                 raise InterpreterException('Meson version is %s but project requires %s' % (cv, pv))
             mesonlib.project_meson_versions[self.subproject] = kwargs['meson_version']
 
-        if os.path.exists(self.option_file):
+        if self.opt_ast or os.path.exists(self.option_file):
             oi = optinterpreter.OptionInterpreter(self.subproject)
-            oi.process(self.option_file)
+            if self.opt_ast:
+                oi.process_ast(self.opt_ast)
+            else:
+                oi.process(self.option_file)
             self.coredata.merge_user_options(oi.options)
             self.add_build_def_file(self.option_file)
 
