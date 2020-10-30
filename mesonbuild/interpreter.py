@@ -56,12 +56,21 @@ if T.TYPE_CHECKING:
     from .environment import Environment
     from .modules import ExtensionModule
 
-    SubprojectKeyType = str
+    SubprojectKeyType = T.Union[str, 'CrateSubprojectKey']
 
 permitted_method_kwargs = {
     'partial_dependency': {'compile_args', 'link_args', 'links', 'includes',
                            'sources'},
 }
+
+class CrateSubprojectKey(T.NamedTuple):
+
+    """Subproject key used by rust projects."""
+
+    name: str
+    version: str
+    options: T.Tuple[str, ...]
+
 
 def stringifyUserArguments(args):
     if isinstance(args, list):
@@ -2888,14 +2897,24 @@ external dependencies (including libraries) must go to "dependencies".''')
         subp_name = args[0]
         return self.do_subproject(subp_name, 'meson', kwargs)
 
-    def disabled_subproject(self, subp_name: 'SubprojectKeyType', disabled_feature=None, exception=None):
+    @staticmethod
+    def _subproject_key_as_str(key: 'SubprojectKeyType') -> str:
+        if isinstance(key, str):
+            return key
+        return f'{key.name}-{key.version}-{hash(key.options)}'
+
+    def disabled_subproject(self, key: 'SubprojectKeyType', disabled_feature=None, exception=None):
+        if isinstance(key, str):
+            subp_name = key
+        else:
+            subp_name = key.name
         sub = SubprojectHolder(None, os.path.join(self.subproject_dir, subp_name),
                                disabled_feature=disabled_feature, exception=exception)
-        self.subprojects[subp_name] = sub
+        self.subprojects[key] = sub
         return sub
 
-    def get_subproject(self, subp_name: 'SubprojectKeyType') -> T.Optional[SubprojectHolder]:
-        sub = self.subprojects.get(subp_name)
+    def get_subproject(self, key: 'SubprojectKeyType') -> T.Optional[SubprojectHolder]:
+        sub = self.subprojects.get(key)
         if sub and sub.found():
             return sub
         return None
