@@ -254,7 +254,10 @@ class ManifestInterpreter:
                  env: 'Environment', backend: 'Backend', features: T.Set[str],
                  version: T.List[str], default_options: bool):
         self.build = build
+        # TODO: The builddir needs to be modfied to take the version requirements and
+        # options into account
         self.build_dir = build_dir
+        # TODO: The src_dir needs to consider the version, and if it needs src_dir-version
         self.src_dir = src_dir
         self.install_prefix = install_prefix
         self.environment = env
@@ -514,6 +517,7 @@ class ManifestInterpreter:
         obuilder = ObjectBuilder('rust', builder._builder)
         with obuilder.method_builder('subproject') as arbuilder:
             arbuilder.positional(name.replace('-', '_'))
+            # Pass any features we required to be on to that subproject
             if self.subproject_features[name]:
                 arbuilder.keyword('features', list(self.subproject_features[name]))
             if disabler:
