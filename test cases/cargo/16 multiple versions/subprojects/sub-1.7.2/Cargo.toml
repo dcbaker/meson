@@ -1,0 +1,6 @@
+[package]
+name = "sub"
+version = "1.0.1"
+
+[lib]
+path = "lib.rs"
