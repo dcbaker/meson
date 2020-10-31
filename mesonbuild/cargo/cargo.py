@@ -20,7 +20,7 @@ import toml
 
 from .. import mlog
 from .._pathlib import Path
-from ..mesonlib import MesonException
+from ..mesonlib import MesonException, version_compare
 from ..optinterpreter import is_invalid_name
 from .nodebuilder import ObjectBuilder, NodeBuilder
 
@@ -232,7 +232,7 @@ def cargo_version_to_meson_version(req_string: str) -> T.List[str]:
             else:
                 final.append(f'< {major + 1}.0.0')
         else:
-            assert r.startswith(('<', '>', '='))
+            assert r.startswith(('<', '>', '=')), r
             if r.startswith('='):
                 # meson uses ==, but cargo uses =
                 final.append(f'={r}')
@@ -264,11 +264,23 @@ class ManifestInterpreter:
         self.backend = backend
         self.requested_features = features
         self.default_options = default_options
-        self.version = version
+        self.required_version = version
         manfiest_file = self.src_dir / 'Cargo.toml'
         self.manifest_file = str(manfiest_file)
         with manfiest_file.open('r') as f:
             self.manifest = T.cast('ManifestDict', toml.load(f))
+
+        actual_version = self.manifest['package']['version']
+        if not version_compare(actual_version, self.required_version):
+            for g in (self.src_dir.parent.glob(f'{self.src_dir.stem}-*')):
+                v = g.stem.split('-')[-1]
+                if version_compare(v, self.required_version):
+                    self.src_dir = g
+                    break
+        else:
+            raise MesonException(
+                f'Cannot find subproject source for {self.src_dir.stem} to '
+                f'satisfy version requirements {self.required_version}.')
 
         # All features enabled in this subproject
         self.features: T.List[str] = []
@@ -596,6 +608,7 @@ class ManifestInterpreter:
         This can then be fed back into the meson interpreter to create a
         "meson" project from the crate specification.
         """
+        # Parse features and emit options. These are also needed by dependencies
         opt_builder = NodeBuilder(self.build_dir)
         self.__parse_features()
         self.__emit_features(opt_builder)
