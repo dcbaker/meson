@@ -20,9 +20,7 @@ import toml
 
 from .. import mlog
 from .._pathlib import Path
-from ..dependencies.base import find_external_program
-from ..interpreterbase import InterpreterException
-from ..mesonlib import MachineChoice, MesonException
+from ..mesonlib import MesonException
 from ..optinterpreter import is_invalid_name
 from .nodebuilder import ObjectBuilder, NodeBuilder
 
@@ -252,11 +250,11 @@ class ManifestInterpreter:
     anything we don't actually need (like binaries we may not use).
     """
 
-    def __init__(self, build: 'Build', subdir: Path, src_dir: Path, install_prefix: Path,
+    def __init__(self, build: 'Build', build_dir: Path, src_dir: Path, install_prefix: Path,
                  env: 'Environment', backend: 'Backend', features: T.Set[str],
                  version: T.List[str], default_options: bool):
         self.build = build
-        self.subdir = subdir
+        self.build_dir = build_dir
         self.src_dir = src_dir
         self.install_prefix = install_prefix
         self.environment = env
@@ -466,15 +464,17 @@ class ManifestInterpreter:
 
         return created_targets
 
-    def __parse_features(self, opt_builder: NodeBuilder) -> None:
-        """Convert cargo features into meson options.
+    def __parse_features(self) -> None:
+        """Parse cargo features.
 
-        Create each option function. Cargo uses a single namespace for all
-        "features" (what meson calls options). They are always boolean, and
-        to emulate the single namspace, we make them always yielding.
+        Cargo's features are basically akin to boolean option in meson.
+
+        Cargo features do not map 1:1 with meson options, and we need to do
+        some transformation to make them work. First, one uses a special
+        "default" option to signal which options are on by default. Second,
+        options are allowed to specify "If I'm on, then I need my subproject
+        to have option X on."
         """
-        default: T.Set[str] = set(self.manifest.get('features', {}).get('default', []))
-
         for name, requirements in self.manifest.get('features', {}).items():
             if name == "default":
                 continue
@@ -488,35 +488,34 @@ class ManifestInterpreter:
             for r in requirements:
                 if '/' in r:
                     subp, opt = r.split('/')
-                    # In this case the crate is trying to change another crate's
-                    # configuration. Meson does not allow this, options are contained
-                    # The best we can do is provide the user a warning
-                    mlog.warning(textwrap.dedent(f'''\
-                        Crate {self.manifest['package']['name']} wants to turn on the
-                        {opt} in {subp}. Meson does not allow subprojects to change
-                        another subproject's options. You may need to pass
-                        `-D{subp}:{opt}=true` to meson configure for compilation
-                        to succeed.
-                        '''))
+                    self.subproject_features[subp].add(opt)
+                    new_reqs.append(subp)
                 else:
                     new_reqs.append(r)
 
             self.features.append(name)
-            if requirements:
-                self.features_to_deps[name] = requirements
+            if new_reqs:
+                self.features_to_deps[name] = new_reqs
 
+    def __emit_features(self, opt_builder: NodeBuilder) -> None:
+        """Write out features as options."""
+        enabled: T.Set[str] = self.requested_features.copy()
+        if self.default_options:
+            enabled |= set(self.manifest.get('features', {}).get('default', []))
+
+        for name in self.features:
             with opt_builder.function_builder('option') as fbuilder:
                 fbuilder.positional(name)
                 fbuilder.keyword('type', 'boolean')
-                fbuilder.keyword('yield', True)
-                fbuilder.keyword('value', name in default)
+                fbuilder.keyword('value', name in enabled)
 
-    @staticmethod
-    def __get_dependency(builder: NodeBuilder, name: str, disabler: bool = False) -> 'mparser.MethodNode':
+    def __get_dependency(self, builder: NodeBuilder, name: str, disabler: bool = False) -> 'mparser.MethodNode':
         """Helper for getting a supbroject dependency."""
         obuilder = ObjectBuilder('rust', builder._builder)
         with obuilder.method_builder('subproject') as arbuilder:
             arbuilder.positional(name.replace('-', '_'))
+            if self.subproject_features[name]:
+                arbuilder.keyword('features', list(self.subproject_features[name]))
             if disabler:
                 arbuilder.keyword('required', False)
         with obuilder.method_builder('get_variable') as arbuilder:
@@ -569,7 +568,7 @@ class ManifestInterpreter:
                     if isinstance(dep, str) or not dep.get('optional', False):
                         arbuilder.positional(self.__get_dependency(builder, name, disabler=True))
 
-    def __emit_features(self, builder: NodeBuilder) -> None:
+    def __emit_enable_features(self, builder: NodeBuilder) -> None:
         """Emit the code to check each feature, and add it to the rust
         arguments if necessary.
 
@@ -593,8 +592,11 @@ class ManifestInterpreter:
         This can then be fed back into the meson interpreter to create a
         "meson" project from the crate specification.
         """
-        builder = NodeBuilder(self.subdir)
-        opt_builder = NodeBuilder(self.subdir)
+        opt_builder = NodeBuilder(self.build_dir)
+        self.__parse_features()
+        self.__emit_features(opt_builder)
+
+        builder = NodeBuilder(self.build_dir)
 
         # Create the meson project() function.
         #
@@ -622,8 +624,6 @@ class ManifestInterpreter:
             with abuilder.function_builder('import') as fbuilder:
                 fbuilder.positional('rust')
 
-        self.__parse_features(opt_builder)
-
         # Create a list of dependencies which will be added to the library (if
         # there is one).
         if self.manifest.get('dependencies'):
@@ -632,7 +632,7 @@ class ManifestInterpreter:
             self.__emit_dev_dependencies(builder)
 
         # This needs to be called after dependencies
-        self.__emit_features(builder)
+        self.__emit_enable_features(builder)
 
         # Look for libs first, becaue if there are libs, then bins need to link
         # with them.

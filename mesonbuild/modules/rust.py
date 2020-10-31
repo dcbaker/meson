@@ -134,11 +134,12 @@ class RustModule(ExtensionModule):
 
         return ModuleReturnValue([], [e, test])
 
+    # TODO: argument enforcement
     def subproject(self, interpreter: 'Interpreter', state: 'ModuleState',
                    args: T.List, kwargs: T.Dict[str, T.Any]) -> SubprojectHolder:
         """Create a subproject from a cargo manifest.
 
-        This method
+        TODO
         """
         if not cargo.HAS_TOML:
             raise InterpreterException('cargo integration requires the python toml module.')
