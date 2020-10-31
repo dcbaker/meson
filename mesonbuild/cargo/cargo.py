@@ -20,7 +20,7 @@ import toml
 
 from .. import mlog
 from .._pathlib import Path
-from ..mesonlib import MesonException, version_compare
+from ..mesonlib import MesonException, version_compare_many
 from ..optinterpreter import is_invalid_name
 from .nodebuilder import ObjectBuilder, NodeBuilder
 
@@ -265,22 +265,29 @@ class ManifestInterpreter:
         self.requested_features = features
         self.default_options = default_options
         self.required_version = version
-        manfiest_file = self.src_dir / 'Cargo.toml'
-        self.manifest_file = str(manfiest_file)
-        with manfiest_file.open('r') as f:
+        manifest_file = self.src_dir / 'Cargo.toml'
+        self.manifest_file = str(manifest_file)
+        with manifest_file.open('r') as f:
             self.manifest = T.cast('ManifestDict', toml.load(f))
 
+        # If the version in the subdir doesn't match, then we need to try to find
+        # a subproject source that does match.
         actual_version = self.manifest['package']['version']
-        if not version_compare(actual_version, self.required_version):
+        if not version_compare_many(actual_version, self.required_version)[0]:
             for g in (self.src_dir.parent.glob(f'{self.src_dir.stem}-*')):
+                # XXX: it might be better to read the version out of the toml
                 v = g.stem.split('-')[-1]
-                if version_compare(v, self.required_version):
+                if version_compare_many(v, self.required_version):
                     self.src_dir = g
+                    manifest_file = self.src_dir / 'Cargo.toml'
+                    self.manifest_file = str(manifest_file)
+                    with manifest_file.open('r') as f:
+                        self.manifest = T.cast('ManifestDict', toml.load(f))
                     break
-        else:
-            raise MesonException(
-                f'Cannot find subproject source for {self.src_dir.stem} to '
-                f'satisfy version requirements {self.required_version}.')
+            else:
+                raise MesonException(
+                    f'Cannot find subproject source for {self.src_dir.stem} to '
+                    f'satisfy version requirements {self.required_version}.')
 
         # All features enabled in this subproject
         self.features: T.List[str] = []

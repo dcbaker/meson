@@ -3112,7 +3112,7 @@ external dependencies (including libraries) must go to "dependencies".''')
             self.__print_generated_ast(subdir, ast, opt_ast)
 
             result = self._do_subproject_meson(
-                subp_name, subdir, [], kwargs, ast, [interp.manifest_file],
+                subp_name, str(interp.src_dir), [], kwargs, ast, [interp.manifest_file],
                 opt_ast=opt_ast, is_translated=True)
             # result.cm_interpreter = cm_int  # TODO: what do we need this for?
 
