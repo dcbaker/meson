@@ -24,7 +24,6 @@ Cargo to meson.build:
             - doctest?
             - bench
         - Add test for invalid feature names
-        - Add a test for features trying to set other subproject's features
         - extend test 15 to cover test, exampeles, and benches
         - is the use of a disabler() for dev-dependencies smart?
 
