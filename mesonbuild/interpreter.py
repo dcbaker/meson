@@ -3093,10 +3093,19 @@ external dependencies (including libraries) must go to "dependencies".''')
         return result
 
     def _do_subproject_cargo(self, subp_name: str, subdir: str, subdir_abs: str, kwargs: T.Dict[str, T.Any]) -> SubprojectHolder:
+        features = mesonlib.stringlistify(kwargs.get('features', []))
+        default_features = kwargs.get('default_features', True)
+        if not isinstance(default_features, bool):
+            raise InvalidArguments('rust.subproject keyword argument "default_features" must be a bool.')
+        version = mesonlib.stringlistify(kwargs.get('version', []))
+
         with mlog.nested():
             new_build = self.build.copy()
             prefix = self.coredata.builtins['prefix'].value
-            interp = ManifestInterpreter(new_build, Path(subdir), Path(subdir_abs), Path(prefix), new_build.environment, self.backend)
+            interp = ManifestInterpreter(
+                new_build, Path(subdir), Path(subdir_abs), Path(prefix),
+                new_build.environment, self.backend, set(features), version,
+                default_features)
 
             # Generate a meson ast and execute it with the normal do_subproject_meson
             ast, opt_ast = interp.parse()

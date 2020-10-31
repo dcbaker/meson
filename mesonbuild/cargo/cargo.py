@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import textwrap
 import typing as T
 
@@ -251,39 +252,28 @@ class ManifestInterpreter:
     anything we don't actually need (like binaries we may not use).
     """
 
-    cargo: 'ExternalProgram'
-
-    def __new__(cls, build: 'Build', subdir: Path, src_dir: Path, install_prefix: Path,
-                env: 'Environment', backend: 'Backend') -> 'ManifestInterpreter':
-        # Messing with `__new__` is not for novices, but in this case it's
-        # useful because we can avoid havin to do the "if cargo is none find cargo" dance,
-        # We have it at class construction time, or we don't
-
-        # TODO: we really should be able to build dependencies for host or build...
-        for prog in find_external_program(env, MachineChoice.HOST, 'cargo', 'cargo', ['cargo'], True):
-            if prog.found():
-                cls.cargo = prog
-                break
-        else:
-            raise InterpreterException('Could not find required program "cargo"')
-
-        return T.cast('ManifestInterpreter', super().__new__(cls))
-
     def __init__(self, build: 'Build', subdir: Path, src_dir: Path, install_prefix: Path,
-                 env: 'Environment', backend: 'Backend'):
+                 env: 'Environment', backend: 'Backend', features: T.Set[str],
+                 version: T.List[str], default_options: bool):
         self.build = build
         self.subdir = subdir
         self.src_dir = src_dir
         self.install_prefix = install_prefix
         self.environment = env
         self.backend = backend
+        self.requested_features = features
+        self.default_options = default_options
+        self.version = version
         manfiest_file = self.src_dir / 'Cargo.toml'
         self.manifest_file = str(manfiest_file)
         with manfiest_file.open('r') as f:
             self.manifest = T.cast('ManifestDict', toml.load(f))
 
-        # All features enabled in this and all sub-subprojects
+        # All features enabled in this subproject
         self.features: T.List[str] = []
+
+        # Map features that this crate turns on for its subprojects
+        self.subproject_features: T.DefaultDict[str, T.Set[str]] = collections.defaultdict(set)
 
         # A mapping between a feature and the dependencies that are needed to
         # enable it.
