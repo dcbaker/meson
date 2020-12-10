@@ -102,7 +102,7 @@ All other combinations of `debug` and `optimization` set `buildtype` to `'custom
 
 ## Base options
 
-These are set in the same way as universal options, either by `-Doption=value`, 
+These are set in the same way as universal options, either by `-Doption=value`,
 or by setting them inside `default_options` of `project()` in your `meson.build`.
 However, they cannot be shown in the
 output of `meson --help` because they depend on both the current platform and
@@ -112,24 +112,27 @@ a builddir and then run `meson configure` on it with no options.
 The following options are available. Note that they may not be available on all
 platforms or with all compilers:
 
-| Option      | Default value | Possible values         | Description |
-| ----------- | ------------- | ---------------         | ----------- |
-| b_asneeded  | true          | true, false             | Use -Wl,--as-needed when linking |
-| b_bitcode   | false         | true, false             | Embed Apple bitcode, see below |
-| b_colorout  | always        | auto, always, never     | Use colored output |
-| b_coverage  | false         | true, false             | Enable coverage tracking |
-| b_lundef    | true          | true, false             | Don't allow undefined symbols when linking |
-| b_lto       | false         | true, false             | Use link time optimization |
-| b_ndebug    | false         | true, false, if-release | Disable asserts |
-| b_pch       | true          | true, false             | Use precompiled headers |
-| b_pgo       | off           | off, generate, use      | Use profile guided optimization |
-| b_sanitize  | none          | see below               | Code sanitizer to use |
-| b_staticpic | true          | true, false             | Build static libraries as position independent |
-| b_pie       | false         | true, false             | Build position-independent executables (since 0.49.0)|
-| b_vscrt     | from_buildtype| none, md, mdd, mt, mtd, from_buildtype, static_from_buildtype | VS runtime library to use (since 0.48.0) (static_from_buildtype since 0.56.0) |
+| Option        | Default value  | Possible values                                                  | Description                                                                   |
+|---------------|----------------|------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| b_asneeded    | true           | true, false                                                      | Use -Wl,--as-needed when linking                                              |
+| b_bitcode     | false          | true, false                                                      | Embed Apple bitcode, see below                                                |
+| b_colorout    | always         | auto, always, never                                              | Use colored output                                                            |
+| b_coverage    | false          | true, false                                                      | Enable coverage tracking                                                      |
+| b_lundef      | true           | true, false                                                      | Don't allow undefined symbols when linking                                    |
+| b_lto         | false          | true, false                                                      | Use link time optimization                                                    |
+| b_lto_threads | 0              | Any integer*                                                     | Use multiple threads for lto. *(Added in 0.57.0)*                             |
+| b_ndebug      | false          | true, false, if-release                                          | Disable asserts                                                               |
+| b_pch         | true           | true, false                                                      | Use precompiled headers                                                       |
+| b_pgo         | off            | off, generate, use                                               | Use profile guided optimization                                               |
+| b_sanitize    | none           | see below                                                        | Code sanitizer to use                                                         |
+| b_staticpic   | true           | true, false                                                      | Build static libraries as position independent                                |
+| b_pie         | false          | true, false                                                      | Build position-independent executables (since 0.49.0)                         |
+| b_vscrt       | from_buildtype | none, md, mdd, mt, mtd, from_buildtype, static_from_buildtype    | VS runtime library to use (since 0.48.0) (static_from_buildtype since 0.56.0) |
 
 The value of `b_sanitize` can be one of: `none`, `address`, `thread`,
 `undefined`, `memory`, `address,undefined`.
+
+* < 0 means disable, == 0 means automatic selection, > 0 sets a specific number to use
 
 <a name="b_vscrt-from_buildtype"></a>
 The default value of `b_vscrt` is `from_buildtype`. The following table is used
