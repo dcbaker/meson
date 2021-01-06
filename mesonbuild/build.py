@@ -2162,7 +2162,8 @@ class CustomTarget(Target):
         'console',
     ])
 
-    def __init__(self, name, subdir, subproject, kwargs, absolute_paths=False, backend=None):
+    def __init__(self, name: str, subdir: str, subproject: str, kwargs: T.Dict[str, T.Any],
+                 absolute_paths: bool = False, backend: T.Optional[str] = None):
         self.typename = 'custom'
         # TODO expose keyword arg to make MachineChoice.HOST configurable
         super().__init__(name, subdir, subproject, False, MachineChoice.HOST)
@@ -2177,7 +2178,7 @@ class CustomTarget(Target):
         for k in kwargs:
             if k not in CustomTarget.known_kwargs:
                 unknowns.append(k)
-        if len(unknowns) > 0:
+        if unknowns:
             mlog.warning('Unknown keyword arguments in target {}: {}'.format(self.name, ', '.join(unknowns)))
 
     def get_default_install_dir(self, environment):
