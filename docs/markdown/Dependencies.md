@@ -260,6 +260,23 @@ dep = dependency('appleframeworks', modules : 'foundation')
 
 These dependencies can never be found for non-OSX hosts.
 
+
+## System
+
+Some dependencies provide no valid methods for discovery, or do so only in
+some cases. Some examples of this are Zlib, which provides both pkg-config
+and cmake, except when it is part of the base OS image (such as in FreeBSD
+and macOS); OpenGL which has pkg-config on Unices from glvnd or mesa, but has
+no pkg-config on macOS and Windows.
+
+In these cases meson provides convenenience wrappers in the form of `system`
+dependencies. Interally these dependencies do exactly what a user would do
+the build system DSL or with a script, likely calling
+`compiler.find_library()`, setting `link_with` and `include_directories`. By
+putting these in meson upstream the barrier of using them is lowered, as
+projects using meson don't have to reimplement the logic.
+
+
 ## Blocks
 
 Enable support for Clang's blocks extension.
