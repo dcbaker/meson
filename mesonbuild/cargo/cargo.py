@@ -21,6 +21,8 @@ import typing as T
 import toml
 
 from .. import mlog
+from ..envconfig import MachineInfo
+from ..environment import normalize_cpu_family
 from ..mesonlib import MesonException, version_compare_many
 from ..optinterpreter import is_invalid_name
 from .nodebuilder import ObjectBuilder, NodeBuilder
@@ -245,6 +247,34 @@ def cargo_version_to_meson_version(req_string: str) -> T.List[str]:
             else:
                 final.append(r)
     return final
+
+
+def parse_triple(triple: str) -> MachineInfo:
+    """Parse a rust style (llvm) triple into a machine info."""
+    # platform, vendor (useless), kernel, userland (should be handled someday)
+    platform, _, kernel, __ = triple.split('-')
+
+    platform = normalize_cpu_family(platform)
+
+    # XXX: little here is a huge hack!
+    return MachineInfo(kernel, platform, platform, 'little')
+
+
+def eval_cfg_expression(expr: str):
+    """Evaluate a cfg() expression.
+
+    cfg expression shave the following properties:
+    - they may contain a couple of non asignment expressions: unix, windows, for example
+    - they may consist of assignment expressions in the form
+        target_arch = "x86"
+        target_os = "linux"
+    - `all()`, `inot()`, `any()` expressions:
+        all(target_arch = "x86", target_os = "linux")
+
+        `all()` and `any()` take comma separate lists of arguments.
+    """
+    # TODO: this probably needs to be in a separate module because it's
+    # probably going to be fucking complicated, and will definately need tests
 
 
 class ManifestInterpreter:
