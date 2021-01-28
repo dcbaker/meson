@@ -43,3 +43,46 @@ class TestLex:
                     Comma(), Identifier('target_arch'), Equal(), Identifier('"aarch64"'), RParen(), RParen(), RParen()]
         actual = lex('cfg(all(not(target_os = "windows"), any(target_arch = "mips", target_arch = "aarch64")))')
         assert expected == actual
+
+
+class TestParse:
+
+    def test_single_function_with_const(self) -> None:
+        expected = AST(FunctionNode('cfg', [ConstantNode('unix')]))
+
+        lexed = lex('cfg(unix)')
+        ast = parse(lexed)
+
+        assert ast == expected
+
+    def test_single_function_with_two_consts(self) -> None:
+        expected = AST(FunctionNode('cfg', [ConstantNode('unix'), ConstantNode('windows')]))
+
+        lexed = lex('cfg(unix, windows)')
+        ast = parse(lexed)
+
+        assert ast == expected
+
+    def test_nested_function_with_const(self) -> None:
+        expected = AST(FunctionNode('cfg', [FunctionNode('not', [ConstantNode('windows')])]))
+
+        lexed = lex('cfg(not(windows))')
+        ast = parse(lexed)
+
+        assert ast == expected
+
+    def test_eq(self) -> None:
+        expected = AST(FunctionNode('cfg', [ConstantNode('target_os'), EqualityNode(), StringNode('windows')]))
+
+        lexed = lex('cfg(target_os = "windows")')
+        ast = parse(lexed)
+
+        assert ast == expected
+
+    def test_deeply_nested(self) -> None:
+        expected = AST(FunctionNode('cfg', [FunctionNode('any', [FunctionNode('all', [ConstantNode('target_os'), EqualityNode(), StringNode('windows'), ConstantNode('target_arch'), EqualityNode(), StringNode('x86')]), ConstantNode('unix')])]))
+
+        lexed = lex('cfg(any(all(target_os = "windows", target_arch = "x86"), unix))')
+        ast = parse(lexed)
+
+        assert ast == expected

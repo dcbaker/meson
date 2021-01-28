@@ -28,6 +28,8 @@ cfg expression shave the following properties:
 
 import typing as T
 
+_T = T.TypeVar('_T')
+
 
 FUNCTIONS = ['cfg', 'not', 'all', 'any']
 
@@ -78,8 +80,6 @@ class RParen(Token):
 
 
 def lex(expr: str) -> T.List[Token]:
-    # TODO: this is probably assigning too much meaning to things. It should
-    # probably just return Identifiers, parens, and commas...
     final: T.List[str] = []
 
     while expr:
@@ -109,5 +109,133 @@ def lex(expr: str) -> T.List[Token]:
     return final
 
 
-def parse(prog: T.List[Token]):
-    # Yeah, do some parsing and stuff
+class AST:
+
+    def __init__(self, root: T.Optional['Node'] = None):
+        self.root = root
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, AST):
+            return NotImplemented
+        return self.root == other.root
+
+    def __repr__(self) -> str:
+        return f'AST({self.root!r})'
+
+
+class Node:
+    pass
+
+
+class FunctionNode(Node):
+
+    def __init__(self, name: str, arguments: T.Optional[T.List[Node]] = None):
+        self.name = name
+        self.arguments: T.List[Node] = arguments or []
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, FunctionNode):
+            return NotImplemented
+        return self.name == other.name and self.arguments == other.arguments
+
+    def __repr__(self) -> str:
+        return f'FunctionNode({self.name}, {self.arguments!r})'
+
+
+class StringNode(Node):
+
+    def __init__(self, value: str):
+        self.value = value
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, StringNode):
+            return NotImplemented
+        return self.value == other.value
+
+    def __repr__(self) -> str:
+        return f'StringNode({self.value})'
+
+
+class ConstantNode(Node):
+
+    def __init__(self, value: str):
+        self.value = value
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ConstantNode):
+            return NotImplemented
+        return self.value == other.value
+
+    def __repr__(self) -> str:
+        return f'ConstantNode({self.value})'
+
+class EqualityNode(Node):
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, EqualityNode):
+            return NotImplemented
+        return True
+
+    def __repr__(self) -> str:
+        return 'EqualityNode()'
+
+
+def lookahead(it: T.Iterator[_T]) -> T.Generator[T.Tuple[_T, T.Optional[_T]], None, None]:
+    """Iterator for single lookahead functionality
+
+    This gnerator yeilds (N, N+1) then (N+1, N+2), etc.
+    """
+    current = next(it)
+    for next_ in it:
+        yield (current, next_)
+        current = next_
+    yield (current, None)
+
+
+def parse(prog: T.List[Token]) -> AST:
+    """Parse the lexed form into a Tree."""
+    tree = AST()
+    stack: T.List[Node] = []
+    node: T.Optional[Node] = None
+
+    for cur, nex in lookahead(iter(prog)):
+        if isinstance(cur, Identifier):
+            if isinstance(nex, LParen):
+                # We have a function
+                node = FunctionNode(cur.identifier)
+                if stack:
+                    p = stack[-1]
+                    assert isinstance(p, FunctionNode)
+                    p.arguments.append(node)
+                stack.append(node)
+            elif isinstance(nex, (RParen, Comma, Equal)):
+                # We have an argument to a function
+                assert isinstance(node, FunctionNode)
+                if cur.identifier.startswith('"'):
+                    node.arguments.append(StringNode(cur.identifier[1:-1]))  # strip the quotes
+                else:
+                    node.arguments.append(ConstantNode(cur.identifier))
+        elif isinstance(cur, Equal):
+            assert isinstance(node, FunctionNode)
+            node.arguments.append(EqualityNode())
+        elif isinstance(cur, RParen):
+            del stack[-1]
+            if stack:
+                node = stack[-1]
+            else:
+                assert nex is None
+        if tree.root is None:
+            tree.root = node
+
+    return tree
+
+
+# def parse(prog: T.List[Token]):
+    #"""Parse the thing, then we'll do some transformations."""
+    # My curren thought is that I'll build an AST, then i'll do some function
+    # passing transformations, like:
+    #   unix -> target_os = "unix"
+    # nothing too caazy, just a few normalizations
+    #
+    # Then we need to transform that into a python function (or functions?)
+    # that can be evaluated.
