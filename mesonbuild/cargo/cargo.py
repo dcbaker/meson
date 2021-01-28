@@ -26,6 +26,7 @@ from ..environment import normalize_cpu_family
 from ..mesonlib import MesonException, version_compare_many
 from ..optinterpreter import is_invalid_name
 from .nodebuilder import ObjectBuilder, NodeBuilder
+from .cfg_parser import Node, parse as cfg_parser
 
 if T.TYPE_CHECKING:
     from .. import mparser
@@ -118,6 +119,9 @@ if T.TYPE_CHECKING:
         total=False
     )
 
+    class TargetDict(TypedDict):
+
+        dependencies: T.Union[str, _DependencyDict]
 
 
     # Type information for a Cargo.toml manifest file.
@@ -131,6 +135,7 @@ if T.TYPE_CHECKING:
             'features': T.Dict[str, T.List[str]],
             'dependencies': T.Dict[str, T.Union[str, _DependencyDict]],
             'dev-dependencies': T.Dict[str, T.Union[str, _DependencyDict]],
+            'target': T.Dict[str, TargetDict],
         },
         total=False,
     )
@@ -247,34 +252,6 @@ def cargo_version_to_meson_version(req_string: str) -> T.List[str]:
             else:
                 final.append(r)
     return final
-
-
-def parse_triple(triple: str) -> MachineInfo:
-    """Parse a rust style (llvm) triple into a machine info."""
-    # platform, vendor (useless), kernel, userland (should be handled someday)
-    platform, _, kernel, __ = triple.split('-')
-
-    platform = normalize_cpu_family(platform)
-
-    # XXX: little here is a huge hack!
-    return MachineInfo(kernel, platform, platform, 'little')
-
-
-def eval_cfg_expression(expr: str):
-    """Evaluate a cfg() expression.
-
-    cfg expression shave the following properties:
-    - they may contain a couple of non asignment expressions: unix, windows, for example
-    - they may consist of assignment expressions in the form
-        target_arch = "x86"
-        target_os = "linux"
-    - `all()`, `inot()`, `any()` expressions:
-        all(target_arch = "x86", target_os = "linux")
-
-        `all()` and `any()` take comma separate lists of arguments.
-    """
-    # TODO: this probably needs to be in a separate module because it's
-    # probably going to be fucking complicated, and will definately need tests
 
 
 class ManifestInterpreter:
@@ -612,6 +589,12 @@ class ManifestInterpreter:
                             with pabuilder.array_builder() as arbuilder:
                                 for name in requires:
                                     arbuilder.positional(self.__get_dependency(builder, name))
+
+        # Next we need to check for target (platform) specific dependencies
+        with builder.if_builder() as ifcbuilder:
+            with ifcbuilder.if_builder() as ifbuilder:
+                with ifbuilder.condition_builder() as cbuilder:
+                    pass
 
     def __emit_dev_dependencies(self, builder: NodeBuilder) -> None:
         """Parse all dev-dependencies

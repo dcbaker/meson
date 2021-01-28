@@ -50,7 +50,7 @@ class Token:
 
 class Identifier(Token):
 
-    """Anything that is not a "(", ")", ",", or "=""""
+    """Anything that is not a '(', ')', ',', or '='"""
 
     pass
 
@@ -72,7 +72,7 @@ class Comma(Token):
 
 
 class LParen(Token):
-    k
+
     """A ("""
 
     def __init__(self):
@@ -232,7 +232,7 @@ def lookahead(it: T.Iterator[_T]) -> T.Generator[T.Tuple[_T, T.Optional[_T]], No
     yield (current, None)
 
 
-def parse(prog: T.List[Token]) -> AST:
+def parser(prog: T.List[Token]) -> AST:
     """Parse the lexed form into a Tree."""
     tree = AST()
     stack: T.List[Node] = []
@@ -332,3 +332,11 @@ def transform_ast(ast: AST, tformers: T.Sequence[T.Callable[[Node], bool]]) -> N
         for node in ast:
             for t in tformers:
                 progress |= t(node)
+
+
+def parse(expr: str) -> AST:
+    lexed = lex(expr)
+    parsed = parser(lexed)
+    transform_ast(parsed, [transform_bare_constant_to_function, transform_eq_to_function])
+
+    return parsed

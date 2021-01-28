@@ -51,7 +51,7 @@ class TestParse:
         expected = AST(FunctionNode('cfg', [ConstantNode('unix')]))
 
         lexed = lex('cfg(unix)')
-        ast = parse(lexed)
+        ast = parser(lexed)
 
         assert ast == expected
 
@@ -59,7 +59,7 @@ class TestParse:
         expected = AST(FunctionNode('cfg', [ConstantNode('unix'), ConstantNode('windows')]))
 
         lexed = lex('cfg(unix, windows)')
-        ast = parse(lexed)
+        ast = parser(lexed)
 
         assert ast == expected
 
@@ -67,7 +67,7 @@ class TestParse:
         expected = AST(FunctionNode('cfg', [FunctionNode('not', [ConstantNode('windows')])]))
 
         lexed = lex('cfg(not(windows))')
-        ast = parse(lexed)
+        ast = parser(lexed)
 
         assert ast == expected
 
@@ -75,7 +75,7 @@ class TestParse:
         expected = AST(FunctionNode('cfg', [ConstantNode('target_os'), EqualityNode(), StringNode('windows')]))
 
         lexed = lex('cfg(target_os = "windows")')
-        ast = parse(lexed)
+        ast = parser(lexed)
 
         assert ast == expected
 
@@ -83,7 +83,7 @@ class TestParse:
         expected = AST(FunctionNode('cfg', [FunctionNode('any', [FunctionNode('all', [ConstantNode('target_os'), EqualityNode(), StringNode('windows'), ConstantNode('target_arch'), EqualityNode(), StringNode('x86')]), ConstantNode('unix')])]))
 
         lexed = lex('cfg(any(all(target_os = "windows", target_arch = "x86"), unix))')
-        ast = parse(lexed)
+        ast = parser(lexed)
 
         assert ast == expected
 
@@ -94,7 +94,7 @@ class TestTransformations:
 
         def test_simple(self) -> None:
             lexed = lex('cfg(target_os = "windows")')
-            parsed = parse(lexed)
+            parsed = parser(lexed)
             transform_ast(parsed, [transform_eq_to_function])
             expected = AST(FunctionNode('cfg', [FunctionNode('equal', [ConstantNode('target_os'), StringNode('windows')])]))
             assert parsed == expected
@@ -102,7 +102,7 @@ class TestTransformations:
 
         def test_simple(self) -> None:
             lexed = lex('cfg(windows)')
-            parsed = parse(lexed)
+            parsed = parser(lexed)
             transform_ast(parsed, [transform_bare_constant_to_function])
             expected = AST(FunctionNode('cfg', [FunctionNode('equal', [ConstantNode('target_family'), StringNode('windows')])]))
             assert parsed == expected
