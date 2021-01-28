@@ -111,7 +111,7 @@ def lex(expr: str) -> T.List[Token]:
 
 class AST:
 
-    def __init__(self, root: T.Optional['Node'] = None):
+    def __init__(self, root: T.Optional['FunctionNode'] = None):
         self.root = root
 
     def __eq__(self, other: object) -> bool:
@@ -121,6 +121,10 @@ class AST:
 
     def __repr__(self) -> str:
         return f'AST({self.root!r})'
+
+    def __iter__(self) -> T.Iterator['Node']:
+        yield self.root
+        yield from self.root
 
 
 class Node:
@@ -140,6 +144,12 @@ class FunctionNode(Node):
 
     def __repr__(self) -> str:
         return f'FunctionNode({self.name}, {self.arguments!r})'
+
+    def __iter__(self) -> T.Iterator[Node]:
+        for node in self.arguments:
+            yield node
+            if isinstance(node, FunctionNode):
+                yield from node
 
 
 class StringNode(Node):
@@ -230,12 +240,65 @@ def parse(prog: T.List[Token]) -> AST:
     return tree
 
 
-# def parse(prog: T.List[Token]):
-    #"""Parse the thing, then we'll do some transformations."""
-    # My curren thought is that I'll build an AST, then i'll do some function
-    # passing transformations, like:
-    #   unix -> target_os = "unix"
-    # nothing too caazy, just a few normalizations
-    #
-    # Then we need to transform that into a python function (or functions?)
-    # that can be evaluated.
+def transform_eq_to_function(node: Node) -> bool:
+    """Lower cases of the use of = to a function.
+
+    It's easier to work with `eq(const, str)` than `const = str`
+    """
+    progress = False
+    if not isinstance(node, FunctionNode):
+        return progress
+
+    eq = EqualityNode()
+
+    while eq in node.arguments:
+        i = node.arguments.index(eq)
+        func = FunctionNode('equal', [node.arguments[i - 1], node.arguments[i + 1]])
+        args = node.arguments.copy()
+        args[i - 1] = func
+        del args[i:i + 2]  # left is inclusive, right is exclusive
+        node.arguments = args
+        progress = True
+
+    return progress
+
+
+def transform_bare_constant_to_function(node: Node) -> bool:
+    """Transform bare constants into equality functions
+
+    cargo has a short hand syntax to replace `target_famil = "foo"` with
+    simply "foo". To make later handling more uniform let's convert that to
+    `equal(target_family, "foo")`
+    """
+    progress = False
+    if not isinstance(node, FunctionNode):
+        return progress
+
+    for const in [ConstantNode("unix"), ConstantNode("windows")]:
+        while True:
+            try:
+                i = node.arguments.index(const)
+            except ValueError:
+                break
+
+            n = node.arguments[i]
+            assert isinstance(n, ConstantNode), 'for mypy'
+            func = FunctionNode('equal', [ConstantNode('target_family'), StringNode(n.value)])
+            node.arguments[i] = func
+            progress = True
+
+    return progress
+
+
+def transform_ast(ast: AST, tformers: T.Sequence[T.Callable[[Node], bool]]) -> None:
+    """Run a sequence of callables on the AST.
+
+    Each transformation function should make transformations, and return True
+    if it made changes, otherwise return False.
+    """
+    progress = True
+    while progress:
+        progress = False
+        for node in ast:
+            for t in tformers:
+                progress |= t(node)

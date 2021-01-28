@@ -86,3 +86,23 @@ class TestParse:
         ast = parse(lexed)
 
         assert ast == expected
+
+
+class TestTransformations:
+
+    class TestEqToFunction:
+
+        def test_simple(self) -> None:
+            lexed = lex('cfg(target_os = "windows")')
+            parsed = parse(lexed)
+            transform_ast(parsed, [transform_eq_to_function])
+            expected = AST(FunctionNode('cfg', [FunctionNode('equal', [ConstantNode('target_os'), StringNode('windows')])]))
+            assert parsed == expected
+    class TestBareConst:
+
+        def test_simple(self) -> None:
+            lexed = lex('cfg(windows)')
+            parsed = parse(lexed)
+            transform_ast(parsed, [transform_bare_constant_to_function])
+            expected = AST(FunctionNode('cfg', [FunctionNode('equal', [ConstantNode('target_family'), StringNode('windows')])]))
+            assert parsed == expected
