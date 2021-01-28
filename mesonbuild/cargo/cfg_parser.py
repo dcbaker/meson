@@ -31,9 +31,6 @@ import typing as T
 _T = T.TypeVar('_T')
 
 
-FUNCTIONS = ['cfg', 'not', 'all', 'any']
-
-
 class Token:
 
     """Base class for lex tokens."""
@@ -52,10 +49,15 @@ class Token:
 
 
 class Identifier(Token):
+
+    """Anything that is not a "(", ")", ",", or "=""""
+
     pass
 
 
 class Equal(Token):
+
+    """An ="""
 
     def __init__(self):
         super().__init__('=')
@@ -63,11 +65,15 @@ class Equal(Token):
 
 class Comma(Token):
 
+    """A ,"""
+
     def __init__(self):
         super().__init__(',')
 
 
 class LParen(Token):
+    k
+    """A ("""
 
     def __init__(self):
         super().__init__('(')
@@ -75,11 +81,14 @@ class LParen(Token):
 
 class RParen(Token):
 
+    """A )"""
+
     def __init__(self):
         super().__init__(')')
 
 
 def lex(expr: str) -> T.List[Token]:
+    """Lex the cfg, reducing it to a flat list of tokens."""
     final: T.List[str] = []
 
     while expr:
@@ -111,6 +120,8 @@ def lex(expr: str) -> T.List[Token]:
 
 class AST:
 
+    """Abstract Syntax Tree for cfg() expression."""
+
     def __init__(self, root: T.Optional['FunctionNode'] = None):
         self.root = root
 
@@ -128,10 +139,13 @@ class AST:
 
 
 class Node:
-    pass
+
+    """Base Node class for the Parser."""
 
 
 class FunctionNode(Node):
+
+    """Node for a function call and it's arguments."""
 
     def __init__(self, name: str, arguments: T.Optional[T.List[Node]] = None):
         self.name = name
@@ -154,6 +168,8 @@ class FunctionNode(Node):
 
 class StringNode(Node):
 
+    """Node for a string."""
+
     def __init__(self, value: str):
         self.value = value
 
@@ -168,6 +184,14 @@ class StringNode(Node):
 
 class ConstantNode(Node):
 
+    """Node for a constant.
+
+    This is kinda tricky, there are a bunch of pre-defined constant things in
+    cargo's cfg() expressions. This includes things like `target_os` and
+    `target_endian`. We store these as constants as we can look them up from
+    tables later.
+    """
+
     def __init__(self, value: str):
         self.value = value
 
@@ -180,6 +204,12 @@ class ConstantNode(Node):
         return f'ConstantNode({self.value})'
 
 class EqualityNode(Node):
+
+    """Node used to represent an equality check.
+
+    We're going to lower these away pretty quickly, as they annoying to deal
+    with compared to a function call.
+    """
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, EqualityNode):
