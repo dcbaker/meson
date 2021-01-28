@@ -49,14 +49,6 @@ class Token:
         return f'{type(self).__name__}({self.identifier})'
 
 
-class Function(Token):
-    pass
-
-
-class String(Token):
-    pass
-
-
 class Identifier(Token):
     pass
 
@@ -93,14 +85,12 @@ def lex(expr: str) -> T.List[Token]:
     while expr:
         for i, c in enumerate(expr):
             if c == '(':
-                final.append(Function(expr[:i]))
+                final.append(Identifier(expr[:i]))
                 final.append(LParen())
                 i += 1  # for the paren
                 break
             if c in {' ', ')', ','}:
-                if expr[0] == '"':
-                    final.append(String(expr[1:i - 1]))
-                elif expr[0] == '=':
+                if expr[0] == '=':
                     final.append(Equal())
                 elif i:  # not if the first character is not a comma, space, or )
                     final.append(Identifier(expr[:i]))
