@@ -21,7 +21,7 @@ from collections import OrderedDict
 from .mesonlib import (
     MesonException, EnvironmentException, MachineChoice, PerMachine,
     default_libdir, default_libexecdir, default_prefix, split_args,
-    OptionKey, OptionType,
+    OptionKey, OptionType, listify
 )
 from .wrap import WrapMode
 import ast
@@ -863,7 +863,8 @@ def _evaluate_statement(node: mparser.BaseNode, scope: T.Mapping[str, 'ConfigFil
     elif isinstance(node, mparser.NumberNode):
         return node.value
     elif isinstance(node, mparser.ArrayNode):
-        return [_evaluate_statement(arg, scope) for arg in node.args.arguments]
+        # Flatten the list
+        return listify([_evaluate_statement(arg, scope) for arg in node.args.arguments])
     elif isinstance(node, mparser.IdNode):
         return scope[node.value]
     elif isinstance(node, mparser.ArithmeticNode):
