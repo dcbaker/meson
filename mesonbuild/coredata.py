@@ -817,6 +817,13 @@ class CoreData:
             mlog.warning('Base option \'b_bitcode\' is enabled, which is incompatible with many linker options. Incompatible options such as \'b_asneeded\' have been disabled.', fatal=False)
             mlog.warning('Please see https://mesonbuild.com/Builtin-options.html#Notes_about_Apple_Bitcode_support for more details.', fatal=False)
 
+
+if T.TYPE_CHECKING:
+    # XXX: we could probably use TypeDict for this...
+    ConfigFileValues = T.Union[str, int, bool, T.List[str], T.List[bool], T.List[int], T.Dict[str, 'ConfigFileValues']]
+    ConfigFileType = T.Dict[str, ConfigFileValues]
+
+
 class CmdLineFileParser(configparser.ConfigParser):
     def __init__(self) -> None:
         # We don't want ':' as key delimiter, otherwise it would break when
@@ -827,68 +834,76 @@ class CmdLineFileParser(configparser.ConfigParser):
         # Don't call str.lower() on keys
         return option
 
-class MachineFileParser():
-    def __init__(self, filenames: T.List[str]) -> None:
-        self.parser = CmdLineFileParser()
-        self.constants = {'True': True, 'False': False}
-        self.sections = {}
 
-        self.parser.read(filenames)
+def _parse_section(s: T.Mapping[str, T.Union[str, bool, int]], constants: T.Dict[str, object]) -> ConfigFileType:
+    scope = constants.copy()
+    section: ConfigFileType = {}
+    for entry, value in s.items():
+        if ' ' in entry or '\t' in entry or "'" in entry or '"' in entry:
+            raise EnvironmentException(f'Malformed variable name {entry!r} in machine file.')
+        # Windows paths...
+        value = value.replace('\\', '\\\\')
+        try:
+            ast = mparser.Parser(value, 'machinefile').parse()
+            res = _evaluate_statement(ast.lines[0], scope)
+        except MesonException:
+            raise EnvironmentException(f'Malformed value in machine file variable {entry!r}.')
+        except KeyError as e:
+            raise EnvironmentException('Undefined constant {!r} in machine file variable {!r}.'.format(e.args[0], entry))
+        section[entry] = res
+        scope[entry] = res
+    return section
 
-        # Parse [constants] first so they can be used in other sections
-        if self.parser.has_section('constants'):
-            self.constants.update(self._parse_section('constants'))
 
-        for s in self.parser.sections():
-            if s == 'constants':
-                continue
-            self.sections[s] = self._parse_section(s)
+def _evaluate_statement(node: mparser.BaseNode, scope: T.Mapping[str, 'ConfigFileValues']) -> 'ConfigFileValues':
+    if isinstance(node, (mparser.StringNode)):
+        return node.value
+    elif isinstance(node, mparser.BooleanNode):
+        return node.value
+    elif isinstance(node, mparser.NumberNode):
+        return node.value
+    elif isinstance(node, mparser.ArrayNode):
+        return [_evaluate_statement(arg, scope) for arg in node.args.arguments]
+    elif isinstance(node, mparser.IdNode):
+        return scope[node.value]
+    elif isinstance(node, mparser.ArithmeticNode):
+        l = _evaluate_statement(node.left, scope)
+        r = _evaluate_statement(node.right, scope)
+        if node.operation == 'add':
+            if (isinstance(l, str) and isinstance(r, str)):
+                return l + r
+            elif (isinstance(l, list) and isinstance(r, list)):
+                return l + r
+        elif node.operation == 'div':
+            if isinstance(l, str) and isinstance(r, str):
+                return os.path.join(l, r)
+    raise EnvironmentException('Unsupported node type')
 
-    def _parse_section(self, s):
-        self.scope = self.constants.copy()
-        section = {}
-        for entry, value in self.parser.items(s):
-            if ' ' in entry or '\t' in entry or "'" in entry or '"' in entry:
-                raise EnvironmentException(f'Malformed variable name {entry!r} in machine file.')
-            # Windows paths...
-            value = value.replace('\\', '\\\\')
-            try:
-                ast = mparser.Parser(value, 'machinefile').parse()
-                res = self._evaluate_statement(ast.lines[0])
-            except MesonException:
-                raise EnvironmentException(f'Malformed value in machine file variable {entry!r}.')
-            except KeyError as e:
-                raise EnvironmentException('Undefined constant {!r} in machine file variable {!r}.'.format(e.args[0], entry))
-            section[entry] = res
-            self.scope[entry] = res
-        return section
 
-    def _evaluate_statement(self, node):
-        if isinstance(node, (mparser.StringNode)):
-            return node.value
-        elif isinstance(node, mparser.BooleanNode):
-            return node.value
-        elif isinstance(node, mparser.NumberNode):
-            return node.value
-        elif isinstance(node, mparser.ArrayNode):
-            return [self._evaluate_statement(arg) for arg in node.args.arguments]
-        elif isinstance(node, mparser.IdNode):
-            return self.scope[node.value]
-        elif isinstance(node, mparser.ArithmeticNode):
-            l = self._evaluate_statement(node.left)
-            r = self._evaluate_statement(node.right)
-            if node.operation == 'add':
-                if (isinstance(l, str) and isinstance(r, str)) or \
-                   (isinstance(l, list) and isinstance(r, list)):
-                    return l + r
-            elif node.operation == 'div':
-                if isinstance(l, str) and isinstance(r, str):
-                    return os.path.join(l, r)
-        raise EnvironmentException('Unsupported node type')
+def parse_machine_files(filename: str) -> 'ConfigFileType':
+    sections: 'ConfigFileType' = {}
+    constants: T.Dict[str, object] = {'True': True, 'False': False}
 
-def parse_machine_files(filenames):
-    parser = MachineFileParser(filenames)
-    return parser.sections
+    parser = CmdLineFileParser()
+    parser.read(filename)
+
+    if parser.has_section('constants'):
+        constants.update(_parse_section(parser['constants'], constants))
+
+    for section, values in parser.items():
+        target: ConfigFileType = sections
+        for s in section.split('.'):
+            if s not in target:
+                target[s] = {}
+            elif not isinstance(target[s], dict):
+                # TODO: better message
+                raise MesonException('Cannot have a subsection and a value with the same name')
+            # Mypy can't figure out that target[s] is a ConfigFileType for some reason
+            target = T.cast('ConfigFileType', target[s])
+        target.update(_parse_section(values, constants))
+
+    return sections
+
 
 def get_cmd_line_file(build_dir: str) -> str:
     return os.path.join(build_dir, 'meson-private', 'cmd_line.txt')
