@@ -2633,7 +2633,7 @@ class ConfigurationData:
 class Data:
     def __init__(self, sources: T.List[File], install_dir: str,
                  install_mode: T.Optional['FileMode'], subproject: str,
-                 rename: T.List[str] = None):
+                 rename: T.Optional[T.List[str]] = None):
         self.sources = sources
         self.install_dir = install_dir
         self.install_mode = install_mode
