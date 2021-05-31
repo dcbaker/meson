@@ -1,3 +1,4 @@
+from mesonbuild.build import ConfigurationData
 import os
 import shlex
 import subprocess
@@ -337,7 +338,7 @@ class ConfigurationDataHolder(MutableInterpreterObject, ObjectHolder[build.Confi
 
     @typed_pos_args('configuration_data.has', str)
     @noKwargs
-    def has_method(self, args: T.Tupel[str], kwargs: T.Dict) -> bool:
+    def has_method(self, args: T.Tuple[str], kwargs: T.Dict) -> bool:
         return args[0] in self.held_object.values
 
     @FeatureNew('configuration_data.get()', '0.38.0')
@@ -354,16 +355,15 @@ class ConfigurationDataHolder(MutableInterpreterObject, ObjectHolder[build.Confi
             raise InterpreterException(f'Entry {name} is not in configuration data.')
 
     @FeatureNew('configuration_data.get_unquoted()', '0.44.0')
-    def get_unquoted_method(self, args, kwargs):
-        if len(args) < 1 or len(args) > 2:
-            raise InterpreterException('Get method takes one or two arguments.')
-        name = args[0]
-        if name in self.held_object:
-            val = self.held_object.get(name)[0]
-        elif len(args) > 1:
-            val = args[1]
-        else:
-            raise InterpreterException('Entry %s not in configuration data.' % name)
+    @typed_pos_args('configuration_data.get_unquoted', str, optargs=[str])
+    @noKwargs
+    def get_unquoted_method(self, args: T.Tuple[str, T.Optional[str]], kwargs: T.Dict) -> str:
+        name, fallback = args
+        val = self.held_object.values.get(name, fallback)
+        if val is None:
+            raise InterpreterException(f'Entry {name} is not in configuration data.')
+        if not isinstance(val, str):
+            raise InterpreterException(f'Entry {name} is not a string, and thus cannot be unquoted.')
         if val[0] == '"' and val[-1] == '"':
             return val[1:-1]
         return val
@@ -373,21 +373,24 @@ class ConfigurationDataHolder(MutableInterpreterObject, ObjectHolder[build.Confi
 
     @FeatureNew('configuration_data.keys()', '0.57.0')
     @noPosargs
-    def keys_method(self, args, kwargs):
+    @noKwargs
+    def keys_method(self, args: T.Tuple, kwargs: T.Dict) -> T.List[str]:
         return sorted(self.keys())
 
-    def keys(self):
+    def keys(self) -> T.KeysView[str]:
         return self.held_object.values.keys()
 
-    def merge_from_method(self, args, kwargs):
-        if len(args) != 1:
-            raise InterpreterException('Merge_from takes one positional argument.')
-        from_object = args[0]
-        if not isinstance(from_object, ConfigurationDataHolder):
-            raise InterpreterException('Merge_from argument must be a configuration data object.')
-        from_object = from_object.held_object
-        for k, v in from_object.values.items():
-            self.held_object.values[k] = v
+    # We cannot use ConfigurationDataHolder here, because it doesn't yet exist
+    # Instead we check object, which at least checks the length and sets the
+    # tuple for us, then we do the type check in the body.
+    @typed_pos_args('configuration_data.merge_from', object)
+    @noKwargs
+    def merge_from_method(self, args: T.Tuple[object], kwargs: T.Dict) -> None:
+        from_data = args[0]
+        if not isinstance(from_data, ConfigurationDataHolder):
+            raise InvalidArguments('First argument to configuration_data.merge_from '
+                                   'must be a configuration_data object.')
+        self.held_object.values.update(from_data.held_object.values)
 
 _PARTIAL_KW = [
     KwargInfo('compile_args', bool, default=False),
