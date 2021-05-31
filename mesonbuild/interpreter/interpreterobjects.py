@@ -62,6 +62,10 @@ if T.TYPE_CHECKING:
         includes: bool
         sources: bool
 
+    class DescKW(TypedDict):
+        """keyword arguments for configuration_data methods."""
+        description: T.Optional[str]
+
 
 def extract_required_kwarg(kwargs, subproject, feature_check=None, default=True):
     val = kwargs.get('required', default)
@@ -278,13 +282,13 @@ class ConfigurationDataHolder(MutableInterpreterObject, ObjectHolder[build.Confi
         elif initial_values:
             raise AssertionError('Unsupported ConfigurationDataHolder initial_values')
 
-    def is_used(self):
+    def is_used(self) -> bool:
         return self.used
 
-    def mark_used(self):
+    def mark_used(self) -> bool:
         self.used = True
 
-    def validate_args(self, args, kwargs):
+    def validate_args(self, args) -> T.Tuple[str, T.Union[str, int]]:
         if len(args) == 1 and isinstance(args[0], list) and len(args[0]) == 2:
             mlog.deprecation('Passing a list as the single argument to '
                              'configuration_data.set is deprecated. This will '
@@ -297,52 +301,57 @@ class ConfigurationDataHolder(MutableInterpreterObject, ObjectHolder[build.Confi
         if self.used:
             raise InterpreterException("Can not set values on configuration object that has been used.")
         name, val = args
+        if not isinstance(name, str):
+            raise InvalidArguments('First parameter to configuration methods must be a string')
         if not isinstance(val, (int, str)):
             msg = 'Setting a configuration data value to {!r} is invalid, ' \
                   'and will fail at configure_file(). If you are using it ' \
                   'just to store some values, please use a dict instead.'
             mlog.deprecation(msg.format(val), location=self.current_node)
-        desc = kwargs.get('description', None)
-        if not isinstance(name, str):
-            raise InterpreterException("First argument to set must be a string.")
-        if desc is not None and not isinstance(desc, str):
-            raise InterpreterException('Description must be a string.')
 
-        return name, val, desc
+        return name, val
 
     @noArgsFlattening
-    def set_method(self, args, kwargs):
-        (name, val, desc) = self.validate_args(args, kwargs)
-        self.held_object.values[name] = (val, desc)
+    @typed_kwargs('configuration_data.set', KwargInfo('description', str))
+    def set_method(self, args, kwargs: 'DescKW') -> None:
+        name, val = self.validate_args(args)
+        self.held_object.values[name] = (val, kwargs['description'])
 
-    def set_quoted_method(self, args, kwargs):
-        (name, val, desc) = self.validate_args(args, kwargs)
+    @typed_kwargs('configuration_data.set_quoted', KwargInfo('description', str))
+    def set_quoted_method(self, args, kwargs: 'DescKW') -> None:
+        name, val = self.validate_args(args)
         if not isinstance(val, str):
             raise InterpreterException("Second argument to set_quoted must be a string.")
         escaped_val = '\\"'.join(val.split('"'))
-        self.held_object.values[name] = ('"' + escaped_val + '"', desc)
+        self.held_object.values[name] = (f'"{escaped_val}"', kwargs['description'])
 
-    def set10_method(self, args, kwargs):
-        (name, val, desc) = self.validate_args(args, kwargs)
+    @typed_kwargs('configuration_data.set10', KwargInfo('description', str))
+    def set10_method(self, args, kwargs: 'DescKW') -> None:
+        # TODO; Do we really want to accept anything except bool here?
+        name, val = self.validate_args(args)
+        desc = kwargs['description']
         if val:
             self.held_object.values[name] = (1, desc)
         else:
             self.held_object.values[name] = (0, desc)
 
-    def has_method(self, args, kwargs):
+    @typed_pos_args('configuration_data.has', str)
+    @noKwargs
+    def has_method(self, args: T.Tupel[str], kwargs: T.Dict) -> bool:
         return args[0] in self.held_object.values
 
     @FeatureNew('configuration_data.get()', '0.38.0')
     @noArgsFlattening
-    def get_method(self, args, kwargs):
-        if len(args) < 1 or len(args) > 2:
-            raise InterpreterException('Get method takes one or two arguments.')
-        name = args[0]
-        if name in self.held_object:
+    @typed_pos_args('configuration_data.get', str, optargs=[object])
+    @noKwargs
+    def get_method(self, args: T.Tuple[str, T.Optional[object]], kwargs: T.Dict) -> T.Union[str, bool, int]:
+        name, fallback = args
+        try:
             return self.held_object.get(name)[0]
-        if len(args) > 1:
-            return args[1]
-        raise InterpreterException('Entry %s not in configuration data.' % name)
+        except KeyError:
+            if fallback is not None:
+                return fallback
+            raise InterpreterException(f'Entry {name} is not in configuration data.')
 
     @FeatureNew('configuration_data.get_unquoted()', '0.44.0')
     def get_unquoted_method(self, args, kwargs):
@@ -359,7 +368,7 @@ class ConfigurationDataHolder(MutableInterpreterObject, ObjectHolder[build.Confi
             return val[1:-1]
         return val
 
-    def get(self, name):
+    def get(self, name: str) -> T.Tuple[T.Union[str, int, bool], T.Optional[str]]:
         return self.held_object.values[name] # (val, desc)
 
     @FeatureNew('configuration_data.keys()', '0.57.0')

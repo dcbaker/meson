@@ -2611,11 +2611,12 @@ class CustomTargetIndex:
         return self.target.get_custom_install_dir()
 
 class ConfigurationData:
+
     def __init__(self) -> None:
         super().__init__()
-        self.values = {}  # T.Dict[str, T.Union[str, int, bool]]
+        self.values: T.Dict[str, T.Tuple[T.Union[str, int, bool], T.Optional[str]]] = {}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self.values)
 
     def __contains__(self, value: str) -> bool:
