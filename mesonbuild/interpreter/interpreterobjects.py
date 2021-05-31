@@ -741,7 +741,7 @@ class DataHolder(InterpreterObject, ObjectHolder[build.Data]):
     def get_install_dir(self):
         return self.held_object.install_dir
 
-class InstallDirHolder(InterpreterObject, ObjectHolder[build.IncludeDirs]):
+class InstallDirHolder(InterpreterObject, ObjectHolder[build.InstallDir]):
 
     def __init__(self, obj: build.InstallDir):
         InterpreterObject.__init__(self)
