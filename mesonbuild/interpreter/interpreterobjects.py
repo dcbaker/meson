@@ -1,4 +1,3 @@
-from mesonbuild.build import ConfigurationData
 import os
 import shlex
 import subprocess
@@ -836,7 +835,7 @@ class ModuleObjectHolder(InterpreterObject, ObjectHolder['ModuleObject']):
         ObjectHolder.__init__(self, modobj)
         self.interpreter = interpreter
 
-    def method_call(self, method_name, args, kwargs):
+    def method_call(self, method_name: str, args, kwargs):
         modobj = self.held_object
         method = modobj.methods.get(method_name)
         if not method:
@@ -954,7 +953,8 @@ class SharedLibraryHolder(BuildTargetHolder[build.SharedLibrary]):
         target.shared_library_only = False
 
 class BothLibrariesHolder(BuildTargetHolder):
-    def __init__(self, shared_holder, static_holder, interp):
+    def __init__(self, shared_holder: SharedLibraryHolder, static_holder: StaticLibraryHolder,
+                 interp: 'Interpreter'):
         # FIXME: This build target always represents the shared library, but
         # that should be configurable.
         super().__init__(shared_holder.held_object, interp)
@@ -964,7 +964,7 @@ class BothLibrariesHolder(BuildTargetHolder):
                              'get_static_lib': self.get_static_lib_method,
                              })
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         r = '<{} {}: {}, {}: {}>'
         h1 = self.shared_holder.held_object
         h2 = self.static_holder.held_object
@@ -972,19 +972,22 @@ class BothLibrariesHolder(BuildTargetHolder):
 
     @noPosargs
     @noKwargs
-    def get_shared_lib_method(self, args, kwargs):
+    def get_shared_lib_method(self, args: T.Tuple, kwargs: T.Dict) -> SharedLibraryHolder:
         return self.shared_holder
 
     @noPosargs
     @noKwargs
-    def get_static_lib_method(self, args, kwargs):
+    def get_static_lib_method(self, args: T.Tuple, kwargs: T.Dict) -> StaticLibraryHolder:
         return self.static_holder
+
 
 class SharedModuleHolder(BuildTargetHolder[build.SharedModule]):
     pass
 
+
 class JarHolder(BuildTargetHolder[build.Jar]):
     pass
+
 
 class CustomTargetIndexHolder(TargetHolder[build.CustomTargetIndex]):
     def __init__(self, target: build.CustomTargetIndex, interp: 'Interpreter'):
@@ -1041,7 +1044,7 @@ class RunTargetHolder(TargetHolder):
     def __init__(self, target, interp):
         super().__init__(target, interp)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         r = '<{} {}: {}>'
         h = self.held_object
         return r.format(self.__class__.__name__, h.get_id(), h.command)
