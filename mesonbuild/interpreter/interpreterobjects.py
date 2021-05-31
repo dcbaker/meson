@@ -752,8 +752,8 @@ class Test(InterpreterObject):
 
 class SubprojectHolder(InterpreterObject, ObjectHolder[T.Optional['Interpreter']]):
 
-    def __init__(self, subinterpreter: T.Optional['Interpreter'], subdir: str, warnings=0, disabled_feature=None,
-                 exception=None):
+    def __init__(self, subinterpreter: T.Optional['Interpreter'], subdir: str, warnings: int = 0,
+                 disabled_feature=None, exception=None):
         InterpreterObject.__init__(self)
         ObjectHolder.__init__(self, subinterpreter)
         self.warnings = warnings
@@ -766,31 +766,25 @@ class SubprojectHolder(InterpreterObject, ObjectHolder[T.Optional['Interpreter']
 
     @noPosargs
     @noKwargs
-    def found_method(self, args, kwargs):
+    def found_method(self, args: T.Tuple, kwargs: T.Dict) -> bool:
         return self.found()
 
-    def found(self):
+    def found(self) -> bool:
         return self.held_object is not None
 
-    @noKwargs
     @noArgsFlattening
-    def get_variable_method(self, args, kwargs):
-        if len(args) < 1 or len(args) > 2:
-            raise InterpreterException('Get_variable takes one or two arguments.')
+    @typed_pos_args('subproject.get_variable', str, optargs=[object])
+    @noKwargs
+    def get_variable_method(self, args: T.Tuple[str, T.Optional[object]], kwargs: T.Dict) -> object:
         if not self.found():
             raise InterpreterException('Subproject "%s" disabled can\'t get_variable on it.' % (self.subdir))
-        varname = args[0]
-        if not isinstance(varname, str):
-            raise InterpreterException('Get_variable first argument must be a string.')
+        varname, fallback = args
         try:
             return self.held_object.variables[varname]
         except KeyError:
-            pass
-
-        if len(args) == 2:
-            return args[1]
-
-        raise InvalidArguments(f'Requested variable "{varname}" not found.')
+            if fallback is not None:
+                return fallback
+            raise InvalidArguments(f'Requested variable "{varname}" not found.')
 
 class ModuleObjectHolder(InterpreterObject, ObjectHolder['ModuleObject']):
     def __init__(self, modobj: 'ModuleObject', interpreter: 'Interpreter'):
@@ -848,12 +842,12 @@ class BuildTargetHolder(TargetHolder[_BuildTarget]):
                              'private_dir_include': self.private_dir_include_method,
                              })
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         r = '<{} {}: {}>'
         h = self.held_object
         return r.format(self.__class__.__name__, h.get_id(), h.filename)
 
-    def is_cross(self):
+    def is_cross(self) -> bool:
         return not self.held_object.environment.machines.matches_build_machine(self.held_object.for_machine)
 
     @noPosargs
