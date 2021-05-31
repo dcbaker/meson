@@ -885,16 +885,14 @@ class BuildTarget(Target):
             if t in self.kwargs:
                 self.kwargs[t] = self.unpack_holder(self.kwargs[t])
 
-    def extract_objects(self, srclist):
-        obj_src = []
+    def extract_objects(self, srclist: T.Sequence['FileOrString']) -> ExtractedObjects:
+        obj_src: T.List[File] = []
         sources_set = set(self.sources)
         for src in srclist:
             if isinstance(src, str):
                 src = File(False, self.subdir, src)
             elif isinstance(src, File):
                 FeatureNew.single_use('File argument for extract_objects', '0.50.0', self.subproject)
-            else:
-                raise MesonException('Object extraction arguments must be strings or Files.')
             # FIXME: It could be a generated source
             if src not in sources_set:
                 raise MesonException(f'Tried to extract unknown source {src}.')

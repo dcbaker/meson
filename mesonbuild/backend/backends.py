@@ -308,7 +308,7 @@ class Backend:
         raise AssertionError(f'BUG: Tried to link to {target!r} which is not linkable')
 
     @lru_cache(maxsize=None)
-    def get_target_dir(self, target):
+    def get_target_dir(self, target) -> str:
         if self.environment.coredata.get_option(OptionKey('layout')) == 'mirror':
             dirname = target.get_subdir()
         else:

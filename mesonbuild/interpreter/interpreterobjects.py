@@ -34,6 +34,10 @@ if T.TYPE_CHECKING:
     class EnvHolderArgs(TypedDict):
         separator: str
 
+    class ExtractAllObjKW(TypedDict):
+        """Keyword arguments for BuildTargetHolder.extract_all_objects"""
+        recursive: T.Optional[bool]  # None is deprecated and should default to False
+
 
 def extract_required_kwarg(kwargs, subproject, feature_check=None, default=True):
     val = kwargs.get('required', default)
@@ -854,32 +858,33 @@ class BuildTargetHolder(TargetHolder[_BuildTarget]):
 
     @noPosargs
     @noKwargs
-    def private_dir_include_method(self, args, kwargs):
+    def private_dir_include_method(self, args: T.Tuple, kwargs: T.Dict) -> IncludeDirsHolder:
         return IncludeDirsHolder(build.IncludeDirs('', [], False,
                                                    [self.interpreter.backend.get_target_private_dir(self.held_object)]))
 
     @noPosargs
     @noKwargs
-    def full_path_method(self, args, kwargs):
+    def full_path_method(self, args: T.Tuple, kwargs: T.Dict) -> str:
         return self.interpreter.backend.get_target_filename_abs(self.held_object)
 
     @noPosargs
     @noKwargs
-    def outdir_method(self, args, kwargs):
+    def outdir_method(self, args: T.Tuple, kwargs: T.Dict) -> str:
         return self.interpreter.backend.get_target_dir(self.held_object)
 
     @noKwargs
-    def extract_objects_method(self, args, kwargs):
-        gobjs = self.held_object.extract_objects(args)
+    @typed_pos_args('build_target.extract_objects', varargs=(str, mesonlib.File), min_varargs=1)
+    def extract_objects_method(self, args: T.Tuple[T.List['mesonlib.FileOrString']], kwargs: T.Dict[str, object]) -> GeneratedObjectsHolder:
+        gobjs = self.held_object.extract_objects(args[0])
         return GeneratedObjectsHolder(gobjs)
 
     @FeatureNewKwargs('extract_all_objects', '0.46.0', ['recursive'])
     @noPosargs
-    @permittedKwargs({'recursive'})
-    def extract_all_objects_method(self, args, kwargs):
-        recursive = kwargs.get('recursive', False)
+    @typed_kwargs('build_target.extract_all_objects', KwargInfo('recursive', bool))
+    def extract_all_objects_method(self, args: T.Tuple, kwargs: 'ExtractAllObjKW') -> GeneratedObjectsHolder:
+        recursive = kwargs['recursive'] is True  # convert None to false
         gobjs = self.held_object.extract_all_objects(recursive)
-        if gobjs.objlist and 'recursive' not in kwargs:
+        if gobjs.objlist and kwargs['recursive'] is None:
             mlog.warning('extract_all_objects called without setting recursive '
                          'keyword argument. Meson currently defaults to '
                          'non-recursive to maintain backward compatibility but '
@@ -889,13 +894,13 @@ class BuildTargetHolder(TargetHolder[_BuildTarget]):
 
     @noPosargs
     @noKwargs
-    def get_id_method(self, args, kwargs):
+    def get_id_method(self, args: T.Tuple, kwargs: T.Dict) -> str:
         return self.held_object.get_id()
 
     @FeatureNew('name', '0.54.0')
     @noPosargs
     @noKwargs
-    def name_method(self, args, kwargs):
+    def name_method(self, args: T.Tuple, kwargs: T.Dict) -> str:
         return self.held_object.name
 
 class ExecutableHolder(BuildTargetHolder[build.Executable]):
