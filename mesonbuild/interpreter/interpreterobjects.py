@@ -66,8 +66,13 @@ if T.TYPE_CHECKING:
         """keyword arguments for configuration_data methods."""
         description: T.Optional[str]
 
+    class ExtractRequiredKw(TypedDict, total=False):
+        required: T.Union[bool, 'FeatureOptionHolder']
 
-def extract_required_kwarg(kwargs, subproject, feature_check=None, default=True):
+
+def extract_required_kwarg(kwargs: 'ExtractRequiredKw', subproject: str,
+                           feature_check: T.Optional[FeatureNew] = None,
+                           default: bool = True) -> T.Tuple[bool, bool, T.Optional[str]]:
     val = kwargs.get('required', default)
     disabled = False
     required = False
@@ -93,7 +98,7 @@ def extract_required_kwarg(kwargs, subproject, feature_check=None, default=True)
 
     return disabled, required, feature
 
-def extract_search_dirs(kwargs):
+def extract_search_dirs(kwargs: T.Dict[str, T.List[str]]) -> T.List[str]:
     search_dirs = mesonlib.stringlistify(kwargs.get('dirs', []))
     search_dirs = [Path(d).expanduser() for d in search_dirs]
     for d in search_dirs:
@@ -120,17 +125,17 @@ class FeatureOptionHolder(InterpreterObject, ObjectHolder[coredata.UserFeatureOp
 
     @noPosargs
     @noKwargs
-    def enabled_method(self, args, kwargs):
+    def enabled_method(self, args, kwargs) -> bool:
         return self.held_object.is_enabled()
 
     @noPosargs
     @noKwargs
-    def disabled_method(self, args, kwargs):
+    def disabled_method(self, args, kwargs) -> bool:
         return self.held_object.is_disabled()
 
     @noPosargs
     @noKwargs
-    def auto_method(self, args, kwargs):
+    def auto_method(self, args, kwargs) -> bool:
         return self.held_object.is_auto()
 
 class RunProcess(InterpreterObject):
@@ -184,17 +189,17 @@ class RunProcess(InterpreterObject):
 
     @noPosargs
     @noKwargs
-    def returncode_method(self, args, kwargs):
+    def returncode_method(self, args, kwargs) -> int:
         return self.returncode
 
     @noPosargs
     @noKwargs
-    def stdout_method(self, args, kwargs):
+    def stdout_method(self, args, kwargs) -> str:
         return self.stdout
 
     @noPosargs
     @noKwargs
-    def stderr_method(self, args, kwargs):
+    def stderr_method(self, args, kwargs) -> str:
         return self.stderr
 
 
@@ -1036,13 +1041,11 @@ class CustomTargetHolder(TargetHolder):
     def __delitem__(self, index):  # lgtm[py/unexpected-raise-in-special-method]
         raise InterpreterException('Cannot delete a member of a CustomTarget')
 
-    def outdir_include(self):
+    def outdir_include(self) -> IncludeDirsHolder:
         return IncludeDirsHolder(build.IncludeDirs('', [], False,
                                                    [os.path.join('@BUILD_ROOT@', self.interpreter.backend.get_target_dir(self.held_object))]))
 
-class RunTargetHolder(TargetHolder):
-    def __init__(self, target, interp):
-        super().__init__(target, interp)
+class RunTargetHolder(TargetHolder[build.RunTarget]):
 
     def __repr__(self) -> str:
         r = '<{} {}: {}>'
