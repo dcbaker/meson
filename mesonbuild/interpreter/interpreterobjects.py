@@ -380,9 +380,6 @@ class ConfigurationDataHolder(MutableInterpreterObject, ObjectHolder[build.Confi
         for k, v in from_object.values.items():
             self.held_object.values[k] = v
 
-permitted_partial_dependency_kwargs = {
-    'compile_args', 'link_args', 'links', 'includes', 'sources'
-}
 _PARTIAL_KW = [
     KwargInfo('compile_args', bool, default=False),
     KwargInfo('link_args', bool, default=False),
@@ -456,7 +453,7 @@ class DependencyHolder(InterpreterObject, ObjectHolder[Dependency]):
 
     @FeatureNew('dep.partial_dependency', '0.46.0')
     @noPosargs
-    @typed_kwargs('dependency.partial_depedency', _PARTIAL_KW)
+    @typed_kwargs('dependency.partial_depedency', *_PARTIAL_KW)
     def partial_dependency_method(self, args: T.Tuple, kwargs: 'PartialDependencyKW') -> 'DependencyHolder':
         pdep = self.held_object.get_partial_dependency(**kwargs)
         return DependencyHolder(pdep, self.subproject)
@@ -611,8 +608,8 @@ class ExternalLibraryHolder(InterpreterObject, ObjectHolder[ExternalLibrary]):
 
     @FeatureNew('dep.partial_dependency', '0.46.0')
     @noPosargs
-    @permittedKwargs(permitted_partial_dependency_kwargs)
-    def partial_dependency_method(self, args, kwargs):
+    @typed_kwargs('dependency.partial_depedency', *_PARTIAL_KW)
+    def partial_dependency_method(self, args: T.Tuple, kwargs: 'PartialDependencyKW') -> 'DependencyHolder':
         pdep = self.held_object.get_partial_dependency(**kwargs)
         return DependencyHolder(pdep, self.subproject)
 
