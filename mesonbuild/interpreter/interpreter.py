@@ -1923,6 +1923,7 @@ This will become a hard error in the future.''' % kwargs['input'], location=self
 
     @permittedKwargs({'arguments', 'output', 'depends', 'depfile', 'capture',
                       'preserve_path_from'})
+    @FeatureNewKwargs('generator', '0.43.0', ['capture'])
     def func_generator(self, node, args, kwargs):
         gen = GeneratorHolder(self, args, kwargs)
         self.generators.append(gen)
