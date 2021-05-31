@@ -13,7 +13,7 @@ from .. import mlog
 
 from ..modules import ModuleReturnValue, ModuleObject, ModuleState, ExtensionModule
 from ..backend.backends import TestProtocol
-from ..interpreterbase import (InterpreterObject, ObjectHolder, MutableInterpreterObject,
+from ..interpreterbase import (ContainerTypeInfo, InterpreterObject, ObjectHolder, MutableInterpreterObject,
                                FeatureNewKwargs, FeatureNew, FeatureDeprecated,
                                typed_pos_args, stringArgs, permittedKwargs, noKwargs,
                                noArgsFlattening, noPosargs, TYPE_var, TYPE_nkwargs,
@@ -38,6 +38,29 @@ if T.TYPE_CHECKING:
     class ExtractAllObjKW(TypedDict):
         """Keyword arguments for BuildTargetHolder.extract_all_objects"""
         recursive: T.Optional[bool]  # None is deprecated and should default to False
+
+    class DepGetVariableKW(TypedDict):
+        """Keyword arguments for DependencyHolder.get_variable"""
+        cmake: T.Optional[str]
+        pkgconfig: T.Optional[str]
+        configtool: T.Optional[str]
+        internal: T.Optional[str]
+        default_value: T.Optional[object]
+        pkgconfig_define: T.Optional[T.List[str]]
+
+
+    class GetPkgConfigKW(TypedDict):
+        """Keyword arguments for DependencyHolder.get_pkgconfig_variable."""
+        default: T.Optional[object]
+        define_variable: T.Optional[T.List[str]]
+
+    class PartialDependencyKW(TypedDict):
+        """keyword arguments for partial_dependency."""
+        compile_args: bool
+        link_args: bool
+        links: bool
+        includes: bool
+        sources: bool
 
 
 def extract_required_kwarg(kwargs, subproject, feature_check=None, default=True):
@@ -360,6 +383,13 @@ class ConfigurationDataHolder(MutableInterpreterObject, ObjectHolder[build.Confi
 permitted_partial_dependency_kwargs = {
     'compile_args', 'link_args', 'links', 'includes', 'sources'
 }
+_PARTIAL_KW = [
+    KwargInfo('compile_args', bool, default=False),
+    KwargInfo('link_args', bool, default=False),
+    KwargInfo('links', bool, default=False),
+    KwargInfo('includes', bool, default=False),
+    KwargInfo('sources', bool, default=False),
+]
 
 class DependencyHolder(InterpreterObject, ObjectHolder[Dependency]):
     def __init__(self, dep: Dependency, pv: str):
@@ -378,68 +408,72 @@ class DependencyHolder(InterpreterObject, ObjectHolder[Dependency]):
                              'as_link_whole': self.as_link_whole_method,
                              })
 
-    def found(self):
+    def found(self) -> bool:
         return self.found_method([], {})
 
     @noPosargs
     @noKwargs
-    def type_name_method(self, args, kwargs):
+    def type_name_method(self, args: T.Tuple, kwargs: T.Dict) -> str:
         return self.held_object.type_name
 
     @noPosargs
     @noKwargs
-    def found_method(self, args, kwargs):
+    def found_method(self, args: T.Tuple, kwargs: T.Dict) -> bool:
         if self.held_object.type_name == 'internal':
             return True
         return self.held_object.found()
 
     @noPosargs
     @noKwargs
-    def version_method(self, args, kwargs):
+    def version_method(self, args: T.Tuple, kwargs: T.Dict) -> str:
         return self.held_object.get_version()
 
     @noPosargs
     @noKwargs
-    def name_method(self, args, kwargs):
+    def name_method(self, args: T.Tuple, kwargs: T.Dict) -> str:
         return self.held_object.get_name()
 
     @FeatureDeprecated('Dependency.get_pkgconfig_variable', '0.56.0',
                        'use Dependency.get_variable(pkgconfig : ...) instead')
-    @permittedKwargs({'define_variable', 'default'})
-    def pkgconfig_method(self, args, kwargs):
-        args = listify(args)
-        if len(args) != 1:
-            raise InterpreterException('get_pkgconfig_variable takes exactly one argument.')
+    @typed_pos_args('dependency.get_pkgconfig_variable', str)
+    @typed_kwargs(
+        'dependency.get_pkgconfig_variable',
+        KwargInfo('default', object),
+        KwargInfo('define_variable', ContainerTypeInfo(list, str, pairs=True)),
+    )
+    def pkgconfig_method(self, args: T.Tuple[str], kwargs: 'GetPkgConfigKW') -> object:
         varname = args[0]
-        if not isinstance(varname, str):
-            raise InterpreterException('Variable name must be a string.')
         return self.held_object.get_pkgconfig_variable(varname, kwargs)
 
     @FeatureNew('dep.get_configtool_variable', '0.44.0')
     @FeatureDeprecated('Dependency.get_configtool_variable', '0.56.0',
                        'use Dependency.get_variable(configtool : ...) instead')
     @noKwargs
-    def configtool_method(self, args, kwargs):
-        args = listify(args)
-        if len(args) != 1:
-            raise InterpreterException('get_configtool_variable takes exactly one argument.')
+    @typed_pos_args('dependency.configtool_method', str)
+    def configtool_method(self, args: T.Tuple[str], kwargs: T.Dict) -> str:
         varname = args[0]
-        if not isinstance(varname, str):
-            raise InterpreterException('Variable name must be a string.')
         return self.held_object.get_configtool_variable(varname)
 
     @FeatureNew('dep.partial_dependency', '0.46.0')
     @noPosargs
-    @permittedKwargs(permitted_partial_dependency_kwargs)
-    def partial_dependency_method(self, args, kwargs):
+    @typed_kwargs('dependency.partial_depedency', _PARTIAL_KW)
+    def partial_dependency_method(self, args: T.Tuple, kwargs: 'PartialDependencyKW') -> 'DependencyHolder':
         pdep = self.held_object.get_partial_dependency(**kwargs)
         return DependencyHolder(pdep, self.subproject)
 
     @FeatureNew('dep.get_variable', '0.51.0')
-    @typed_pos_args('dep.get_variable', optargs=[str])
-    @permittedKwargs({'cmake', 'pkgconfig', 'configtool', 'internal', 'default_value', 'pkgconfig_define'})
     @FeatureNewKwargs('dep.get_variable', '0.54.0', ['internal'])
-    def variable_method(self, args: T.Tuple[T.Optional[str]], kwargs: T.Dict[str, T.Any]) -> str:
+    @typed_pos_args('dep.get_variable', optargs=[str])
+    @typed_kwargs(
+        'dependency.get_variable',
+        KwargInfo('cmake', str),
+        KwargInfo('pkgconfig', str),
+        KwargInfo('configtool', str),
+        KwargInfo('internal', str),
+        KwargInfo('default_value', object),
+        KwargInfo('pkgconfig_define', ContainerTypeInfo(list, str, pairs=True)),
+    )
+    def variable_method(self, args: T.Tuple[T.Optional[str]], kwargs: 'DepGetVariableKW') -> str:
         default_varname = args[0]
         if default_varname is not None:
             FeatureNew('0.58.0', 'Positional argument to dep.get_variable()').use(self.subproject)
@@ -450,25 +484,25 @@ class DependencyHolder(InterpreterObject, ObjectHolder[Dependency]):
     @FeatureNew('dep.include_type', '0.52.0')
     @noPosargs
     @noKwargs
-    def include_type_method(self, args, kwargs):
+    def include_type_method(self, args: T.Tuple, kwargs: T.Dict) -> str:
         return self.held_object.get_include_type()
 
     @FeatureNew('dep.as_system', '0.52.0')
     @noKwargs
-    def as_system_method(self, args, kwargs):
-        args = listify(args)
-        new_is_system = 'system'
-        if len(args) > 1:
-            raise InterpreterException('as_system takes only one optional value')
-        if len(args) == 1:
-            new_is_system = args[0]
+    @typed_pos_args('dependency.as_system', optargs=[str])
+    def as_system_method(self, args: T.Tuple[T.Optional[str]], kwargs: T.Dict) -> 'DependencyHolder':
+        new_is_system = args[0] or 'system'
+        if new_is_system not in {'preserve', 'system', 'non-system'}:
+            raise InvalidArguments('dependency.as_system argument must be one '
+                                   'of "preserve", "system", "non-system", not '
+                                   f'{new_is_system}')
         new_dep = self.held_object.generate_system_dependency(new_is_system)
         return DependencyHolder(new_dep, self.subproject)
 
     @FeatureNew('dep.as_link_whole', '0.56.0')
     @noKwargs
     @noPosargs
-    def as_link_whole_method(self, args, kwargs):
+    def as_link_whole_method(self, args: T.Tuple, kwargs: T.Dict) -> 'DependencyHolder':
         if not isinstance(self.held_object, InternalDependency):
             raise InterpreterException('as_link_whole method is only supported on declare_dependency() objects')
         new_dep = self.held_object.generate_link_whole_dependency()
@@ -487,41 +521,41 @@ class ExternalProgramHolder(InterpreterObject, ObjectHolder[ExternalProgram]):
 
     @noPosargs
     @noKwargs
-    def found_method(self, args, kwargs):
+    def found_method(self, args: T.Tuple, kwargs: T.Dict) -> bool:
         return self.found()
 
     @noPosargs
     @noKwargs
     @FeatureDeprecated('ExternalProgram.path', '0.55.0',
                        'use ExternalProgram.full_path() instead')
-    def path_method(self, args, kwargs):
+    def path_method(self, args: T.Tuple, kwargs: T.Dict) -> str:
         return self._full_path()
 
     @noPosargs
     @noKwargs
     @FeatureNew('ExternalProgram.full_path', '0.55.0')
-    def full_path_method(self, args, kwargs):
+    def full_path_method(self, args: T.Tuple, kwargs: T.Dict) -> str:
         return self._full_path()
 
-    def _full_path(self):
+    def _full_path(self) -> str:
         exe = self.held_object
         if isinstance(exe, build.Executable):
             return self.backend.get_target_filename_abs(exe)
         return exe.get_path()
 
-    def found(self):
+    def found(self) -> bool:
         return isinstance(self.held_object, build.Executable) or self.held_object.found()
 
-    def get_command(self):
+    def get_command(self) -> T.List[str]:
         return self.held_object.get_command()
 
-    def get_name(self):
+    def get_name(self) -> str:
         exe = self.held_object
         if isinstance(exe, build.Executable):
             return exe.name
         return exe.get_name()
 
-    def get_version(self, interpreter):
+    def get_version(self, interpreter: 'Interpreter') -> str:
         if isinstance(self.held_object, build.Executable):
             return self.held_object.project_version
         if not self.cached_version:

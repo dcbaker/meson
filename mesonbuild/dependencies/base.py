@@ -897,12 +897,10 @@ class PkgConfigDependency(ExternalDependency):
     def get_pkgconfig_variable(self, variable_name: str, kwargs: T.Dict[str, T.Any]) -> str:
         options = ['--variable=' + variable_name, self.name]
 
-        if 'define_variable' in kwargs:
-            definition = kwargs.get('define_variable', [])
-            if not isinstance(definition, list):
-                raise DependencyException('define_variable takes a list')
+        if kwargs['define_variable'] is not None:
+            definition = kwargs['define_variable']
 
-            if len(definition) != 2 or not all(isinstance(i, str) for i in definition):
+            if len(definition) != 2:
                 raise DependencyException('define_variable must be made up of 2 strings for VARIABLENAME and VARIABLEVALUE')
 
             options = ['--define-variable=' + '='.join(definition)] + options
