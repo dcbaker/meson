@@ -478,7 +478,7 @@ class Interpreter(InterpreterBase):
                 dep = self.dependency_impl(name, display_name, kwargs, force_fallback=True)
                 self.build.stdlibs[for_machine][l] = dep
 
-    def import_module(self, modname):
+    def import_module(self, modname: str) -> None:
         if modname in self.modules:
             return
         try:
@@ -489,11 +489,9 @@ class Interpreter(InterpreterBase):
         assert isinstance(ext_module, ModuleObject)
         self.modules[modname] = ext_module
 
-    @stringArgs
     @noKwargs
-    def func_import(self, node, args, kwargs):
-        if len(args) != 1:
-            raise InvalidCode('Import takes one argument.')
+    @typed_pos_args('import', str)
+    def func_import(self, node: mparser.FunctionNode, args: T.Tuple[str], kwargs: T.Dict) -> ModuleObjectHolder:
         modname = args[0]
         if modname.startswith('unstable-'):
             plainname = modname.split('-', 1)[1]
