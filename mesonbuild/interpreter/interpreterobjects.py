@@ -550,29 +550,29 @@ class ExternalLibraryHolder(InterpreterObject, ObjectHolder[ExternalLibrary]):
                              'partial_dependency': self.partial_dependency_method,
                              })
 
-    def found(self):
+    def found(self) -> bool:
         return self.held_object.found()
 
     @noPosargs
     @noKwargs
-    def type_name_method(self, args, kwargs):
+    def type_name_method(self, args: T.Tuple, kwargs: T.Dict) -> str:
         return self.held_object.type_name
 
     @noPosargs
     @noKwargs
-    def found_method(self, args, kwargs):
+    def found_method(self, args: T.Tuple, kwargs: T.Dict) -> bool:
         return self.found()
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.held_object.name
 
-    def get_compile_args(self):
+    def get_compile_args(self) -> T.List[str]:
         return self.held_object.get_compile_args()
 
-    def get_link_args(self):
+    def get_link_args(self) -> T.List[str]:
         return self.held_object.get_link_args()
 
-    def get_exe_args(self):
+    def get_exe_args(self) -> T.List[str]:
         return self.held_object.get_exe_args()
 
     @FeatureNew('dep.partial_dependency', '0.46.0')
