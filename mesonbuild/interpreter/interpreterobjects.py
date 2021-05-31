@@ -24,6 +24,10 @@ from ..mesonlib import FileMode, OptionKey, listify, Popen_safe
 
 import typing as T
 
+if T.TYPE_CHECKING:
+    from ..environment import Environment
+
+
 def extract_required_kwarg(kwargs, subproject, feature_check=None, default=True):
     val = kwargs.get('required', default)
     disabled = False
