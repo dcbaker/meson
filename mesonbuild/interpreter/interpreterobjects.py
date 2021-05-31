@@ -15,7 +15,7 @@ from ..modules import ModuleReturnValue, ModuleObject, ModuleState, ExtensionMod
 from ..backend.backends import TestProtocol
 from ..interpreterbase import (InterpreterObject, ObjectHolder, MutableInterpreterObject,
                                FeatureNewKwargs, FeatureNew, FeatureDeprecated,
-                               typed_pos_args, stringArgs, permittedKwargs,
+                               typed_pos_args, stringArgs, permittedKwargs, noKwargs,
                                noArgsFlattening, noPosargs, TYPE_var, TYPE_nkwargs,
                                flatten, InterpreterException, InvalidArguments, InvalidCode)
 from ..dependencies import Dependency, ExternalLibrary, InternalDependency
@@ -26,6 +26,7 @@ import typing as T
 
 if T.TYPE_CHECKING:
     from ..environment import Environment
+    from .interpreter import Interpreter
 
 
 def extract_required_kwarg(kwargs, subproject, feature_check=None, default=True):
@@ -80,17 +81,17 @@ class FeatureOptionHolder(InterpreterObject, ObjectHolder[coredata.UserFeatureOp
                              })
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def enabled_method(self, args, kwargs):
         return self.held_object.is_enabled()
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def disabled_method(self, args, kwargs):
         return self.held_object.is_disabled()
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def auto_method(self, args, kwargs):
         return self.held_object.is_auto()
 
@@ -144,17 +145,17 @@ class RunProcess(InterpreterObject):
             raise InterpreterException('Could not execute command "%s".' % ' '.join(command_array))
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def returncode_method(self, args, kwargs):
         return self.returncode
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def stdout_method(self, args, kwargs):
         return self.stdout
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def stderr_method(self, args, kwargs):
         return self.stderr
 
@@ -373,24 +374,24 @@ class DependencyHolder(InterpreterObject, ObjectHolder[Dependency]):
         return self.found_method([], {})
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def type_name_method(self, args, kwargs):
         return self.held_object.type_name
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def found_method(self, args, kwargs):
         if self.held_object.type_name == 'internal':
             return True
         return self.held_object.found()
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def version_method(self, args, kwargs):
         return self.held_object.get_version()
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def name_method(self, args, kwargs):
         return self.held_object.get_name()
 
@@ -409,7 +410,7 @@ class DependencyHolder(InterpreterObject, ObjectHolder[Dependency]):
     @FeatureNew('dep.get_configtool_variable', '0.44.0')
     @FeatureDeprecated('Dependency.get_configtool_variable', '0.56.0',
                        'use Dependency.get_variable(configtool : ...) instead')
-    @permittedKwargs({})
+    @noKwargs
     def configtool_method(self, args, kwargs):
         args = listify(args)
         if len(args) != 1:
@@ -440,12 +441,12 @@ class DependencyHolder(InterpreterObject, ObjectHolder[Dependency]):
 
     @FeatureNew('dep.include_type', '0.52.0')
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def include_type_method(self, args, kwargs):
         return self.held_object.get_include_type()
 
     @FeatureNew('dep.as_system', '0.52.0')
-    @permittedKwargs({})
+    @noKwargs
     def as_system_method(self, args, kwargs):
         args = listify(args)
         new_is_system = 'system'
@@ -457,7 +458,7 @@ class DependencyHolder(InterpreterObject, ObjectHolder[Dependency]):
         return DependencyHolder(new_dep, self.subproject)
 
     @FeatureNew('dep.as_link_whole', '0.56.0')
-    @permittedKwargs({})
+    @noKwargs
     @noPosargs
     def as_link_whole_method(self, args, kwargs):
         if not isinstance(self.held_object, InternalDependency):
@@ -477,19 +478,19 @@ class ExternalProgramHolder(InterpreterObject, ObjectHolder[ExternalProgram]):
         self.cached_version = None
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def found_method(self, args, kwargs):
         return self.found()
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     @FeatureDeprecated('ExternalProgram.path', '0.55.0',
                        'use ExternalProgram.full_path() instead')
     def path_method(self, args, kwargs):
         return self._full_path()
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     @FeatureNew('ExternalProgram.full_path', '0.55.0')
     def full_path_method(self, args, kwargs):
         return self._full_path()
@@ -545,12 +546,12 @@ class ExternalLibraryHolder(InterpreterObject, ObjectHolder[ExternalLibrary]):
         return self.held_object.found()
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def type_name_method(self, args, kwargs):
         return self.held_object.type_name
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def found_method(self, args, kwargs):
         return self.found()
 
@@ -627,22 +628,22 @@ class MachineHolder(InterpreterObject, ObjectHolder['MachineInfo']):
                              })
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def cpu_family_method(self, args: T.List[TYPE_var], kwargs: TYPE_nkwargs) -> str:
         return self.held_object.cpu_family
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def cpu_method(self, args: T.List[TYPE_var], kwargs: TYPE_nkwargs) -> str:
         return self.held_object.cpu
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def system_method(self, args: T.List[TYPE_var], kwargs: TYPE_nkwargs) -> str:
         return self.held_object.system
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def endian_method(self, args: T.List[TYPE_var], kwargs: TYPE_nkwargs) -> str:
         return self.held_object.endian
 
@@ -757,14 +758,14 @@ class SubprojectHolder(InterpreterObject, ObjectHolder[T.Optional['Interpreter']
                              })
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def found_method(self, args, kwargs):
         return self.found()
 
     def found(self):
         return self.held_object is not None
 
-    @permittedKwargs({})
+    @noKwargs
     @noArgsFlattening
     def get_variable_method(self, args, kwargs):
         if len(args) < 1 or len(args) > 2:
@@ -849,22 +850,22 @@ class BuildTargetHolder(TargetHolder[_BuildTarget]):
         return not self.held_object.environment.machines.matches_build_machine(self.held_object.for_machine)
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def private_dir_include_method(self, args, kwargs):
         return IncludeDirsHolder(build.IncludeDirs('', [], False,
                                                    [self.interpreter.backend.get_target_private_dir(self.held_object)]))
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def full_path_method(self, args, kwargs):
         return self.interpreter.backend.get_target_filename_abs(self.held_object)
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def outdir_method(self, args, kwargs):
         return self.interpreter.backend.get_target_dir(self.held_object)
 
-    @permittedKwargs({})
+    @noKwargs
     def extract_objects_method(self, args, kwargs):
         gobjs = self.held_object.extract_objects(args)
         return GeneratedObjectsHolder(gobjs)
@@ -884,13 +885,13 @@ class BuildTargetHolder(TargetHolder[_BuildTarget]):
         return GeneratedObjectsHolder(gobjs)
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def get_id_method(self, args, kwargs):
         return self.held_object.get_id()
 
     @FeatureNew('name', '0.54.0')
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def name_method(self, args, kwargs):
         return self.held_object.name
 
@@ -924,12 +925,12 @@ class BothLibrariesHolder(BuildTargetHolder):
         return r.format(self.__class__.__name__, h1.get_id(), h1.filename, h2.get_id(), h2.filename)
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def get_shared_lib_method(self, args, kwargs):
         return self.shared_holder
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def get_static_lib_method(self, args, kwargs):
         return self.static_holder
 
@@ -947,7 +948,7 @@ class CustomTargetIndexHolder(TargetHolder[build.CustomTargetIndex]):
 
     @FeatureNew('custom_target[i].full_path', '0.54.0')
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def full_path_method(self, args, kwargs):
         return self.interpreter.backend.get_target_filename_abs(self.held_object)
 
@@ -964,13 +965,13 @@ class CustomTargetHolder(TargetHolder):
         return r.format(self.__class__.__name__, h.get_id(), h.command)
 
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def full_path_method(self, args, kwargs):
         return self.interpreter.backend.get_target_filename_abs(self.held_object)
 
     @FeatureNew('custom_target.to_list', '0.54.0')
     @noPosargs
-    @permittedKwargs({})
+    @noKwargs
     def to_list_method(self, args, kwargs):
         result = []
         for i in self.held_object:
