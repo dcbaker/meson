@@ -17,7 +17,8 @@ from ..interpreterbase import (InterpreterObject, ObjectHolder, MutableInterpret
                                FeatureNewKwargs, FeatureNew, FeatureDeprecated,
                                typed_pos_args, stringArgs, permittedKwargs, noKwargs,
                                noArgsFlattening, noPosargs, TYPE_var, TYPE_nkwargs,
-                               flatten, InterpreterException, InvalidArguments, InvalidCode)
+                               flatten, InterpreterException, InvalidArguments, InvalidCode,
+                               typed_kwargs, KwargInfo)
 from ..dependencies import Dependency, ExternalLibrary, InternalDependency
 from ..programs import ExternalProgram
 from ..mesonlib import FileMode, OptionKey, listify, Popen_safe
@@ -27,6 +28,11 @@ import typing as T
 if T.TYPE_CHECKING:
     from ..environment import Environment
     from .interpreter import Interpreter
+
+    from typing_extensions import TypedDict
+
+    class EnvHolderArgs(TypedDict):
+        separator: str
 
 
 def extract_required_kwarg(kwargs, subproject, feature_check=None, default=True):
@@ -159,6 +165,10 @@ class RunProcess(InterpreterObject):
     def stderr_method(self, args, kwargs):
         return self.stderr
 
+
+_SEPARATOR_KW = KwargInfo('separator', str, default=os.path.sep)
+
+
 class EnvironmentVariablesHolder(MutableInterpreterObject, ObjectHolder[build.EnvironmentVariables]):
     def __init__(self, initial_values=None, subproject: str = ''):
         MutableInterpreterObject.__init__(self)
@@ -187,13 +197,6 @@ class EnvironmentVariablesHolder(MutableInterpreterObject, ObjectHolder[build.En
         repr_str = "<{0}: {1}>"
         return repr_str.format(self.__class__.__name__, self.held_object.envvars)
 
-    def unpack_separator(self, kwargs: T.Dict[str, T.Any]) -> str:
-        separator = kwargs.get('separator', os.pathsep)
-        if not isinstance(separator, str):
-            raise InterpreterException("EnvironmentVariablesHolder methods 'separator'"
-                                       " argument needs to be a string.")
-        return separator
-
     def warn_if_has_name(self, name: str) -> None:
         # Multiple append/prepend operations was not supported until 0.58.0.
         if self.held_object.has_name(name):
@@ -201,28 +204,28 @@ class EnvironmentVariablesHolder(MutableInterpreterObject, ObjectHolder[build.En
             FeatureNew('0.58.0', m).use(self.subproject)
 
     @stringArgs
-    @permittedKwargs({'separator'})
     @typed_pos_args('environment.set', str, varargs=str, min_varargs=1)
-    def set_method(self, args: T.Tuple[str, T.List[str]], kwargs: T.Dict[str, T.Any]) -> None:
+    @typed_kwargs('environment.set', _SEPARATOR_KW)
+    def set_method(self, args: T.Tuple[str, T.List[str]], kwargs: 'EnvHolderArgs') -> None:
         name, values = args
-        separator = self.unpack_separator(kwargs)
+        separator = kwargs['separator']
         self.held_object.set(name, values, separator)
 
     @stringArgs
-    @permittedKwargs({'separator'})
     @typed_pos_args('environment.append', str, varargs=str, min_varargs=1)
-    def append_method(self, args: T.Tuple[str, T.List[str]], kwargs: T.Dict[str, T.Any]) -> None:
+    @typed_kwargs('environment.append', _SEPARATOR_KW)
+    def append_method(self, args: T.Tuple[str, T.List[str]], kwargs: 'EnvHolderArgs') -> None:
         name, values = args
-        separator = self.unpack_separator(kwargs)
+        separator = kwargs['separator']
         self.warn_if_has_name(name)
         self.held_object.append(name, values, separator)
 
     @stringArgs
-    @permittedKwargs({'separator'})
     @typed_pos_args('environment.prepend', str, varargs=str, min_varargs=1)
-    def prepend_method(self, args: T.Tuple[str, T.List[str]], kwargs: T.Dict[str, T.Any]) -> None:
+    @typed_kwargs('environment.prepend', _SEPARATOR_KW)
+    def prepend_method(self, args: T.Tuple[str, T.List[str]], kwargs: 'EnvHolderArgs') -> None:
         name, values = args
-        separator = self.unpack_separator(kwargs)
+        separator = kwargs['separator']
         self.warn_if_has_name(name)
         self.held_object.prepend(name, values, separator)
 
