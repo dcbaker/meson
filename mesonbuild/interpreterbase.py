@@ -421,18 +421,25 @@ class KwargInfo(T.Generic[_T]):
         a container, but internally we only want to work with containers
     :param default: A default value to use if this isn't set. defaults to None
     :param validator: a function taking the value and returning None if the
-        value is valid, or a string error message
+        value is valid, or a string error message. This will not recieve the
+        default value, and will recieve the listified value. This is meant
+        for cases such as "this may be int or the string'foo'"
+    :param convertor: A function taking the value and returning a different value.
+        This is meant for cases such as "takes a string, but the
+        implementation uses an Enum". The default value will be converted.
     """
 
     def __init__(self, name: str, types: T.Union[T.Type[_T], T.Tuple[T.Type[_T], ...], ContainerTypeInfo], *,
                  required: bool = False, listify: bool = False, default: T.Optional[_T] = None,
-                 validator: T.Optional[T.Callable[[_T], T.Optional[str]]] = None):
+                 validator: T.Optional[T.Callable[[_T], T.Optional[str]]] = None,
+                 converter: T.Optional[T.Callable[[_T], object]] = None):
         self.name = name
         self.types = types
         self.required = required
         self.listify = listify
         self.default = default
         self.validator = validator
+        self.converter = converter
 
 
 def typed_kwargs(name: str, *types: KwargInfo) -> T.Callable[..., T.Any]:
@@ -488,7 +495,12 @@ def typed_kwargs(name: str, *types: KwargInfo) -> T.Callable[..., T.Any]:
                 else:
                     # set the value to the default, this ensuring all kwargs are present
                     # This both simplifies the typing checking and the usage
-                    kwargs[info.name] = info.default
+                    value = info.default
+
+                if info.converter is not None:
+                    kwargs[info.name] = info.converter(value)
+                else:
+                    kwargs[info.name] = value
 
             return f(*wrapped_args, **wrapped_kwargs)
         return T.cast(TV_func, wrapper)
