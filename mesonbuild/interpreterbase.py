@@ -420,15 +420,19 @@ class KwargInfo(T.Generic[_T]):
         checked. This is useful for cases where the Meson DSL allows a scalar or
         a container, but internally we only want to work with containers
     :param default: A default value to use if this isn't set. defaults to None
+    :param validator: a function taking the value and returning None if the
+        value is valid, or a string error message
     """
 
-    def __init__(self, name: str, types: T.Union[T.Type[_T], T.Tuple[T.Type[_T], ...], ContainerTypeInfo],
-                 required: bool = False, listify: bool = False, default: T.Optional[_T] = None):
+    def __init__(self, name: str, types: T.Union[T.Type[_T], T.Tuple[T.Type[_T], ...], ContainerTypeInfo], *,
+                 required: bool = False, listify: bool = False, default: T.Optional[_T] = None,
+                 validator: T.Optional[T.Callable[[_T], T.Optional[str]]] = None):
         self.name = name
         self.types = types
         self.required = required
         self.listify = listify
         self.default = default
+        self.validator = validator
 
 
 def typed_kwargs(name: str, *types: KwargInfo) -> T.Callable[..., T.Any]:
@@ -475,6 +479,10 @@ def typed_kwargs(name: str, *types: KwargInfo) -> T.Callable[..., T.Any]:
                             else:
                                 shouldbe = f'"{info.types.__name__}"'
                             raise InvalidArguments(f'{name} keyword argument "{info.name}"" was of type "{type(value).__name__}" but should have been {shouldbe}')
+                    if info.validator is not None:
+                        msg = info.validator(value)
+                        if msg is not None:
+                            raise InvalidArguments(f'{name} keyword argument {msg}')
                 elif info.required:
                     raise InvalidArguments(f'{name} is missing required keyword argument "{info.name}"')
                 else:
