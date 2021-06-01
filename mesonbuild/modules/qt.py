@@ -24,14 +24,13 @@ from ..mesonlib import MesonException, extract_as_list, File, unholder, version_
 from ..dependencies import Dependency
 import xml.etree.ElementTree as ET
 from . import ModuleReturnValue, ExtensionModule
-from ..interpreterbase import noPosargs, permittedKwargs, FeatureNew, FeatureNewKwargs
+from ..interpreterbase import noPosargs, permittedKwargs, FeatureNew, FeatureNewKwargs, typed_pos_args
 from ..interpreter import extract_required_kwarg
 from ..programs import NonExistingExternalProgram
 
 if T.TYPE_CHECKING:
+    from . import ModuleState
     from ..interpreter import Interpreter
-    from ..dependencies.qt import QtBaseDependency
-    from ..environment import Environment
     from ..programs import ExternalProgram
 
 
@@ -191,10 +190,12 @@ class QtBaseModule(ExtensionModule):
     @FeatureNewKwargs('qt.preprocess', '0.44.0', ['moc_extra_arguments'])
     @FeatureNewKwargs('qt.preprocess', '0.49.0', ['rcc_extra_arguments'])
     @permittedKwargs({'moc_headers', 'moc_sources', 'uic_extra_arguments', 'moc_extra_arguments', 'rcc_extra_arguments', 'include_directories', 'dependencies', 'ui_files', 'qresources', 'method'})
-    def preprocess(self, state, args, kwargs):
+    @typed_pos_args('qt.preprocess', optargs=[str], varargs=str)
+    def preprocess(self, state: 'ModuleState', args: T.Tuple[T.Optional[str], T.List[str]], kwargs):
         rcc_files, ui_files, moc_headers, moc_sources, uic_extra_arguments, moc_extra_arguments, rcc_extra_arguments, sources, include_directories, dependencies \
             = [extract_as_list(kwargs, c, pop=True) for c in ['qresources', 'ui_files', 'moc_headers', 'moc_sources', 'uic_extra_arguments', 'moc_extra_arguments', 'rcc_extra_arguments', 'sources', 'include_directories', 'dependencies']]
-        sources += args[1:]
+        _sources = args[1]
+        sources.extend(_sources)
         method = kwargs.get('method', 'auto')
         self._detect_tools(state, method)
         err_msg = "{0} sources specified and couldn't find {1}, " \
@@ -205,7 +206,7 @@ class QtBaseModule(ExtensionModule):
             if not self.rcc.found():
                 raise MesonException(err_msg.format('RCC', f'rcc-qt{self.qt_version}', self.qt_version))
             # custom output name set? -> one output file, multiple otherwise
-            if args:
+            if args[0] is not None:
                 qrc_deps = []
                 for i in rcc_files:
                     qrc_deps += self.parse_qrc_deps(state, i)
