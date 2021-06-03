@@ -458,6 +458,7 @@ class ValgrindDependency(PkgConfigDependency):
     Consumers of Valgrind usually only need the compile args and do not want to
     link to its (static) libraries.
     '''
+
     def __init__(self, env, kwargs):
         super().__init__('valgrind', env, kwargs)
 
@@ -507,7 +508,6 @@ class ZlibSystemDependency(ExternalDependency):
 
         v, _ = self.clib_compiler.get_define('ZLIB_VERSION', '#include <zlib.h>', self.env, [], [self])
         self.version = v.strip('"')
-
 
     @staticmethod
     def get_methods():

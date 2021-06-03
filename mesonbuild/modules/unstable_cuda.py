@@ -39,8 +39,8 @@ class CudaModule(ExtensionModule):
 
     @noKwargs
     def min_driver_version(self, state: 'ModuleState',
-                                 args: T.Tuple[str],
-                                 kwargs: T.Dict[str, T.Any]) -> str:
+                           args: T.Tuple[str],
+                           kwargs: T.Dict[str, T.Any]) -> str:
         argerror = InvalidArguments('min_driver_version must have exactly one positional argument: ' +
                                     'a CUDA Toolkit version string. Beware that, since CUDA 11.0, ' +
                                     'the CUDA Toolkit\'s components (including NVCC) are versioned ' +
@@ -83,16 +83,16 @@ class CudaModule(ExtensionModule):
 
     @permittedKwargs(['detected'])
     def nvcc_arch_flags(self, state: 'ModuleState',
-                              args: T.Tuple[T.Union[CompilerHolder, CudaCompiler, str]],
-                              kwargs: T.Dict[str, T.Any]) -> T.List[str]:
+                        args: T.Tuple[T.Union[CompilerHolder, CudaCompiler, str]],
+                        kwargs: T.Dict[str, T.Any]) -> T.List[str]:
         nvcc_arch_args = self._validate_nvcc_arch_args(args, kwargs)
         ret = self._nvcc_arch_flags(*nvcc_arch_args)[0]
         return ret
 
     @permittedKwargs(['detected'])
     def nvcc_arch_readable(self, state: 'ModuleState',
-                                 args: T.Tuple[T.Union[CompilerHolder, CudaCompiler, str]],
-                                 kwargs: T.Dict[str, T.Any]) -> T.List[str]:
+                           args: T.Tuple[T.Union[CompilerHolder, CudaCompiler, str]],
+                           kwargs: T.Dict[str, T.Any]) -> T.List[str]:
         nvcc_arch_args = self._validate_nvcc_arch_args(args, kwargs)
         ret = self._nvcc_arch_flags(*nvcc_arch_args)[1]
         return ret
@@ -179,17 +179,17 @@ class CudaModule(ExtensionModule):
         # except that a bug with cuda_arch_list="All" is worked around by
         # tracking both lower and upper limits on GPU architectures.
 
-        cuda_known_gpu_architectures   = ['Fermi', 'Kepler', 'Maxwell']  # noqa: E221
-        cuda_common_gpu_architectures  = ['3.0', '3.5', '5.0']           # noqa: E221
+        cuda_known_gpu_architectures = ['Fermi', 'Kepler', 'Maxwell']  # noqa: E221
+        cuda_common_gpu_architectures = ['3.0', '3.5', '5.0']           # noqa: E221
         cuda_hi_limit_gpu_architecture = None                            # noqa: E221
         cuda_lo_limit_gpu_architecture = '2.0'                           # noqa: E221
-        cuda_all_gpu_architectures     = ['3.0', '3.2', '3.5', '5.0']    # noqa: E221
+        cuda_all_gpu_architectures = ['3.0', '3.2', '3.5', '5.0']    # noqa: E221
 
         if version_compare(cuda_version, '<7.0'):
             cuda_hi_limit_gpu_architecture = '5.2'
 
         if version_compare(cuda_version, '>=7.0'):
-            cuda_known_gpu_architectures  += ['Kepler+Tegra', 'Kepler+Tesla', 'Maxwell+Tegra']  # noqa: E221
+            cuda_known_gpu_architectures += ['Kepler+Tegra', 'Kepler+Tesla', 'Maxwell+Tegra']  # noqa: E221
             cuda_common_gpu_architectures += ['5.2']                                            # noqa: E221
 
             if version_compare(cuda_version, '<8.0'):
@@ -197,18 +197,18 @@ class CudaModule(ExtensionModule):
                 cuda_hi_limit_gpu_architecture = '6.0'        # noqa: E221
 
         if version_compare(cuda_version, '>=8.0'):
-            cuda_known_gpu_architectures  += ['Pascal', 'Pascal+Tegra']  # noqa: E221
+            cuda_known_gpu_architectures += ['Pascal', 'Pascal+Tegra']  # noqa: E221
             cuda_common_gpu_architectures += ['6.0', '6.1']              # noqa: E221
-            cuda_all_gpu_architectures    += ['6.0', '6.1', '6.2']       # noqa: E221
+            cuda_all_gpu_architectures += ['6.0', '6.1', '6.2']       # noqa: E221
 
             if version_compare(cuda_version, '<9.0'):
                 cuda_common_gpu_architectures += ['6.1+PTX']  # noqa: E221
                 cuda_hi_limit_gpu_architecture = '7.0'        # noqa: E221
 
         if version_compare(cuda_version, '>=9.0'):
-            cuda_known_gpu_architectures  += ['Volta', 'Xavier'] # noqa: E221
+            cuda_known_gpu_architectures += ['Volta', 'Xavier'] # noqa: E221
             cuda_common_gpu_architectures += ['7.0']             # noqa: E221
-            cuda_all_gpu_architectures    += ['7.0', '7.2']      # noqa: E221
+            cuda_all_gpu_architectures += ['7.0', '7.2']      # noqa: E221
             # https://docs.nvidia.com/cuda/archive/9.0/cuda-toolkit-release-notes/index.html#unsupported-features
             cuda_lo_limit_gpu_architecture = '3.0'               # noqa: E221
 
@@ -217,18 +217,18 @@ class CudaModule(ExtensionModule):
                 cuda_hi_limit_gpu_architecture = '8.0'        # noqa: E221
 
         if version_compare(cuda_version, '>=10.0'):
-            cuda_known_gpu_architectures  += ['Turing'] # noqa: E221
+            cuda_known_gpu_architectures += ['Turing'] # noqa: E221
             cuda_common_gpu_architectures += ['7.5']    # noqa: E221
-            cuda_all_gpu_architectures    += ['7.5']    # noqa: E221
+            cuda_all_gpu_architectures += ['7.5']    # noqa: E221
 
             if version_compare(cuda_version, '<11.0'):
                 cuda_common_gpu_architectures += ['7.5+PTX']  # noqa: E221
                 cuda_hi_limit_gpu_architecture = '8.0'        # noqa: E221
 
         if version_compare(cuda_version, '>=11.0'):
-            cuda_known_gpu_architectures  += ['Ampere'] # noqa: E221
+            cuda_known_gpu_architectures += ['Ampere'] # noqa: E221
             cuda_common_gpu_architectures += ['8.0']    # noqa: E221
-            cuda_all_gpu_architectures    += ['8.0']    # noqa: E221
+            cuda_all_gpu_architectures += ['8.0']    # noqa: E221
             # https://docs.nvidia.com/cuda/archive/11.0/cuda-toolkit-release-notes/index.html#deprecated-features
             cuda_lo_limit_gpu_architecture = '3.5'      # noqa: E221
 
@@ -238,7 +238,7 @@ class CudaModule(ExtensionModule):
 
         if version_compare(cuda_version, '>=11.1'):
             cuda_common_gpu_architectures += ['8.6', '8.6+PTX']  # noqa: E221
-            cuda_all_gpu_architectures    += ['8.6']             # noqa: E221
+            cuda_all_gpu_architectures += ['8.6']             # noqa: E221
 
             if version_compare(cuda_version, '<12.0'):
                 cuda_hi_limit_gpu_architecture = '9.0'        # noqa: E221
@@ -246,7 +246,7 @@ class CudaModule(ExtensionModule):
         if not cuda_arch_list:
             cuda_arch_list = 'Auto'
 
-        if   cuda_arch_list == 'All':     # noqa: E271
+        if cuda_arch_list == 'All':     # noqa: E271
             cuda_arch_list = cuda_known_gpu_architectures
         elif cuda_arch_list == 'Common':  # noqa: E271
             cuda_arch_list = cuda_common_gpu_architectures

@@ -171,7 +171,7 @@ class CudaCompiler(Compiler):
         '--qpp-config':                         '-qpp-config',                  # 4.2.8.19
     }
     # Reverse map -short to --long options.
-    _FLAG_SHORT2LONG_WITHARGS = {v:k for k,v in _FLAG_LONG2SHORT_WITHARGS.items()}
+    _FLAG_SHORT2LONG_WITHARGS = {v: k for k, v in _FLAG_LONG2SHORT_WITHARGS.items()}
 
     def __init__(self, exelist: T.List[str], version: str, for_machine: MachineChoice,
                  is_cross: bool, exe_wrapper: T.Optional['ExternalProgram'],
@@ -186,7 +186,7 @@ class CudaCompiler(Compiler):
         self.warn_args = {level: self._to_host_flags(flags) for level, flags in host_compiler.warn_args.items()}
 
     @classmethod
-    def _shield_nvcc_list_arg(cls, arg: str, listmode: bool=True) -> str:
+    def _shield_nvcc_list_arg(cls, arg: str, listmode: bool = True) -> str:
         r"""
         Shield an argument against both splitting by NVCC's list-argument
         parse logic, and interpretation by any shell.
@@ -202,15 +202,15 @@ class CudaCompiler(Compiler):
         DQ = '"'
         CM = ","
         BS = "\\"
-        DQSQ = DQ+SQ+DQ
-        quotable = set(string.whitespace+'"$`\\')
+        DQSQ = DQ + SQ + DQ
+        quotable = set(string.whitespace + '"$`\\')
 
         if CM not in arg or not listmode:
             if SQ not in arg:
                 # If any of the special characters "$`\ or whitespace are present, single-quote.
                 # Otherwise return bare.
                 if set(arg).intersection(quotable):
-                    return SQ+arg+SQ
+                    return SQ + arg + SQ
                 else:
                     return arg # Easy case: no splits, no quoting.
             else:
@@ -226,7 +226,7 @@ class CudaCompiler(Compiler):
             instring = False
             argit = iter(arg)
             for c in argit:
-                if   c == CM and not instring:
+                if c == CM and not instring:
                     l.append('')
                 elif c == DQ:
                     l[-1] += c
@@ -258,10 +258,13 @@ class CudaCompiler(Compiler):
 
         def is_xcompiler_flag_isolated(flag: str) -> bool:
             return flag == '-Xcompiler'
+
         def is_xcompiler_flag_glued(flag: str) -> bool:
             return flag.startswith('-Xcompiler=')
+
         def is_xcompiler_flag(flag: str) -> bool:
             return is_xcompiler_flag_isolated(flag) or is_xcompiler_flag_glued(flag)
+
         def get_xcompiler_val(flag: str, flagit: T.Iterator[str]) -> str:
             if is_xcompiler_flag_glued(flag):
                 return flag[len('-Xcompiler='):]
@@ -357,9 +360,8 @@ class CudaCompiler(Compiler):
                 xflags.append(flag)
                 continue
 
-
             # Handle breakup of flag-values into a flag-part and value-part.
-            if   flag[:1] not in '-/':
+            if flag[:1] not in '-/':
                 # This is not a flag. It's probably a file input. Pass it through.
                 xflags.append(flag)
                 continue
@@ -374,7 +376,7 @@ class CudaCompiler(Compiler):
                 # This is a single-letter short option. These options (with the
                 # exception of -o) are allowed to receive their argument with neither
                 # space nor = sign before them. Detect and separate them in that event.
-                if   flag[2:3] == '':            # -I something
+                if flag[2:3] == '':            # -I something
                     try:
                         val = next(flagit)
                     except StopIteration:
@@ -385,51 +387,49 @@ class CudaCompiler(Compiler):
                     val = flag[2:]
                 flag = flag[:2]                  # -I
             elif flag in cls._FLAG_LONG2SHORT_WITHARGS or \
-                 flag in cls._FLAG_SHORT2LONG_WITHARGS:
+                    flag in cls._FLAG_SHORT2LONG_WITHARGS:
                 # This is either -o or a multi-letter flag, and it is receiving its
                 # value isolated.
                 try:
                     val = next(flagit)           # -o something
                 except StopIteration:
                     pass
-            elif flag.split('=',1)[0] in cls._FLAG_LONG2SHORT_WITHARGS or \
-                 flag.split('=',1)[0] in cls._FLAG_SHORT2LONG_WITHARGS:
+            elif flag.split('=', 1)[0] in cls._FLAG_LONG2SHORT_WITHARGS or \
+                    flag.split('=', 1)[0] in cls._FLAG_SHORT2LONG_WITHARGS:
                 # This is either -o or a multi-letter flag, and it is receiving its
                 # value after an = sign.
-                flag, val = flag.split('=',1)    # -o=something
+                flag, val = flag.split('=', 1)    # -o=something
             else:
                 # This is a flag, and it's foreign to NVCC.
                 #
                 # We do not know whether this GCC-speak flag takes an isolated
                 # argument. Assuming it does not (the vast majority indeed don't),
                 # wrap this argument in an -Xcompiler flag and send it down to NVCC.
-                if   flag == '-ffast-math':
+                if flag == '-ffast-math':
                     xflags.append('-use_fast_math')
-                    xflags.append('-Xcompiler='+flag)
+                    xflags.append('-Xcompiler=' + flag)
                 elif flag == '-fno-fast-math':
                     xflags.append('-ftz=false')
                     xflags.append('-prec-div=true')
                     xflags.append('-prec-sqrt=true')
-                    xflags.append('-Xcompiler='+flag)
+                    xflags.append('-Xcompiler=' + flag)
                 elif flag == '-freciprocal-math':
                     xflags.append('-prec-div=false')
-                    xflags.append('-Xcompiler='+flag)
+                    xflags.append('-Xcompiler=' + flag)
                 elif flag == '-fno-reciprocal-math':
                     xflags.append('-prec-div=true')
-                    xflags.append('-Xcompiler='+flag)
+                    xflags.append('-Xcompiler=' + flag)
                 else:
-                    xflags.append('-Xcompiler='+cls._shield_nvcc_list_arg(flag))
+                    xflags.append('-Xcompiler=' + cls._shield_nvcc_list_arg(flag))
                     # The above should securely handle GCC's -Wl, -Wa, -Wp, arguments.
                 continue
 
-
             assert val is not None  # Should only trip if there is a missing argument.
 
-
             # Take care of the various NVCC-supported flags that need special handling.
-            flag = cls._FLAG_LONG2SHORT_WITHARGS.get(flag,flag)
+            flag = cls._FLAG_LONG2SHORT_WITHARGS.get(flag, flag)
 
-            if   flag in {'-include','-isystem','-I','-L','-l'}:
+            if flag in {'-include', '-isystem', '-I', '-L', '-l'}:
                 # These flags are known to GCC, but list-valued in NVCC. They potentially
                 # require double-quoting to prevent NVCC interpreting the flags as lists
                 # when GCC would not have done so.
@@ -439,26 +439,26 @@ class CudaCompiler(Compiler):
                 # -U with comma arguments is impossible in GCC-speak (and thus unambiguous
                 #in NVCC-speak, albeit unportable).
                 if len(flag) == 2:
-                    xflags.append(flag+cls._shield_nvcc_list_arg(val))
+                    xflags.append(flag + cls._shield_nvcc_list_arg(val))
                 else:
                     xflags.append(flag)
                     xflags.append(cls._shield_nvcc_list_arg(val))
             elif flag == '-O':
                 # Handle optimization levels GCC knows about that NVCC does not.
-                if   val == 'fast':
+                if val == 'fast':
                     xflags.append('-O3')
                     xflags.append('-use_fast_math')
                     xflags.append('-Xcompiler')
-                    xflags.append(flag+val)
+                    xflags.append(flag + val)
                 elif val in {'s', 'g', 'z'}:
                     xflags.append('-Xcompiler')
-                    xflags.append(flag+val)
+                    xflags.append(flag + val)
                 else:
-                    xflags.append(flag+val)
+                    xflags.append(flag + val)
             elif flag in {'-D', '-U', '-m', '-t'}:
-                xflags.append(flag+val)       # For style, keep glued.
+                xflags.append(flag + val)       # For style, keep glued.
             elif flag in {'-std'}:
-                xflags.append(flag+'='+val)   # For style, keep glued.
+                xflags.append(flag + '=' + val)   # For style, keep glued.
             else:
                 xflags.append(flag)
                 xflags.append(val)
@@ -606,7 +606,7 @@ class CudaCompiler(Compiler):
 
     def get_options(self) -> 'KeyedOptionDictType':
         opts = super().get_options()
-        std_key      = OptionKey('std',      machine=self.for_machine, lang=self.language)
+        std_key = OptionKey('std',      machine=self.for_machine, lang=self.language)
         ccbindir_key = OptionKey('ccbindir', machine=self.for_machine, lang=self.language)
         opts.update({
             std_key:      coredata.UserComboOption('C++ language standard to use with CUDA',
@@ -625,7 +625,7 @@ class CudaCompiler(Compiler):
         # its own -std flag that may not agree with the host compiler's.
         overrides = {name: opt.value for name, opt in options.items()}
         overrides.pop(OptionKey('std', machine=self.for_machine,
-                                       lang=self.host_compiler.language), None)
+                                lang=self.host_compiler.language), None)
         host_options = self.host_compiler.get_options().copy()
         if 'std' in host_options:
             del host_options['std'] # type: ignore
@@ -758,6 +758,6 @@ class CudaCompiler(Compiler):
         key = OptionKey('ccbindir', machine=self.for_machine, lang=self.language)
         ccbindir = options[key].value
         if isinstance(ccbindir, str) and ccbindir != '':
-            return [self._shield_nvcc_list_arg('-ccbin='+ccbindir, False)]
+            return [self._shield_nvcc_list_arg('-ccbin=' + ccbindir, False)]
         else:
             return []

@@ -54,8 +54,8 @@ ccomp_debug_args = {
 # As of CompCert 20.04, these arguments should be passed to the underlying gcc linker (via -WUl,<arg>)
 # There are probably (many) more, but these are those used by picolibc
 ccomp_args_to_wul = [
-        r"^-ffreestanding$",
-        r"^-r$"
+    r"^-ffreestanding$",
+    r"^-r$"
 ] # type: T.List[str]
 
 class CompCertCompiler(Compiler):

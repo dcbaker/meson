@@ -76,8 +76,8 @@ class CPPCompiler(CLikeCompiler, Compiler):
                  full_version: T.Optional[str] = None):
         # If a child ObjCPP class has already set it, don't set it ourselves
         Compiler.__init__(self, exelist, version, for_machine, info,
-                         is_cross=is_cross, linker=linker,
-                         full_version=full_version)
+                          is_cross=is_cross, linker=linker,
+                          full_version=full_version)
         CLikeCompiler.__init__(self, exe_wrapper)
 
     @staticmethod
@@ -443,10 +443,10 @@ class ElbrusCPPCompiler(GnuCPPCompiler, ElbrusCompiler):
         ]
 
         if version_compare(self.version, '>=1.24.00'):
-            cpp_stds += [ 'c++1z', 'c++17', 'gnu++1z', 'gnu++17' ]
+            cpp_stds += ['c++1z', 'c++17', 'gnu++1z', 'gnu++17']
 
         if version_compare(self.version, '>=1.25.00'):
-            cpp_stds += [ 'c++2a', 'gnu++2a' ]
+            cpp_stds += ['c++2a', 'gnu++2a']
 
         key = OptionKey('std', machine=self.for_machine, lang=self.language)
         opts.update({
@@ -523,7 +523,6 @@ class IntelCPPCompiler(IntelGnuLikeCompiler, CPPCompiler):
         if version_compare(self.version, '>=19.1.0'):
             c_stds += ['c++2a']
             g_stds += ['gnu++2a']
-
 
         key = OptionKey('std', machine=self.for_machine, lang=self.language)
         opts.update({

@@ -93,6 +93,7 @@ class ModuleState:
 class ModuleObject:
     """Base class for all objects returned by modules
     """
+
     def __init__(self) -> None:
         self.methods = {}  # type: T.Dict[str, T.Callable[[ModuleState, T.List[TYPE_nvar], TYPE_nkwargs], T.Union[ModuleReturnValue, TYPE_var]]]
 

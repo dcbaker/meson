@@ -500,6 +500,7 @@ class PerThreeMachine(PerMachine[_T]):
     need to computer the `target` field so we don't bother overriding the
     `__getitem__`/`__setitem__` methods.
     """
+
     def __init__(self, build: _T, host: _T, target: _T) -> None:
         super().__init__(build, host)
         self.target = target
@@ -531,6 +532,7 @@ class PerThreeMachine(PerMachine[_T]):
 class PerMachineDefaultable(PerMachine[T.Optional[_T]]):
     """Extends `PerMachine` with the ability to default from `None`s.
     """
+
     def __init__(self, build: T.Optional[_T] = None, host: T.Optional[_T] = None) -> None:
         super().__init__(build, host)
 
@@ -563,10 +565,10 @@ class PerMachineDefaultable(PerMachine[T.Optional[_T]]):
         return m.default_missing()
 
 
-
 class PerThreeMachineDefaultable(PerMachineDefaultable, PerThreeMachine[T.Optional[_T]]):
     """Extends `PerThreeMachine` with the ability to default from `None`s.
     """
+
     def __init__(self) -> None:
         PerThreeMachine.__init__(self, None, None, None)
 
@@ -1067,7 +1069,7 @@ def do_replacement(regex: T.Pattern[str], line: str, variable_format: str,
 def do_define(regex: T.Pattern[str], line: str, confdata: 'ConfigurationData', variable_format: str) -> str:
     def get_cmake_define(line: str, confdata: 'ConfigurationData') -> str:
         arr = line.split()
-        define_value=[]
+        define_value = []
         for token in arr[2:]:
             try:
                 (v, desc) = confdata.get(token)
@@ -1114,13 +1116,13 @@ def get_variable_regex(variable_format: str = 'meson') -> T.Pattern[str]:
         raise MesonException(f'Format "{variable_format}" not handled')
     return regex
 
-def do_conf_str (src: str, data: list, confdata: 'ConfigurationData', variable_format: str,
-                 encoding: str = 'utf-8') -> T.Tuple[T.List[str],T.Set[str], bool]:
-    def line_is_valid(line : str, variable_format: str) -> bool:
+def do_conf_str(src: str, data: list, confdata: 'ConfigurationData', variable_format: str,
+                encoding: str = 'utf-8') -> T.Tuple[T.List[str], T.Set[str], bool]:
+    def line_is_valid(line: str, variable_format: str) -> bool:
         if variable_format == 'meson':
             if '#cmakedefine' in line:
                 return False
-        else: #cmake format
+        else:  # cmake format
             if '#mesondefine' in line:
                 return False
         return True
@@ -1141,7 +1143,7 @@ def do_conf_str (src: str, data: list, confdata: 'ConfigurationData', variable_f
             confdata_useless = False
             line = do_define(regex, line, confdata, variable_format)
         else:
-            if not line_is_valid(line,variable_format):
+            if not line_is_valid(line, variable_format):
                 raise MesonException(f'Format error in {src}: saw "{line.strip()}" when format set to "{variable_format}"')
             line, missing = do_replacement(regex, line, variable_format, confdata)
             missing_variables.update(missing)
@@ -1641,6 +1643,7 @@ class OrderedSet(T.MutableSet[_T]):
     """A set that preserves the order in which items are added, by first
     insertion.
     """
+
     def __init__(self, iterable: T.Optional[T.Iterable[_T]] = None):
         # typing.OrderedDict is new in 3.7.2, so we can't use that, but we can
         # use MutableMapping, which is fine in this case.
@@ -1739,6 +1742,7 @@ class ProgressBarFallback:  # lgtm [py/iter-returns-non-self]
     fallback, it is safe to ignore the 'Iterator does not return self from
     __iter__ method' warning.
     '''
+
     def __init__(self, iterable: T.Optional[T.Iterable[str]] = None, total: T.Optional[int] = None,
                  bar_type: T.Optional[str] = None, desc: T.Optional[str] = None):
         if iterable is not None:

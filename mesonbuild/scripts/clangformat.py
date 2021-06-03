@@ -67,7 +67,7 @@ def clangformat(exelist: T.List[str], srcdir: Path, builddir: Path, check: bool)
         for f in itertools.chain(*globs):
             strf = str(f)
             if f.is_dir() or f.suffix not in suffixes or \
-                any(fnmatch.fnmatch(strf, i) for i in ignore):
+                    any(fnmatch.fnmatch(strf, i) for i in ignore):
                 continue
             futures.append(e.submit(run_clang_format, exelist, f, check))
         returncode = max([x.result().returncode for x in futures])

@@ -69,8 +69,8 @@ class MKLPkgConfigDependency(PkgConfigDependency):
         super().__init__(name, env, kwargs, language=language)
 
         # Doesn't work with gcc on windows, but does on Linux
-        if (not self.__mklroot or (env.machines[self.for_machine].is_windows()
-                                   and self.clib_compiler.id == 'gcc')):
+        if (not self.__mklroot or (env.machines[self.for_machine].is_windows() and
+                                   self.clib_compiler.id == 'gcc')):
             self.is_found = False
 
         # This can happen either because we're using GCC, we couldn't find the

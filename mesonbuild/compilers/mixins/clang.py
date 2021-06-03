@@ -101,7 +101,7 @@ class ClangCompiler(GnuLikeCompiler):
         if isinstance(self.linker, AppleDynamicLinker) and mesonlib.version_compare(self.version, '>=8.0'):
             extra_args.append('-Wl,-no_weak_imports')
         return super().has_function(funcname, prefix, env, extra_args=extra_args,
-                                   dependencies=dependencies)
+                                    dependencies=dependencies)
 
     def openmp_flags(self) -> T.List[str]:
         if mesonlib.version_compare(self.version, '>=3.8.0'):
@@ -121,7 +121,7 @@ class ClangCompiler(GnuLikeCompiler):
 
         # qcld: Qualcomm Snapdragon linker, based on LLVM
         if linker == 'qcld':
-            return  ['-fuse-ld=qcld']
+            return ['-fuse-ld=qcld']
 
         if shutil.which(linker):
             if not shutil.which(linker):

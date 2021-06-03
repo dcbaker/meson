@@ -270,7 +270,7 @@ base_options: 'KeyedOptionDictType' = {
     OptionKey('b_pch'): coredata.UserBooleanOption('Use precompiled headers', True),
     OptionKey('b_lto'): coredata.UserBooleanOption('Use link time optimization', False),
     OptionKey('b_lto'): coredata.UserBooleanOption('Use link time optimization', False),
-    OptionKey('b_lto_threads'): coredata.UserIntegerOption('Use multiple threads for Link Time Optimization', (None, None,0)),
+    OptionKey('b_lto_threads'): coredata.UserIntegerOption('Use multiple threads for Link Time Optimization', (None, None, 0)),
     OptionKey('b_lto_mode'): coredata.UserComboOption('Select between different LTO modes.',
                                                       ['default', 'thin'],
                                                       'default'),
@@ -669,8 +669,8 @@ class Compiler(metaclass=abc.ABCMeta):
         raise EnvironmentException('Language %s does not support sizeof checks.' % self.get_display_language())
 
     def alignment(self, typename: str, prefix: str, env: 'Environment', *,
-                 extra_args: T.Optional[T.List[str]] = None,
-                 dependencies: T.Optional[T.List['Dependency']] = None) -> int:
+                  extra_args: T.Optional[T.List[str]] = None,
+                  dependencies: T.Optional[T.List['Dependency']] = None) -> int:
         raise EnvironmentException('Language %s does not support alignment checks.' % self.get_display_language())
 
     def has_function(self, funcname: str, prefix: str, env: 'Environment', *,
@@ -756,7 +756,7 @@ class Compiler(metaclass=abc.ABCMeta):
             no_ccache = False
             if isinstance(code, str):
                 srcname = os.path.join(tmpdirname,
-                                    'testfile.' + self.default_suffix)
+                                       'testfile.' + self.default_suffix)
                 with open(srcname, 'w') as ofile:
                     ofile.write(code)
                 # ccache would result in a cache miss
@@ -1202,7 +1202,6 @@ class Compiler(metaclass=abc.ABCMeta):
                  disable_cache: bool = False) -> T.Tuple[bool, bool]:
         with self._build_wrapper(code, env, extra_args, dependencies, mode, disable_cache=disable_cache) as p:
             return p.returncode == 0, p.cached
-
 
     def links(self, code: str, env: 'Environment', *,
               extra_args: T.Union[None, T.List[str], CompilerArgs] = None,

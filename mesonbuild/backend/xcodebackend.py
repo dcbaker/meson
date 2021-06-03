@@ -85,11 +85,11 @@ class PbxArray:
         indent_level += 1
         for i in self.items:
             if i.comment:
-                ofile.write(indent_level*INDENT + f'{i.value} {i.comment},\n')
+                ofile.write(indent_level * INDENT + f'{i.value} {i.comment},\n')
             else:
-                ofile.write(indent_level*INDENT + f'{i.value},\n')
+                ofile.write(indent_level * INDENT + f'{i.value},\n')
         indent_level -= 1
-        ofile.write(indent_level*INDENT + ');\n')
+        ofile.write(indent_level * INDENT + ');\n')
 
 class PbxArrayItem:
     def __init__(self, value, comment = ''):
@@ -152,20 +152,20 @@ class PbxDict:
             elif isinstance(i, PbxDictItem):
                 if isinstance(i.value, (str, int)):
                     if i.comment:
-                        ofile.write(indent_level*INDENT + f'{i.key} = {i.value} {i.comment};\n')
+                        ofile.write(indent_level * INDENT + f'{i.key} = {i.value} {i.comment};\n')
                     else:
-                        ofile.write(indent_level*INDENT + f'{i.key} = {i.value};\n')
+                        ofile.write(indent_level * INDENT + f'{i.key} = {i.value};\n')
                 elif isinstance(i.value, PbxDict):
                     if i.comment:
-                        ofile.write(indent_level*INDENT + f'{i.key} {i.comment} = ')
+                        ofile.write(indent_level * INDENT + f'{i.key} {i.comment} = ')
                     else:
-                        ofile.write(indent_level*INDENT + f'{i.key} = ')
+                        ofile.write(indent_level * INDENT + f'{i.key} = ')
                     i.value.write(ofile, indent_level)
                 elif isinstance(i.value, PbxArray):
                     if i.comment:
-                        ofile.write(indent_level*INDENT + f'{i.key} {i.comment} = ')
+                        ofile.write(indent_level * INDENT + f'{i.key} {i.comment} = ')
                     else:
-                        ofile.write(indent_level*INDENT + f'{i.key} = ')
+                        ofile.write(indent_level * INDENT + f'{i.key} = ')
                     i.value.write(ofile, indent_level)
                 else:
                     print(i)
@@ -177,7 +177,7 @@ class PbxDict:
                 raise RuntimeError('missing code2')
 
         indent_level -= 1
-        ofile.write(indent_level*INDENT + '}')
+        ofile.write(indent_level * INDENT + '}')
         if indent_level == 0:
             ofile.write('\n')
         else:
@@ -441,7 +441,6 @@ class XCodeBackend(backends.Backend):
         self.generator_buildfile_ids[k] = buildfile_ids
         self.generator_fileref_ids[k] = fileref_ids
 
-
     def generate_native_frameworks_map(self):
         self.native_frameworks = {}
         self.native_frameworks_fileref = {}
@@ -534,7 +533,7 @@ class XCodeBackend(backends.Backend):
         target_dependencies = list(map(lambda t: self.pbx_dep_map[t], self.build_targets))
         custom_target_dependencies = [self.pbx_custom_dep_map[t] for t in self.custom_targets]
         aggregated_targets = []
-        aggregated_targets.append((self.all_id, 'ALL_BUILD', 
+        aggregated_targets.append((self.all_id, 'ALL_BUILD',
                                    self.all_buildconf_id,
                                    [],
                                    [self.regen_dependency_id] + target_dependencies + custom_target_dependencies))
@@ -554,7 +553,7 @@ class XCodeBackend(backends.Backend):
             build_phases = []
             dependencies = [self.regen_dependency_id]
             generator_id = 0
-            for s in t.sources: 
+            for s in t.sources:
                 if not isinstance(s, build.GeneratedList):
                     continue
                 build_phases.append(self.shell_targets[(tname, generator_id)])
@@ -592,7 +591,7 @@ class XCodeBackend(backends.Backend):
                 if isinstance(dep, dependencies.AppleFrameworks):
                     for f in dep.frameworks:
                         fw_dict = PbxDict()
-                        objects_dict.add:item(self.native_frameworks[f], fw_dict, f'{f}.framework in Frameworks')
+                        objects_dict.add: item(self.native_frameworks[f], fw_dict, f'{f}.framework in Frameworks')
                         fw_dict.add_item('isa', 'PBXBuildFile')
                         fw_dict.add_item('fileRef', self.native_frameworks_fileref[f], f)
 
@@ -602,7 +601,7 @@ class XCodeBackend(backends.Backend):
                     if s.is_built:
                         in_build_dir = True
                     s = os.path.join(s.subdir, s.fname)
-                    
+
                 if not isinstance(s, str):
                     continue
                 sdict = PbxDict()
@@ -610,7 +609,7 @@ class XCodeBackend(backends.Backend):
                 idval = self.buildfile_ids[k]
                 fileref = self.fileref_ids[k]
                 if in_build_dir:
-                    fullpath = os.path.join(self.environment.get_build_dir(), s)    
+                    fullpath = os.path.join(self.environment.get_build_dir(), s)
                 else:
                     fullpath = os.path.join(self.environment.get_source_dir(), s)
                 compiler_args = ''
@@ -644,7 +643,7 @@ class XCodeBackend(backends.Backend):
             for g in t.generated:
                 if not isinstance(g, build.GeneratedList):
                     continue
-                self.create_generator_shellphase(objects_dict, tname, generator_id) 
+                self.create_generator_shellphase(objects_dict, tname, generator_id)
                 generator_id += 1
 
         # Custom targets are shell build phases in Xcode terminology.
@@ -661,7 +660,7 @@ class XCodeBackend(backends.Backend):
             for g in t.sources:
                 if not isinstance(g, build.GeneratedList):
                     continue
-                self.create_generator_shellphase(objects_dict, tname, generator_id) 
+                self.create_generator_shellphase(objects_dict, tname, generator_id)
                 generator_id += 1
 
     def create_generator_shellphase(self, objects_dict, tname, generator_id):
@@ -752,7 +751,7 @@ class XCodeBackend(backends.Backend):
                     name = os.path.basename(o)
                     objects_dict.add_item(ref_id, odict, o)
                     xcodetype = self.get_xcodetype(o)
-                    rel_name = mesonlib.relpath(o, self.environment.get_source_dir())   
+                    rel_name = mesonlib.relpath(o, self.environment.get_source_dir())
                     odict.add_item('isa', 'PBXFileReference')
                     odict.add_item('explicitFileType', '"' + xcodetype + '"')
                     odict.add_item('fileEncoding', '4')
@@ -773,7 +772,7 @@ class XCodeBackend(backends.Backend):
                     o = os.path.join(t.subdir, o)
                     fullpath = os.path.join(self.environment.get_source_dir(), o)
                 idval = self.fileref_ids[(tname, o)]
-                rel_name = mesonlib.relpath(fullpath, self.environment.get_source_dir())   
+                rel_name = mesonlib.relpath(fullpath, self.environment.get_source_dir())
                 o_dict = PbxDict()
                 name = os.path.basename(o)
                 objects_dict.add_item(idval, o_dict, fullpath)
@@ -974,7 +973,7 @@ class XCodeBackend(backends.Backend):
             target_children.add_item(self.fileref_ids[(tid, s)], s)
         for o in t.objects:
             if isinstance(o, build.ExtractedObjects):
-                # Do not show built object files in the project tree.   
+                # Do not show built object files in the project tree.
                 continue
             if isinstance(o, mesonlib.File):
                 o = os.path.join(o.subdir, o.fname)
@@ -1018,7 +1017,6 @@ class XCodeBackend(backends.Backend):
             i = self.fileref_ids.get(bf, None)
             if i:
                 children_array.add_item(i)
-
 
     def generate_project_tree(self):
         tree_info = FileTreeEntry()
@@ -1083,7 +1081,7 @@ class XCodeBackend(backends.Backend):
                     dep_array.add_item(self.pbx_custom_dep_map[o.get_id()], o.name)
                 elif isinstance(o, build.CustomTargetIndex):
                     dep_array.add_item(self.pbx_custom_dep_map[o.target.get_id()], o.target.name)
-                
+
                 generator_id += 1
 
             ntarget_dict.add_item('name', f'"{tname}"')
@@ -1222,7 +1220,7 @@ class XCodeBackend(backends.Backend):
         gen_dict.add_item('buildActionMask', 2147483647)
         gen_dict.add_item('files', PbxArray())
         gen_dict.add_item('inputPaths', PbxArray())
-        gen_dict.add_item('name', '"Generator {}/{}"'.format(generator_id, tname))    
+        gen_dict.add_item('name', '"Generator {}/{}"'.format(generator_id, tname))
         commands = [["cd", workdir]] # Array of arrays, each one a single command, will get concatenated below.
         k = (tname, generator_id)
         ofile_abs = self.generator_outputs[k]
@@ -1264,10 +1262,9 @@ class XCodeBackend(backends.Backend):
                 else:
                     q.append(c)
             quoted_cmds.append(' '.join(q))
-        cmdstr = '"'  + ' && '.join(quoted_cmds) + '"'
+        cmdstr = '"' + ' && '.join(quoted_cmds) + '"'
         gen_dict.add_item('shellScript', cmdstr)
         gen_dict.add_item('showEnvVarsInLog', 0)
-
 
     def generate_pbx_sources_build_phase(self, objects_dict):
         for name in self.source_phase.keys():
@@ -1315,7 +1312,7 @@ class XCodeBackend(backends.Backend):
 
         for t in self.custom_targets:
             idval = self.pbx_custom_dep_map[t]
-            targets.append((idval, self.custom_aggregate_targets[t], t, None))#self.containerproxy_map[t]))
+            targets.append((idval, self.custom_aggregate_targets[t], t, None))  # self.containerproxy_map[t]))
 
         # Sort object by ID
         sorted_targets = sorted(targets, key=operator.itemgetter(0))
@@ -1353,7 +1350,7 @@ class XCodeBackend(backends.Backend):
             warn_array = PbxArray()
             warn_array.add_item('"$(inherited)"')
             settings_dict.add_item('WARNING_CFLAGS', warn_array)
-        
+
             bt_dict.add_item('name', f'"{buildtype}"')
 
         # Then the test target.
@@ -1385,7 +1382,6 @@ class XCodeBackend(backends.Backend):
             settings_dict.add_item('SYMROOT', '"%s/build"' % self.environment.get_build_dir())
             bt_dict.add_item('name', f'"{buildtype}"')
 
-
     def determine_internal_dep_link_args(self, target, buildtype):
         links_dylib = False
         dep_libs = []
@@ -1410,7 +1406,7 @@ class XCodeBackend(backends.Backend):
                 dep_libs += sub_libs
                 links_dylib = links_dylib or sub_links_dylib
         return (dep_libs, links_dylib)
-        
+
     def generate_single_build_target(self, objects_dict, target_name, target):
         for buildtype in self.buildtypes:
             dep_libs = []
@@ -1444,7 +1440,7 @@ class XCodeBackend(backends.Backend):
                 product_name = target.get_basename()
             ldargs += target.link_args
             # Swift is special. Again. You can't mix Swift with other languages
-            # in the same target. Thus for Swift we only use 
+            # in the same target. Thus for Swift we only use
             if self.is_swift_target(target):
                 linker, stdlib_args = target.compilers['swift'], []
             else:
@@ -1468,7 +1464,7 @@ class XCodeBackend(backends.Backend):
             generator_id = 0
             for o in target.generated:
                 if isinstance(o, build.GeneratedList):
-                    outputs = self.generator_outputs[target_name, generator_id] 
+                    outputs = self.generator_outputs[target_name, generator_id]
                     generator_id += 1
                     for o_abs in outputs:
                         if o_abs.endswith('.o') or o_abs.endswith('.obj'):
@@ -1619,7 +1615,7 @@ class XCodeBackend(backends.Backend):
                     # This works but
                     # a) it's ugly as sin
                     # b) I don't know why it works or why every backslash must be escaped into eight backslashes
-                    a = a.replace(chr(92), 8*chr(92)) # chr(92) is backslash, this how we smuggle it in without Python's quoting grabbing it.
+                    a = a.replace(chr(92), 8 * chr(92)) # chr(92) is backslash, this how we smuggle it in without Python's quoting grabbing it.
                     a = a.replace(r'"', r'\\\"')
                     if ' ' in a or "'" in a:
                         a = r'\"' + a + r'\"'
@@ -1701,7 +1697,7 @@ class XCodeBackend(backends.Backend):
         pbxdict.add_item('objectVersion', '46')
         objects_dict = PbxDict()
         pbxdict.add_item('objects', objects_dict)
-        
+
         return objects_dict
 
     def generate_suffix(self, pbxdict):

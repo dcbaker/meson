@@ -37,7 +37,7 @@ def array_arg(value: str) -> T.List[str]:
     return UserArrayOption(None, value, allow_dups=True, user_input=True).value
 
 def validate_builddir(builddir: Path) -> None:
-    if not (builddir / 'meson-private' / 'coredata.dat' ).is_file():
+    if not (builddir / 'meson-private' / 'coredata.dat').is_file():
         raise MesonException('Current directory is not a meson build directory: `{}`.\n'
                              'Please specify a valid build dir or change the working directory to it.\n'
                              'It is also possible that the build directory was generated with an old\n'
@@ -116,9 +116,9 @@ def get_target_from_intro_data(target: ParsedTargetName, builddir: Path, introsp
         for intro_target in intro_targets:
             if (intro_target['subproject'] or
                     (target.type and target.type != intro_target['type'].replace(' ', '_')) or
-                    (target.path
-                         and intro_target['filename'] != 'no_name'
-                         and Path(target.path) != Path(intro_target['filename'][0]).relative_to(resolved_bdir).parent)):
+                    (target.path and
+                     intro_target['filename'] != 'no_name' and
+                     Path(target.path) != Path(intro_target['filename'][0]).relative_to(resolved_bdir).parent)):
                 continue
             found_targets += [intro_target]
 
@@ -206,7 +206,7 @@ def get_parsed_args_vs(options: 'argparse.Namespace', builddir: Path) -> T.Tuple
                 raise MesonException('Only one target may be specified when `run` target type is used on this backend.')
             intro_target = get_target_from_intro_data(ParsedTargetName(options.targets[0]), builddir, intro_data)
             proj_dir = Path(intro_target['filename'][0]).parent
-            proj = proj_dir/'{}.vcxproj'.format(intro_target['id'])
+            proj = proj_dir / '{}.vcxproj'.format(intro_target['id'])
             cmd += [str(proj.resolve())]
         else:
             cmd += [str(sln.resolve())]

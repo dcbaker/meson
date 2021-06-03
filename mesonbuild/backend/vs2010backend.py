@@ -562,7 +562,7 @@ class Vs2010Backend(backends.Backend):
         if target.build_always_stale:
             # Use a nonexistent file to always consider the target out-of-date.
             ofilenames += [self.nonexistent_file(os.path.join(self.environment.get_scratch_dir(),
-                                                 'outofdate.file'))]
+                                                              'outofdate.file'))]
         self.add_custom_build(root, 'custom_target', ' '.join(self.quote_arguments(wrapper_cmd)),
                               deps=wrapper_cmd[-1:] + srcs + depend_files, outputs=ofilenames,
                               verify_files=not target.build_always_stale)
@@ -917,9 +917,9 @@ class Vs2010Backend(backends.Backend):
         for l, comp in target.compilers.items():
             if l in file_args:
                 file_args[l] += compilers.get_base_compile_args(
-                        self.get_base_options_for_target(target), comp)
+                    self.get_base_options_for_target(target), comp)
                 file_args[l] += comp.get_option_compile_args(
-                        self.environment.coredata.options)
+                    self.environment.coredata.options)
 
         # Add compile args added using add_project_arguments()
         for l, args in self.build.projects_args[target.for_machine].get(target.subproject, {}).items():

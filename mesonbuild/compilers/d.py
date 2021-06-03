@@ -260,7 +260,7 @@ class DmdLikeCompilerMixin(CompilerMixinBase):
             # split into two separate arguments both prefaced with the -L=.
             args = []
             (rpath_args, rpath_dirs_to_remove) = super().build_rpath_args(
-                    env, build_dir, from_dir, rpath_paths, build_rpath, install_rpath)
+                env, build_dir, from_dir, rpath_paths, build_rpath, install_rpath)
             for r in rpath_args:
                 if ',' in r:
                     a, b = r.split(',', maxsplit=1)
@@ -700,8 +700,8 @@ class GnuDCompiler(GnuCompiler, DCompiler):
                           '3': default_warn_args + ['-Wextra', '-Wpedantic']}
         self.base_options = {
             OptionKey(o) for o in [
-             'b_colorout', 'b_sanitize', 'b_staticpic', 'b_vscrt',
-             'b_coverage', 'b_pgo', 'b_ndebug']}
+                'b_colorout', 'b_sanitize', 'b_staticpic', 'b_vscrt',
+                'b_coverage', 'b_pgo', 'b_ndebug']}
 
         self._has_color_support = version_compare(self.version, '>=4.9')
         # dependencies were implemented before, but broken - support was fixed in GCC 7.1+

@@ -234,7 +234,7 @@ def detect_ninja_command_and_version(version: str = '1.8.2', log: bool = False) 
                 if name == 'samu':
                     name = 'samurai'
                 mlog.log('Found {}-{} at {}'.format(name, found,
-                         ' '.join([quote_arg(x) for x in prog.command])))
+                                                    ' '.join([quote_arg(x) for x in prog.command])))
             return (prog.command, found)
 
 def get_llvm_tool_names(tool: str) -> T.List[str]:
@@ -663,7 +663,6 @@ class Environment:
                 if self.coredata.is_per_machine_option(key):
                     self.options[key.as_build()] = value
             self._load_machine_file_options(config, properties.host, MachineChoice.HOST)
-
 
         ## "freeze" now initialized configuration, and "save" to the class.
 
@@ -1190,7 +1189,7 @@ class Environment:
                 cls = GnuBFDDynamicLinker
             linker = cls(compiler, for_machine, comp_class.LINKER_PREFIX, override, version=v)
         elif 'Solaris' in e or 'Solaris' in o:
-            for line in (o+e).split('\n'):
+            for line in (o + e).split('\n'):
                 if 'ld: Software Generation Utilities' in line:
                     v = line.split(':')[2].lstrip()
                     break
@@ -1483,7 +1482,6 @@ class Environment:
                 return cls(
                     ccache + compiler, version, for_machine, is_cross, info,
                     exe_wrap, full_version=full_version, linker=linker)
-
 
         self._handle_exceptions(popen_exceptions, compilers)
 

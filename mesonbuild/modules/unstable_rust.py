@@ -196,8 +196,8 @@ class RustModule(ExtensionModule):
                 'command': self._bindgen_bin.get_command() + [
                     '@INPUT@', '--output',
                     os.path.join(state.environment.build_dir, '@OUTPUT@')] +
-                    bind_args + ['--'] + c_args + inc_strs +
-                    ['-MD', '-MQ', '@INPUT@', '-MF', '@DEPFILE@'],
+                bind_args + ['--'] + c_args + inc_strs +
+                ['-MD', '-MQ', '@INPUT@', '-MF', '@DEPFILE@'],
                 'depfile': '@PLAINNAME@.d',
                 'depends': depends,
                 'depend_files': depend_files,

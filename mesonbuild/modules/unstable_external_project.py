@@ -19,7 +19,7 @@ import typing as T
 from . import ExtensionModule, ModuleReturnValue, ModuleState, ModuleObject
 from .. import mlog, build
 from ..mesonlib import (MesonException, Popen_safe, MachineChoice,
-                       get_variable_regex, do_replacement, extract_as_list)
+                        get_variable_regex, do_replacement, extract_as_list)
 from ..interpreterbase import InterpreterException, FeatureNew
 from ..interpreterbase import permittedKwargs, typed_pos_args
 from ..interpreter import DependencyHolder
@@ -169,8 +169,8 @@ class ExternalProject(ModuleObject):
         else:
             mlog.log(m)
         p, o, e = Popen_safe(command, cwd=str(self.build_dir), env=self.run_env,
-                                      stderr=subprocess.STDOUT,
-                                      stdout=output)
+                             stderr=subprocess.STDOUT,
+                             stdout=output)
         if p.returncode != 0:
             m = f'{step} step returned error code {p.returncode}.'
             if not self.verbose:

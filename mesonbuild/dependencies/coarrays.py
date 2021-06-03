@@ -59,6 +59,7 @@ class CoarrayDependency(ExternalDependency):
     Coarrays may be thought of as a high-level language abstraction of
     low-level MPI calls.
     """
+
     def __init__(self, environment, kwargs: dict):
         super().__init__('coarray', environment, kwargs, language='fortran')
         kwargs['required'] = False

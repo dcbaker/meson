@@ -91,6 +91,7 @@ class CleanTrees:
     Directories outputted by custom targets that have to be manually cleaned
     because on Linux `ninja clean` only deletes empty directories.
     '''
+
     def __init__(self, build_dir, trees):
         self.build_dir = build_dir
         self.trees = trees
@@ -516,7 +517,7 @@ class Backend:
             if not capture:
                 return es.cmd_args, ''
             return ((self.environment.get_build_command() +
-                    ['--internal', 'exe', '--capture', capture, '--'] + es.cmd_args),
+                     ['--internal', 'exe', '--capture', capture, '--'] + es.cmd_args),
                     ', '.join(reasons))
 
         if isinstance(exe, (programs.ExternalProgram,
@@ -1203,7 +1204,6 @@ class Backend:
         for i in self.get_custom_target_dirs(target, compiler, absolute_path=absolute_path):
             incs += compiler.get_include_args(i, False)
         return incs
-
 
     def eval_custom_target_command(self, target, absolute_outputs=False):
         # We want the outputs to be absolute only when using the VS backend

@@ -810,7 +810,7 @@ int dummy;
                 o, s = self.generate_llvm_ir_compile(target, src)
             else:
                 o, s = self.generate_single_compile(target, src, True,
-                                                 order_deps=header_deps)
+                                                    order_deps=header_deps)
             compiled_sources.append(s)
             source2object[s] = o
             obj_list.append(o)
@@ -894,7 +894,7 @@ int dummy;
         if cpp.get_id() != 'msvc':
             return False
         cppversion = self.environment.coredata.options[OptionKey('std', machine=target.for_machine, lang='cpp')].value
-        if  cppversion not in ('latest', 'c++latest', 'vc++latest'):
+        if cppversion not in ('latest', 'c++latest', 'vc++latest'):
             return False
         if not mesonlib.current_vs_supports_modules():
             return False
@@ -2051,7 +2051,6 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         self.add_rule(NinjaRule(rule, command, [], description, deps=deps,
                                 depfile=depfile))
 
-
     def generate_scanner_rules(self):
         rulename = 'depscan'
         if rulename in self.ruledict:
@@ -2063,7 +2062,6 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         description = 'Module scanner.'
         rule = NinjaRule(rulename, command, args, description)
         self.add_rule(rule)
-
 
     def generate_compile_rules(self):
         for for_machine in MachineChoice:
@@ -2125,7 +2123,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
                 args = [x.replace('@DEPFILE@', depfile) for x in base_args]
             args = [x.replace("@INPUT@", infilename).replace('@OUTPUT@', sole_output)
                     for x in args]
-            args =  self.replace_outputs(args, self.get_target_private_dir(target), outfilelist)
+            args = self.replace_outputs(args, self.get_target_private_dir(target), outfilelist)
             # We have consumed output files, so drop them from the list of remaining outputs.
             if len(generator.outputs) > 1:
                 outfilelist = outfilelist[len(generator.outputs):]
@@ -2515,8 +2513,8 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
                         crstr = self.get_rule_suffix(target.for_machine)
                         depelem = NinjaBuildElement(self.all_outputs,
                                                     modfile,
-                                                     'FORTRAN_DEP_HACK' + crstr,
-                                                      rel_obj)
+                                                    'FORTRAN_DEP_HACK' + crstr,
+                                                    rel_obj)
                         self.add_build(depelem)
             commands += compiler.get_module_outdir_args(self.get_target_private_dir(target))
 

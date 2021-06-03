@@ -45,11 +45,11 @@ class InterpreterObject:
         self.current_node = None  # type: mparser.BaseNode
 
     def method_call(
-                self,
-                method_name: str,
-                args: TV_fw_args,
-                kwargs: TV_fw_kwargs
-            ) -> TYPE_var:
+        self,
+        method_name: str,
+        args: TV_fw_args,
+        kwargs: TV_fw_kwargs
+    ) -> TYPE_var:
         if method_name in self.methods:
             method = self.methods[method_name]
             if not getattr(method, 'no-args-flattening', False):
@@ -345,7 +345,7 @@ def typed_pos_args(name: str, *types: T.Union[T.Type, T.Tuple[T.Type, ...]],
                 nargs[i] = tuple(pos)
             elif optargs:
                 if num_args < num_types + len(optargs):
-                    diff =  num_types + len(optargs) - num_args
+                    diff = num_types + len(optargs) - num_args
                     nargs[i] = tuple(list(args) + [None] * diff)
                 else:
                     nargs[i] = args
@@ -375,7 +375,7 @@ class ContainerTypeInfo:
     """
 
     def __init__(self, container: T.Type, contains: T.Union[T.Type, T.Tuple[T.Type, ...]], *,
-                 pairs: bool = False, allow_empty: bool = True) :
+                 pairs: bool = False, allow_empty: bool = True):
         self.container = container
         self.contains = contains
         self.pairs = pairs
@@ -659,7 +659,7 @@ class FeatureCheckKwargsBase(metaclass=abc.ABCMeta):
                     continue
                 name = arg + ' arg in ' + self.feature_name
                 self.feature_check_class.single_use(
-                        name, self.feature_version, subproject, self.extra_message)
+                    name, self.feature_version, subproject, self.extra_message)
             return f(*wrapped_args, **wrapped_kwargs)
         return T.cast(TV_func, wrapped)
 
@@ -1086,7 +1086,7 @@ The result of this is undefined and will become a hard error in a future Meson r
                 val = self.variables[var]
                 if not isinstance(val, (str, int, float, bool)):
                     raise InvalidCode(f'Identifier "{var}" does not name a formattable variable ' +
-                        '(has to be an integer, a string, a floating point number or a boolean).')
+                                      '(has to be an integer, a string, a floating point number or a boolean).')
 
                 return str(val)
             except KeyError:
@@ -1351,11 +1351,11 @@ The result of this is undefined and will become a hard error in a future Meson r
                 raise InterpreterException('substring() takes maximum two arguments.')
             start = 0
             end = len(obj)
-            if len (posargs) > 0:
+            if len(posargs) > 0:
                 if not isinstance(posargs[0], int):
                     raise InterpreterException('substring() argument must be an int')
                 start = posargs[0]
-            if len (posargs) > 1:
+            if len(posargs) > 1:
                 if not isinstance(posargs[1], int):
                     raise InterpreterException('substring() argument must be an int')
                 end = posargs[1]
@@ -1468,11 +1468,11 @@ The result of this is undefined and will become a hard error in a future Meson r
         raise InterpreterException('Dictionaries do not have a method called "%s".' % method_name)
 
     def reduce_arguments(
-                self,
-                args: mparser.ArgumentNode,
-                key_resolver: T.Callable[[mparser.BaseNode], str] = default_resolve_key,
-                duplicate_key_error: T.Optional[str] = None,
-            ) -> T.Tuple[T.List[TYPE_nvar], TYPE_nkwargs]:
+        self,
+        args: mparser.ArgumentNode,
+        key_resolver: T.Callable[[mparser.BaseNode], str] = default_resolve_key,
+        duplicate_key_error: T.Optional[str] = None,
+    ) -> T.Tuple[T.List[TYPE_nvar], TYPE_nkwargs]:
         assert(isinstance(args, mparser.ArgumentNode))
         if args.incorrect_order():
             raise InvalidArguments('All keyword arguments must be after positional arguments.')

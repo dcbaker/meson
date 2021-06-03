@@ -110,7 +110,7 @@ class QtBaseModule(ExtensionModule):
                 self.rcc_supports_depfiles = True
             else:
                 mlog.warning('rcc dependencies will not work properly until you move to Qt >= 5.14:',
-                    mlog.bold('https://bugreports.qt.io/browse/QTBUG-45460'), fatal=False)
+                             mlog.bold('https://bugreports.qt.io/browse/QTBUG-45460'), fatal=False)
         else:
             suffix = f'-qt{self.qt_version}'
             self.moc = NonExistingExternalProgram(name='moc' + suffix)
@@ -292,7 +292,7 @@ class QtBaseModule(ExtensionModule):
             rcc_file, nodes = self.qrc_nodes(state, qresource)
             for c in nodes:
                 if c.endswith('.qm'):
-                    ts_files.append(c.rstrip('.qm')+'.ts')
+                    ts_files.append(c.rstrip('.qm') + '.ts')
                 else:
                     raise MesonException(f'qt.compile_translations: qresource can only contain qm files, found {c}')
             results = self.preprocess(state, [], {'qresources': qresource, 'rcc_extra_arguments': kwargs.get('rcc_extra_arguments', [])})

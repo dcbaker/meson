@@ -286,7 +286,7 @@ class CLikeCompiler(Compiler):
         return self.linker.import_library_args(implibname)
 
     def _sanity_check_impl(self, work_dir: str, environment: 'Environment',
-                         sname: str, code: str) -> None:
+                           sname: str, code: str) -> None:
         mlog.debug('Sanity testing ' + self.get_display_language() + ' compiler:', ' '.join(self.exelist))
         mlog.debug('Is cross compiler: %s.' % str(self.is_cross))
 
@@ -687,7 +687,7 @@ class CLikeCompiler(Compiler):
         #endif
         {delim}\n{define}'''
         args = self.build_wrapper_args(env, extra_args, dependencies,
-                                             mode=CompileCheckMode.PREPROCESS).to_native()
+                                       mode=CompileCheckMode.PREPROCESS).to_native()
         func = functools.partial(self.cached_compile, code.format(**fargs), env.coredata, extra_args=args, mode='preprocess')
         if disable_cache:
             func = functools.partial(self.compile, code.format(**fargs), extra_args=args, mode='preprocess', temp_dir=env.scratch_dir)
@@ -1119,7 +1119,7 @@ class CLikeCompiler(Compiler):
         return None
 
     def _find_library_impl(self, libname: str, env: 'Environment', extra_dirs: T.List[str],
-                         code: str, libtype: LibType) -> T.Optional[T.List[str]]:
+                           code: str, libtype: LibType) -> T.Optional[T.List[str]]:
         # These libraries are either built-in or invalid
         if libname in self.ignore_libs:
             return []
@@ -1181,7 +1181,7 @@ class CLikeCompiler(Compiler):
         return None
 
     def _find_framework_impl(self, name: str, env: 'Environment', extra_dirs: T.List[str],
-                            allow_system: bool) -> T.Optional[T.List[str]]:
+                             allow_system: bool) -> T.Optional[T.List[str]]:
         if isinstance(extra_dirs, str):
             extra_dirs = [extra_dirs]
         key = (tuple(self.exelist), name, tuple(extra_dirs), allow_system)

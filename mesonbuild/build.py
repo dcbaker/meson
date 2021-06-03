@@ -359,6 +359,7 @@ class ExtractedObjects:
     '''
     Holds a list of sources for which the objects must be extracted
     '''
+
     def __init__(self, target, srclist=None, genlist=None, objlist=None, recursive=True):
         self.target = target
         self.recursive = recursive

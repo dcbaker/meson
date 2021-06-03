@@ -202,18 +202,18 @@ permitted_dependency_kwargs = {
 class Interpreter(InterpreterBase):
 
     def __init__(
-                self,
-                build: build.Build,
-                backend: T.Optional[Backend] = None,
-                subproject: str = '',
-                subdir: str = '',
-                subproject_dir: str = 'subprojects',
-                modules: T.Optional[T.Dict[str, ModuleObject]] = None,
-                default_project_options: T.Optional[T.Dict[str, str]] = None,
-                mock: bool = False,
-                ast: T.Optional[mparser.CodeBlockNode] = None,
-                is_translated: bool = False,
-            ) -> None:
+        self,
+        build: build.Build,
+        backend: T.Optional[Backend] = None,
+        subproject: str = '',
+        subdir: str = '',
+        subproject_dir: str = 'subprojects',
+        modules: T.Optional[T.Dict[str, ModuleObject]] = None,
+        default_project_options: T.Optional[T.Dict[str, str]] = None,
+        mock: bool = False,
+        ast: T.Optional[mparser.CodeBlockNode] = None,
+        is_translated: bool = False,
+    ) -> None:
         super().__init__(build.environment.get_source_dir(), subdir, subproject)
         self.an_unpicklable_object = mesonlib.an_unpicklable_object
         self.build = build
@@ -543,7 +543,7 @@ class Interpreter(InterpreterBase):
     @FeatureNewKwargs('declare_dependency', '0.54.0', ['variables'])
     @permittedKwargs({'include_directories', 'link_with', 'sources', 'dependencies',
                       'compile_args', 'link_args', 'link_whole', 'version',
-                      'variables' })
+                      'variables'})
     @noPosargs
     def func_declare_dependency(self, node, args, kwargs):
         version = kwargs.get('version', self.project_version)
@@ -758,7 +758,7 @@ external dependencies (including libraries) must go to "dependencies".''')
         m = ['\nExecuting subproject', mlog.bold(stack)]
         if method != 'meson':
             m += ['method', mlog.bold(method)]
-        mlog.log(*m,'\n', nested=False)
+        mlog.log(*m, '\n', nested=False)
 
         try:
             if method == 'meson':
@@ -1141,7 +1141,7 @@ external dependencies (including libraries) must go to "dependencies".''')
             self.summary_impl('Subprojects', all_subprojects,
                               {'bool_yn': True,
                                'list_sep': ' ',
-                              })
+                               })
         # Print all summaries, main project last.
         mlog.log('')  # newline
         main_summary = self.summary.pop('', None)
@@ -1368,7 +1368,7 @@ external dependencies (including libraries) must go to "dependencies".''')
     def find_program_fallback(self, fallback, args, required, extra_info):
         mlog.log('Fallback to subproject', mlog.bold(fallback), 'which provides program',
                  mlog.bold(' '.join(args)))
-        sp_kwargs = { 'required': required }
+        sp_kwargs = {'required': required}
         self.do_subproject(fallback, 'meson', sp_kwargs)
         return self.program_from_overrides(args, extra_info)
 

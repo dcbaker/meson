@@ -49,21 +49,21 @@ class CMakeCacheEntry(T.NamedTuple):
 
 class CMakeTarget:
     def __init__(
-                self,
-                name:        str,
-                target_type: str,
-                properties:  T.Optional[T.Dict[str, T.List[str]]] = None,
-                imported:    bool                                 = False,
-                tline:       T.Optional[CMakeTraceLine]           = None
-            ):
+        self,
+        name:        str,
+        target_type: str,
+        properties:  T.Optional[T.Dict[str, T.List[str]]] = None,
+        imported:    bool = False,
+        tline:       T.Optional[CMakeTraceLine] = None
+    ):
         if properties is None:
             properties = {}
-        self.name            = name
-        self.type            = target_type
-        self.properties      = properties
-        self.imported        = imported
-        self.tline           = tline
-        self.depends         = []      # type: T.List[str]
+        self.name = name
+        self.type = target_type
+        self.properties = properties
+        self.imported = imported
+        self.tline = tline
+        self.depends = []      # type: T.List[str]
         self.current_bin_dir = None    # type: T.Optional[Path]
         self.current_src_dir = None    # type: T.Optional[Path]
 
@@ -91,9 +91,9 @@ class CMakeGeneratorTarget(CMakeTarget):
 
 class CMakeTraceParser:
     def __init__(self, cmake_version: str, build_dir: Path, permissive: bool = True) -> None:
-        self.vars:                      T.Dict[str, T.List[str]]     = {}
-        self.vars_by_file: T.Dict[Path, T.Dict[str, T.List[str]]]    = {}
-        self.targets:                   T.Dict[str, CMakeTarget]     = {}
+        self.vars:                      T.Dict[str, T.List[str]] = {}
+        self.vars_by_file: T.Dict[Path, T.Dict[str, T.List[str]]] = {}
+        self.targets:                   T.Dict[str, CMakeTarget] = {}
         self.cache:                     T.Dict[str, CMakeCacheEntry] = {}
 
         self.explicit_headers = set()  # type: T.Set[Path]
@@ -246,10 +246,10 @@ class CMakeTraceParser:
         """
         # DOC: https://cmake.org/cmake/help/latest/command/set.html
 
-        cache_type  = None
+        cache_type = None
         cache_force = 'FORCE' in tline.args
         try:
-            cache_idx  = tline.args.index('CACHE')
+            cache_idx = tline.args.index('CACHE')
             cache_type = tline.args[cache_idx + 1]
         except (ValueError, IndexError):
             pass
@@ -377,6 +377,7 @@ class CMakeTraceParser:
             target.depends += [key]
 
         working_dir = None
+
         def handle_working_dir(key: str, target: CMakeGeneratorTarget) -> None:
             nonlocal working_dir
             if working_dir is None:
@@ -408,7 +409,7 @@ class CMakeTraceParser:
         cbinary_dir = self.var_to_str('MESON_PS_CMAKE_CURRENT_BINARY_DIR')
         csource_dir = self.var_to_str('MESON_PS_CMAKE_CURRENT_SOURCE_DIR')
 
-        target.working_dir     = Path(working_dir) if working_dir else None
+        target.working_dir = Path(working_dir) if working_dir else None
         target.current_bin_dir = Path(cbinary_dir) if cbinary_dir else None
         target.current_src_dir = Path(csource_dir) if csource_dir else None
         target.outputs = [Path(x) for x in self._guess_files([str(y) for y in target.outputs])]

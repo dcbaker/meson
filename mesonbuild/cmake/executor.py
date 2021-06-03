@@ -31,7 +31,7 @@ if T.TYPE_CHECKING:
     from ..environment import Environment
     from ..programs import ExternalProgram
 
-TYPE_result    = T.Tuple[int, T.Optional[str], T.Optional[str]]
+TYPE_result = T.Tuple[int, T.Optional[str], T.Optional[str]]
 TYPE_cache_key = T.Tuple[str, T.Tuple[str, ...], str, T.FrozenSet[T.Tuple[str, str]]]
 
 class CMakeExecutor:

@@ -141,7 +141,7 @@ class RequestHandShake(RequestBase):
             vers['minor'] = self.vers_minor
 
         # Old CMake versions (3.7) want '/' even on Windows
-        self.src_dir   = self.src_dir.resolve()
+        self.src_dir = self.src_dir.resolve()
         self.build_dir = self.build_dir.resolve()
 
         return {

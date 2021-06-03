@@ -32,7 +32,7 @@ from pathlib import Path
 from . import WrapMode
 from .. import coredata
 from ..mesonlib import quiet_git, GIT, ProgressBar, MesonException
-from  .. import mesonlib
+from .. import mesonlib
 
 if T.TYPE_CHECKING:
     import http.client

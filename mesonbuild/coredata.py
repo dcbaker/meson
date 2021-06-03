@@ -53,6 +53,7 @@ _T = T.TypeVar('_T')
 
 class MesonVersionMismatchException(MesonException):
     '''Build directory generated with Meson version is incompatible with current version'''
+
     def __init__(self, old_version: str, current_version: str) -> None:
         super().__init__('Build directory has been generated with Meson version {}, '
                          'which is incompatible with the current version {}.'
@@ -636,7 +637,7 @@ class CoreData:
             self._set_others_from_buildtype(value)
 
     def get_nondefault_buildtype_args(self):
-        result= []
+        result = []
         value = self.options[OptionKey('buildtype')].value
         if value == 'plain':
             opt = '0'
@@ -1216,4 +1217,3 @@ FORBIDDEN_TARGET_NAMES = {'clean': None,
                           'dist': None,
                           'distcheck': None,
                           }
-

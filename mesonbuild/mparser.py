@@ -54,15 +54,15 @@ class ParseException(MesonException):
 
 class BlockParseException(MesonException):
     def __init__(
-                self,
-                text: str,
-                line: str,
-                lineno: int,
-                colno: int,
-                start_line: str,
-                start_lineno: int,
-                start_colno: int,
-            ) -> None:
+        self,
+        text: str,
+        line: str,
+        lineno: int,
+        colno: int,
+        start_line: str,
+        start_lineno: int,
+        start_colno: int,
+    ) -> None:
         # This can be formatted in two ways - one if the block start and end are on the same line, and a different way if they are on different lines.
 
         if lineno == start_lineno:
@@ -197,10 +197,10 @@ class Lexer:
                                     Newline character in a string detected, use ''' (three single quotes) for multiline strings instead.
                                     This will become a hard error in a future Meson release.\
                                 """),
-                                self.getline(line_start),
-                                str(lineno),
-                                str(col)
-                            )
+                                         self.getline(line_start),
+                                         str(lineno),
+                                         str(col)
+                                         )
                         value = match_text[2 if tid == 'fstring' else 1:-1]
                         try:
                             value = ESCAPE_SEQUENCE_SINGLE_RE.sub(decode_match, value)

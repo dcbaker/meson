@@ -55,7 +55,7 @@ class MesonMain(InterpreterObject):
                              })
 
     def _find_source_script(self, prog: T.Union[str, mesonlib.File, ExecutableHolder], args):
-        
+
         if isinstance(prog, (ExecutableHolder, ExternalProgramHolder)):
             return self.interpreter.backend.get_executable_serialisation([unholder(prog)] + args)
         found = self.interpreter.func_find_program({}, prog, {}).held_object
@@ -363,7 +363,6 @@ class MesonMain(InterpreterObject):
         propname, fallback = args
         machine = self.interpreter.machine_from_native_kwarg(kwargs)
         return self.__get_external_property_impl(propname, fallback, machine)
-
 
     @permittedKwargs({'native'})
     @FeatureNew('meson.has_external_property', '0.58.0')
