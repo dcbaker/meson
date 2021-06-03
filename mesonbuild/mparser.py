@@ -53,16 +53,8 @@ class ParseException(MesonException):
         self.colno = colno
 
 class BlockParseException(MesonException):
-    def __init__(
-        self,
-        text: str,
-        line: str,
-        lineno: int,
-        colno: int,
-        start_line: str,
-        start_lineno: int,
-        start_colno: int,
-    ) -> None:
+    def __init__(self, text: str, line: str, lineno: int, colno: int, start_line: str, start_lineno: int,
+                 start_colno: int,) -> None:
         # This can be formatted in two ways - one if the block start and end are on the same line, and a different way if they are on different lines.
 
         if lineno == start_lineno:

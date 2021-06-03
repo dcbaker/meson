@@ -44,12 +44,7 @@ class InterpreterObject:
         # when printing a warning message during a method call.
         self.current_node = None  # type: mparser.BaseNode
 
-    def method_call(
-        self,
-        method_name: str,
-        args: TV_fw_args,
-        kwargs: TV_fw_kwargs
-    ) -> TYPE_var:
+    def method_call(self, method_name: str, args: TV_fw_args, kwargs: TV_fw_kwargs) -> TYPE_var:
         if method_name in self.methods:
             method = self.methods[method_name]
             if not getattr(method, 'no-args-flattening', False):
@@ -1467,12 +1462,9 @@ The result of this is undefined and will become a hard error in a future Meson r
 
         raise InterpreterException('Dictionaries do not have a method called "%s".' % method_name)
 
-    def reduce_arguments(
-        self,
-        args: mparser.ArgumentNode,
-        key_resolver: T.Callable[[mparser.BaseNode], str] = default_resolve_key,
-        duplicate_key_error: T.Optional[str] = None,
-    ) -> T.Tuple[T.List[TYPE_nvar], TYPE_nkwargs]:
+    def reduce_arguments(self, args: mparser.ArgumentNode,
+                         key_resolver: T.Callable[[mparser.BaseNode], str] = default_resolve_key,
+                         duplicate_key_error: T.Optional[str] = None) -> T.Tuple[T.List[TYPE_nvar], TYPE_nkwargs]:
         assert(isinstance(args, mparser.ArgumentNode))
         if args.incorrect_order():
             raise InvalidArguments('All keyword arguments must be after positional arguments.')

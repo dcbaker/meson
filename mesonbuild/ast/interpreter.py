@@ -221,12 +221,9 @@ class AstInterpreter(interpreterbase.InterpreterBase):
     def unknown_function_called(self, func_name: str) -> None:
         pass
 
-    def reduce_arguments(
-        self,
-        args: mparser.ArgumentNode,
-        key_resolver: T.Callable[[mparser.BaseNode], str] = interpreterbase.default_resolve_key,
-        duplicate_key_error: T.Optional[str] = None,
-    ) -> T.Tuple[T.List[TYPE_nvar], TYPE_nkwargs]:
+    def reduce_arguments(self, args: mparser.ArgumentNode,
+                         key_resolver: T.Callable[[mparser.BaseNode], str] = interpreterbase.default_resolve_key,
+                         duplicate_key_error: T.Optional[str] = None) -> T.Tuple[T.List[TYPE_nvar], TYPE_nkwargs]:
         if isinstance(args, ArgumentNode):
             kwargs = {}  # type: T.Dict[str, TYPE_nvar]
             for key, val in args.kwargs.items():

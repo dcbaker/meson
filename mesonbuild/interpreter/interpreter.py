@@ -201,19 +201,10 @@ permitted_dependency_kwargs = {
 
 class Interpreter(InterpreterBase):
 
-    def __init__(
-        self,
-        build: build.Build,
-        backend: T.Optional[Backend] = None,
-        subproject: str = '',
-        subdir: str = '',
-        subproject_dir: str = 'subprojects',
-        modules: T.Optional[T.Dict[str, ModuleObject]] = None,
-        default_project_options: T.Optional[T.Dict[str, str]] = None,
-        mock: bool = False,
-        ast: T.Optional[mparser.CodeBlockNode] = None,
-        is_translated: bool = False,
-    ) -> None:
+    def __init__(self, build: build.Build, backend: T.Optional[Backend] = None, subproject: str = '', subdir: str = '',
+                 subproject_dir: str = 'subprojects', modules: T.Optional[T.Dict[str, ModuleObject]] = None,
+                 default_project_options: T.Optional[T.Dict[str, str]] = None, mock: bool = False,
+                 ast: T.Optional[mparser.CodeBlockNode] = None, is_translated: bool = False) -> None:
         super().__init__(build.environment.get_source_dir(), subdir, subproject)
         self.an_unpicklable_object = mesonlib.an_unpicklable_object
         self.build = build
