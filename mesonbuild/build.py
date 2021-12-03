@@ -14,6 +14,7 @@
 
 from collections import OrderedDict
 from functools import lru_cache
+from dataclasses import dataclass, field, InitVar
 import copy
 import hashlib
 import itertools, pathlib
@@ -130,22 +131,20 @@ def get_target_macos_dylib_install_name(ld) -> str:
 class InvalidArguments(MesonException):
     pass
 
+@dataclass
 class DependencyOverride(HoldableObject):
-    def __init__(self, dep: dependencies.Dependency, node: 'BaseNode', explicit: bool = True):
-        self.dep = dep
-        self.node = node
-        self.explicit = explicit
+    dep: dependencies.Dependency
+    node: 'BaseNode'
+    explicit: bool = True
 
+@dataclass
 class Headers(HoldableObject):
 
-    def __init__(self, sources: T.List[File], install_subdir: T.Optional[str],
-                 install_dir: T.Optional[str], install_mode: 'FileMode',
-                 subproject: str):
-        self.sources = sources
-        self.install_subdir = install_subdir
-        self.custom_install_dir = install_dir
-        self.custom_install_mode = install_mode
-        self.subproject = subproject
+    sources: T.List[File]
+    install_subdir: T.Optional[str]
+    custom_install_dir: T.Optional[str]
+    custom_install_mode: 'FileMode'
+    subproject: str
 
     # TODO: we really don't need any of these methods, but they're preserved to
     # keep APIs relying on them working.
@@ -166,16 +165,14 @@ class Headers(HoldableObject):
         return self.custom_install_mode
 
 
+@dataclass
 class Man(HoldableObject):
 
-    def __init__(self, sources: T.List[File], install_dir: T.Optional[str],
-                 install_mode: 'FileMode', subproject: str,
-                 locale: T.Optional[str]):
-        self.sources = sources
-        self.custom_install_dir = install_dir
-        self.custom_install_mode = install_mode
-        self.subproject = subproject
-        self.locale = locale
+    sources: T.List[File]
+    custom_install_dir: T.Optional[str]
+    custom_install_mode: 'FileMode'
+    subproject: str
+    locale: T.Optional[str]
 
     def get_custom_install_dir(self) -> T.Optional[str]:
         return self.custom_install_dir
@@ -187,40 +184,34 @@ class Man(HoldableObject):
         return self.sources
 
 
+@dataclass
 class EmptyDir(HoldableObject):
 
-    def __init__(self, path: str, install_mode: 'FileMode', subproject: str,
-                 install_tag: T.Optional[str] = None):
-        self.path = path
-        self.install_mode = install_mode
-        self.subproject = subproject
-        self.install_tag = install_tag
+     path: str
+     install_mode: 'FileMode'
+     subproject: str
+     install_tag: T.Optional[str] = None
 
 
+@dataclass
 class InstallDir(HoldableObject):
 
-    def __init__(self, src_subdir: str, inst_subdir: str, install_dir: str,
-                 install_mode: 'FileMode',
-                 exclude: T.Tuple[T.Set[str], T.Set[str]],
-                 strip_directory: bool, subproject: str,
-                 from_source_dir: bool = True,
-                 install_tag: T.Optional[str] = None):
-        self.source_subdir = src_subdir
-        self.installable_subdir = inst_subdir
-        self.install_dir = install_dir
-        self.install_mode = install_mode
-        self.exclude = exclude
-        self.strip_directory = strip_directory
-        self.from_source_dir = from_source_dir
-        self.subproject = subproject
-        self.install_tag = install_tag
+     source_subdir: str
+     installable_subdir: str
+     install_dir: str
+     install_mode: 'FileMode'
+     exclude: T.Tuple[T.Set[str], T.Set[str]]
+     strip_directory: bool
+     subproject: str
+     from_source_dir: bool = True
+     install_tag: T.Optional[str] = None
 
 
+@dataclass
 class DepManifest:
 
-    def __init__(self, version: str, license: T.List[str]):
-        self.version = version
-        self.license = license
+    version: str
+    license: T.List[str]
 
     def to_json(self) -> T.Dict[str, T.Union[str, T.List[str]]]:
         return {
@@ -363,22 +354,17 @@ class Build:
 
         return link_args.get(compiler.get_language(), [])
 
+@dataclass
 class IncludeDirs(HoldableObject):
 
     """Internal representation of an include_directories call."""
 
-    def __init__(self, curdir: str, dirs: T.List[str], is_system: bool, extra_build_dirs: T.Optional[T.List[str]] = None):
-        self.curdir = curdir
-        self.incdirs = dirs
-        self.is_system = is_system
-
-        # Interpreter has validated that all given directories
-        # actually exist.
-        self.extra_build_dirs: T.List[str] = extra_build_dirs or []
-
-    def __repr__(self) -> str:
-        r = '<{} {}/{}>'
-        return r.format(self.__class__.__name__, self.curdir, self.incdirs)
+    curdir: str
+    incdirs: T.List[str]
+    is_system: bool
+    # Interpreter has validated that all given directories
+    # actually exist.
+    extra_build_dirs: T.List[str] = field(default_factory=list)
 
     def get_curdir(self) -> str:
         return self.curdir
@@ -404,27 +390,21 @@ class IncludeDirs(HoldableObject):
                 strlist.append(os.path.join(builddir, self.curdir, idir))
         return strlist
 
+@dataclass
 class ExtractedObjects(HoldableObject):
     '''
     Holds a list of sources for which the objects must be extracted
     '''
-    def __init__(self, target: 'BuildTarget',
-                 srclist: T.Optional[T.List[File]] = None,
-                 genlist: T.Optional[T.List['GeneratedTypes']] = None,
-                 objlist: T.Optional[T.List[T.Union[str, 'File', 'ExtractedObjects']]] = None,
-                 recursive: bool = True):
-        self.target = target
-        self.recursive = recursive
-        self.srclist: T.List[File] = srclist if srclist is not None else []
-        self.genlist: T.List['GeneratedTypes'] = genlist if genlist is not None else []
-        self.objlist: T.Optional[T.List[T.Union[str, 'File', 'ExtractedObjects']]] = \
-             objlist if objlist is not None else []
+
+    target: 'BuildTarget'
+    srclist: T.List[File] = field(default_factory=list)
+    genlist: T.List['GeneratedTypes'] = field(default_factory=list)
+    objlist: T.List[T.Union[str, 'File', 'ExtractedObjects']] = field(default_factory=list)
+    recursive: bool = True
+
+    def __post_init__(self) ->None:
         if self.target.is_unity:
             self.check_unity_compatible()
-
-    def __repr__(self) -> str:
-        r = '<{0} {1!r}: {2}>'
-        return r.format(self.__class__.__name__, self.target.name, self.srclist)
 
     @staticmethod
     def get_sources(sources: T.Sequence['FileOrString'], generated_sources: T.Sequence['GeneratedTypes']) -> T.List['FileOrString']:
@@ -1682,24 +1662,26 @@ class Generator(HoldableObject):
         return output
 
 
+@dataclass
 class GeneratedList(HoldableObject):
 
     """The output of generator.process."""
 
-    def __init__(self, generator: Generator, subdir: str,
-                 preserve_path_from: T.Optional[str],
-                 extra_args: T.List[str]):
-        self.generator = generator
-        self.name = generator.exe
-        self.depends: T.Set['CustomTarget'] = set() # Things this target depends on (because e.g. a custom target was used as input)
-        self.subdir = subdir
-        self.infilelist: T.List['File'] = []
-        self.outfilelist: T.List[str] = []
-        self.outmap: T.Dict[File, T.List[str]] = {}
-        self.extra_depends = []  # XXX: Doesn't seem to be used?
-        self.depend_files: T.List[File] = []
-        self.preserve_path_from = preserve_path_from
-        self.extra_args: T.List[str] = extra_args if extra_args is not None else []
+    generator: Generator
+    subdir: str
+    preserve_path_from: T.Optional[str]
+    extra_args: T.List[str]
+
+    # Things this target depends on (because e.g. a custom target was used as input)
+    depends: T.Set['CustomTarget'] = field(default_factory=set, init=False)
+    infilelist: T.List['File'] = field(default_factory=list, init=False)
+    outfilelist: T.List[str] = field(default_factory=list, init=False)
+    outmap: T.Dict[File, T.List[str]] = field(default_factory=dict, init=False)
+    extra_depends: T.List[Target] = field(default_factory=list, init=False)  # XXX: Doesn't seem to be used?
+    depend_files: T.List[File] = field(default_factory=list, init=False)
+
+    def __post_init__(self) -> None:
+        self.name = self.generator.exe
 
         if isinstance(self.generator.exe, programs.ExternalProgram):
             if not self.generator.exe.found():
@@ -2704,6 +2686,7 @@ class Jar(BuildTarget):
             return ['-cp', os.pathsep.join(cp_paths)]
         return []
 
+@dataclass
 class CustomTargetIndex(HoldableObject):
 
     """A special opaque object returned by indexing a CustomTarget. This object
@@ -2712,19 +2695,16 @@ class CustomTargetIndex(HoldableObject):
     the sources.
     """
 
-    def __init__(self, target: CustomTarget, output: str):
-        self.typename = 'custom'
-        self.target = target
-        self.output = output
-        self.for_machine = target.for_machine
+    target: CustomTarget
+    output: str
+    typename: T.ClassVar[str] = 'custom'
+
+    def __post_init__(self) -> None:
+        self.for_machine = self.target.for_machine
 
     @property
     def name(self) -> str:
         return f'{self.target.name}[{self.output}]'
-
-    def __repr__(self):
-        return '<CustomTargetIndex: {!r}[{}]>'.format(
-            self.target, self.target.get_outputs().index(self.output))
 
     def get_outputs(self) -> T.List[str]:
         return [self.output]
@@ -2789,44 +2769,45 @@ class ConfigurationData(HoldableObject):
 # A bit poorly named, but this represents plain data files to copy
 # during install.
 class Data(HoldableObject):
-    def __init__(self, sources: T.List[File], install_dir: str, install_dir_name: str,
-                 install_mode: 'FileMode', subproject: str,
-                 rename: T.List[str] = None,
-                 install_tag: T.Optional[str] = None,
-                 data_type: str = None):
-        self.sources = sources
-        self.install_dir = install_dir
-        self.install_dir_name = install_dir_name
-        self.install_mode = install_mode
-        self.install_tag = install_tag
+
+    sources: T.List[File]
+    install_dir: str
+    install_dir_name: str
+    install_mode: 'FileMode'
+    subproject: str
+    rename: InitVar[T.Optional[T.List[str]]] = None
+    install_tag: T.Optional[str] = None
+    data_type: T.Optional[str] = None
+
+    def __post_init__(self, rename: T.Optional[T.List[str]]) -> None:
         if rename is None:
             self.rename = [os.path.basename(f.fname) for f in self.sources]
         else:
             self.rename = rename
-        self.subproject = subproject
-        self.data_type = data_type
 
+@dataclass
 class SymlinkData(HoldableObject):
-    def __init__(self, target: str, name: str, install_dir: str,
-                 subproject: str, install_tag: T.Optional[str] = None):
-        self.target = target
-        if name != os.path.basename(name):
-            raise InvalidArguments(f'Link name is "{name}", but link names cannot contain path separators. '
-                                   'The dir part should be in install_dir.')
-        self.name = name
-        self.install_dir = install_dir
-        self.subproject = subproject
-        self.install_tag = install_tag
 
+    target: str
+    name: str
+    install_dir: str
+    subproject: str
+    install_tag: T.Optional[str] = None
+
+    def __post_init__(self) -> None:
+        if self.name != os.path.basename(self.name):
+            raise InvalidArguments(f'Link name is "{self.name}", but link names cannot contain path separators. '
+                                   'The dir part should be in install_dir.')
+
+
+@dataclass
 class TestSetup:
-    def __init__(self, exe_wrapper: T.List[str], gdb: bool,
-                 timeout_multiplier: int, env: EnvironmentVariables,
-                 exclude_suites: T.List[str]):
-        self.exe_wrapper = exe_wrapper
-        self.gdb = gdb
-        self.timeout_multiplier = timeout_multiplier
-        self.env = env
-        self.exclude_suites = exclude_suites
+    exe_wrapper: T.List[str]
+    gdb: bool
+    timeout_multiplier: int
+    env: EnvironmentVariables
+    exclude_suites: T.List[str]
+
 
 def get_sources_string_names(sources, backend):
     '''
