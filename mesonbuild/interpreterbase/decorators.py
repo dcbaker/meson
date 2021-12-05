@@ -504,7 +504,10 @@ def typed_kwargs(name: str, *types: KwargInfo) -> T.Callable[..., T.Any]:
             for info in types:
                 types_tuple = info.types if isinstance(info.types, tuple) else (info.types,)
                 value = kwargs.get(info.name)
-                if value is not None:
+
+                if value is None and info.required:
+                    raise InvalidArguments(f'"{name}" is missing required keyword argument "{info.name}"')
+                elif value is not None:
                     if info.since:
                         feature_name = info.name + ' arg in ' + name
                         FeatureNew.single_use(feature_name, info.since, subproject, location=node)
@@ -542,9 +545,6 @@ def typed_kwargs(name: str, *types: KwargInfo) -> T.Callable[..., T.Any]:
 
                             if warn:
                                 FeatureNew.single_use(f'"{name}" keyword argument "{info.name}" value "{n}"', version, subproject, location=node)
-
-                elif info.required:
-                    raise InvalidArguments(f'{name} is missing required keyword argument "{info.name}"')
                 else:
                     # set the value to the default, this ensuring all kwargs are present
                     # This both simplifies the typing checking and the usage
