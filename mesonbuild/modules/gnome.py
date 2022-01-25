@@ -15,6 +15,7 @@
 '''This module provides helper functions for Gnome/GLib related
 functionality such as gobject-introspection, gresources and gtk-doc'''
 
+from __future__ import annotations
 import copy
 import itertools
 import functools
@@ -724,12 +725,8 @@ class GnomeModule(ExtensionModule):
         else:
             return cflags, internal_ldflags, external_ldflags, external_ldflags_nodedup, gi_includes, depends
 
-    def _unwrap_gir_target(self, girtarget: T.Union[build.Executable, build.StaticLibrary, build.SharedLibrary], state: 'ModuleState'
-                           ) -> T.Union[build.Executable, build.StaticLibrary, build.SharedLibrary]:
-        if not isinstance(girtarget, (build.Executable, build.SharedLibrary,
-                                      build.StaticLibrary)):
-            raise MesonException(f'Gir target must be an executable or library but is "{girtarget}" of type {type(girtarget).__name__}')
-
+    def _unwrap_gir_target(self, girtarget: T.Union[build.Executable, build.StaticLibrary, build.SharedLibrary, build.CustomTarget, build.CustomTargetIndex], state: 'ModuleState'
+                           ) -> T.Union[build.Executable, build.StaticLibrary, build.SharedLibrary, build.CustomTarget, build.CustomTargetIndex]:
         STATIC_BUILD_REQUIRED_VERSION = ">=1.58.1"
         if isinstance(girtarget, (build.StaticLibrary)) and \
            not mesonlib.version_compare(
@@ -794,7 +791,7 @@ class GnomeModule(ExtensionModule):
         return ret
 
     @staticmethod
-    def _scan_gir_targets(state: 'ModuleState', girtargets: T.Sequence[build.BuildTarget]) -> T.List[T.Union[str, build.Executable]]:
+    def _scan_gir_targets(state: 'ModuleState', girtargets: T.Sequence[build.BuildTarget | build.CustomTarget | build.CustomTargetIndex]) -> T.List[T.Union[str, build.Executable]]:
         ret: T.List[T.Union[str, build.Executable]] = []
 
         for girtarget in girtargets:
@@ -828,31 +825,37 @@ class GnomeModule(ExtensionModule):
         return ret
 
     @staticmethod
-    def _get_girtargets_langs_compilers(girtargets: T.Sequence[build.BuildTarget]) -> T.List[T.Tuple[str, 'Compiler']]:
+    def _get_girtargets_langs_compilers(state: ModuleState, girtargets: T.Sequence[T.Union[build.BuildTarget, build.CustomTarget, build.CustomTargetIndex]]) -> T.List[T.Tuple[str, 'Compiler']]:
         ret: T.List[T.Tuple[str, 'Compiler']] = []
         for girtarget in girtargets:
-            for lang, compiler in girtarget.compilers.items():
-                # XXX: Can you use g-i with any other language?
-                if lang in ('c', 'cpp', 'objc', 'objcpp', 'd'):
-                    ret.append((lang, compiler))
-                    break
+            if isinstance(girtarget, (build.CustomTargetIndex, build.CustomTarget)):
+                # XXX: we probably need to have a way to add languages here...
+                pass
+            else:
+                for lang, compiler in girtarget.compilers.items():
+                    # XXX: Can you use g-i with any other language?
+                    if lang in ('c', 'cpp', 'objc', 'objcpp', 'd'):
+                        ret.append((lang, compiler))
+                        break
 
         return ret
 
     @staticmethod
-    def _get_gir_targets_deps(girtargets: T.Sequence[build.BuildTarget]
+    def _get_gir_targets_deps(girtargets: T.Sequence[build.BuildTarget | build.CustomTarget | build.CustomTargetIndex]
                               ) -> T.List[T.Union[build.BuildTarget, build.CustomTarget, build.CustomTargetIndex, Dependency]]:
         ret: T.List[T.Union[build.BuildTarget, build.CustomTarget, build.CustomTargetIndex, Dependency]] = []
         for girtarget in girtargets:
             ret += girtarget.get_all_link_deps()
-            ret += girtarget.get_external_deps()
+            if isinstance(girtarget, build.BuildTarget):
+                ret += girtarget.get_external_deps()
         return ret
 
     @staticmethod
-    def _get_gir_targets_inc_dirs(girtargets: T.Sequence[build.BuildTarget]) -> T.List[build.IncludeDirs]:
+    def _get_gir_targets_inc_dirs(girtargets: T.Sequence[build.BuildTarget | build.CustomTarget | build.CustomTargetIndex]) -> T.List[build.IncludeDirs]:
         ret: T.List[build.IncludeDirs] = []
         for girtarget in girtargets:
-            ret += girtarget.get_include_dirs()
+            if isinstance(girtarget, build.BuildTarget):
+                ret += girtarget.get_include_dirs()
         return ret
 
     @staticmethod
@@ -886,7 +889,7 @@ class GnomeModule(ExtensionModule):
 
     @staticmethod
     def _make_gir_filelist(state: 'ModuleState', srcdir: str, ns: str,
-                           nsversion: str, girtargets: T.Sequence[build.BuildTarget],
+                           nsversion: str, girtargets: T.Sequence[build.BuildTarget | build.CustomTarget | build.CustomTargetIndex],
                            libsources: T.Sequence[T.Union[
                                str, mesonlib.File, build.GeneratedList,
                                build.CustomTarget, build.CustomTargetIndex]]
@@ -1035,7 +1038,7 @@ class GnomeModule(ExtensionModule):
             if f.startswith(('-L', '-l', '--extra-library')):
                 yield f
 
-    @typed_pos_args('gnome.generate_gir', varargs=(build.Executable, build.SharedLibrary, build.StaticLibrary), min_varargs=1)
+    @typed_pos_args('gnome.generate_gir', varargs=(build.Executable, build.SharedLibrary, build.StaticLibrary, build.CustomTarget, build.CustomTargetIndex), min_varargs=1)
     @typed_kwargs(
         'gnome.generate_gir',
         INSTALL_KW,
@@ -1062,11 +1065,17 @@ class GnomeModule(ExtensionModule):
         KwargInfo('sources', ContainerTypeInfo(list, (str, mesonlib.File, build.GeneratedList, build.CustomTarget, build.CustomTargetIndex)), default=[], listify=True),
         KwargInfo('symbol_prefix', ContainerTypeInfo(list, str), default=[], listify=True),
     )
-    def generate_gir(self, state: 'ModuleState', args: T.Tuple[T.List[T.Union[build.Executable, build.SharedLibrary, build.StaticLibrary]]],
+    def generate_gir(self, state: 'ModuleState', args: T.Tuple[T.List[T.Union[build.Executable, build.SharedLibrary, build.StaticLibrary, build.CustomTarget, build.CustomTargetIndex]]],
                      kwargs: 'GenerateGir') -> ModuleReturnValue:
         girtargets = [self._unwrap_gir_target(arg, state) for arg in args[0]]
         if len(girtargets) > 1 and any([isinstance(el, build.Executable) for el in girtargets]):
             raise MesonException('generate_gir only accepts a single argument when one of the arguments is an executable')
+
+        for v in girtargets:
+            if isinstance(v, (build.CustomTarget, build.CustomTargetIndex)):
+                if not v.is_linkable_target():
+                    raise InvalidArguments("gnome.generate_gir: CustomTargets and indexes thereof must be linkable.")
+                FeatureNew.single_use('CustomTarget and CustomTargetIndex in gnome.generate_gir', '0.62.0', state.subproject)
 
         gir_dep, giscanner, gicompiler = self._get_gir_dep(state)
 
@@ -1082,7 +1091,7 @@ class GnomeModule(ExtensionModule):
         depends.extend(gir_dep.sources)
         depends.extend(girtargets)
 
-        langs_compilers = self._get_girtargets_langs_compilers(girtargets)
+        langs_compilers = self._get_girtargets_langs_compilers(state, girtargets)
         cflags, internal_ldflags, external_ldflags = self._get_langs_compilers_flags(state, langs_compilers)
         deps = self._get_gir_targets_deps(girtargets)
         deps += kwargs['dependencies']
