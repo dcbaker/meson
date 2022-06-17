@@ -44,6 +44,24 @@ if not pretend_glib_old and glib.version() >= '2.52.0'
     'generated-main.c', generated_resources,
     dependencies: gio)
   test('generated resource test', generated_res_exe)
+
+  subdir('generated')
+
+  ct_resources = gnome.compile_resources(
+    'ct-resources',
+    ct_simple_gresource,
+    install_header : true,
+    export : true,
+    source_dir : '../resources-data',
+    c_name : 'simple_resources')
+
+  cti_resources = gnome.compile_resources(
+    'cti-resources',
+    ct_simple_gresource[0],
+    install_header : true,
+    export : true,
+    source_dir : '../resources-data',
+    c_name : 'simple_resources')
 endif
 
 # Test build_by_default
@@ -53,3 +71,5 @@ gnome.compile_resources('build-resources',
   build_by_default : true,
   source_dir : '../resources-data',
 )
+
+# Test with a CustomTarget
