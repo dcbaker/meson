@@ -22,7 +22,8 @@ with anything else.
 ### gnome.compile_resources()
 
 ```
-    gnome.compile_resources(id: string, input_file: string | File,
+    gnome.compile_resources(id: string,
+                            input_file: string | File | CustomTarget | CustomTargetIndex | GeneratedList,
                             build_by_default: bool = false,
                             c_name: string | None = None,
                             dependencies: [](File, CustomTarget, CustomTargetIndex) = [],
