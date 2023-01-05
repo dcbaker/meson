@@ -148,7 +148,7 @@ class RustCompiler(Compiler):
         return {
             key: coredata.UserComboOption(
                 'Rust edition to use',
-                ['none', '2015', '2018', '2021'],
+                ['none', '2015', '2018', '2021', '2024'],
                 'none',
             ),
         }

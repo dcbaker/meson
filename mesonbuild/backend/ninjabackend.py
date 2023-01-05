@@ -56,7 +56,7 @@ if T.TYPE_CHECKING:
     from ..compilers.cs import CsCompiler
     from ..compilers.fortran import FortranCompiler
 
-    RUST_EDITIONS = Literal['2015', '2018', '2021']
+    RUST_EDITIONS = Literal['2015', '2018', '2021', '2024']
 
 
 FORTRAN_INCLUDE_PAT = r"^\s*#?include\s*['\"](\w+\.\w+)['\"]"
