@@ -668,7 +668,7 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
         return self.linker.get_option_args(options)
 
-    def check_header(self, hname: str, prefix: str, env: 'Environment', *,
+    def check_header(self, hname: str, prefix: str, *,
                      extra_args: T.Union[None, T.List[str], T.Callable[[CompileCheckMode], T.List[str]]] = None,
                      dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[bool, bool]:
         """Check that header is usable.
