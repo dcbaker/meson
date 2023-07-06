@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import abc
 import contextlib, os.path, re
+import dataclasses
 import enum
 import itertools
 import typing as T
@@ -55,7 +56,7 @@ lib_suffixes = {'a', 'lib', 'dll', 'dll.a', 'dylib', 'so', 'js'}
 # Mapping of language to suffixes of files that should always be in that language
 # This means we can't include .h headers here since they could be C, C++, ObjC, etc.
 # First suffix is the language's default.
-lang_suffixes = {
+lang_suffixes: T.Dict[str, T.Tuple[str, ...]] = {
     'c': ('c',),
     'cpp': ('cpp', 'cc', 'cxx', 'c++', 'hh', 'hpp', 'ipp', 'hxx', 'ino', 'ixx', 'C'),
     'cuda': ('cu',),
@@ -496,42 +497,45 @@ class CompileResult(HoldableObject):
         self.returncode = returncode
 
 
+@dataclasses.dataclass(eq=False)
 class Compiler(HoldableObject, metaclass=abc.ABCMeta):
+
     # Libraries to ignore in find_library() since they are provided by the
     # compiler or the C library. Currently only used for MSVC.
-    ignore_libs = []  # type: T.List[str]
+    ignore_libs: T.ClassVar[T.List[str]] = []
+
     # Libraries that are internal compiler implementations, and must not be
     # manually searched.
-    internal_libs = []  # type: T.List[str]
+    internal_libs: T.ClassVar[T.List[str]] = []
 
-    LINKER_PREFIX = None  # type: T.Union[None, str, T.List[str]]
-    INVOKES_LINKER = True
+    LINKER_PREFIX: T.ClassVar[T.Optional[T.Union[str, T.List[str]]]] = None
+    INVOKES_LINKER: T.ClassVar[bool] = True
 
-    language: str
-    id: str
-    warn_args: T.Dict[str, T.List[str]]
-    mode: str = 'COMPILER'
+    language: T.ClassVar[str]
+    id: T.ClassVar[str]
 
-    def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str,
-                 for_machine: MachineChoice, info: 'MachineInfo',
-                 linker: T.Optional['DynamicLinker'] = None,
-                 full_version: T.Optional[str] = None, is_cross: bool = False):
-        self.exelist = ccache + exelist
-        self.exelist_no_ccache = exelist
-        # In case it's been overridden by a child class already
+    ccache: dataclasses.InitVar[T.List[str]]
+    exelist_no_ccache: T.List[str]
+    version: str
+    for_machine: MachineChoice
+    info: MachineInfo
+    linker: T.Optional[DynamicLinker] = None
+    full_version: T.Optional[str] = None
+    is_cross: bool = False
+
+    base_options: T.Set[OptionKey] = dataclasses.field(default_factory=set, init=False)
+    modes: T.List[Compiler] = dataclasses.field(default_factory=list, init=False)
+    warn_args: T.Dict[str, T.List[str]] = dataclasses.field(default_factory=dict, init=False)
+    mode: str = dataclasses.field(default='COMPILER', init=False)
+    info: MachineInfo = dataclasses.field(init=False)
+
+    def __post_init__(self, ccache: T.List[str]) -> None:
+        self.exelist = ccache + self.exelist_no_ccache
         if not hasattr(self, 'file_suffixes'):
             self.file_suffixes = lang_suffixes[self.language]
         if not hasattr(self, 'can_compile_suffixes'):
             self.can_compile_suffixes = set(self.file_suffixes)
         self.default_suffix = self.file_suffixes[0]
-        self.version = version
-        self.full_version = full_version
-        self.for_machine = for_machine
-        self.base_options: T.Set[OptionKey] = set()
-        self.linker = linker
-        self.info = info
-        self.is_cross = is_cross
-        self.modes: T.List[Compiler] = []
 
     def __repr__(self) -> str:
         repr_str = "<{0}: v{1} `{2}`>"

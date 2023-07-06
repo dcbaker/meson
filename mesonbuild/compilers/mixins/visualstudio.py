@@ -91,7 +91,7 @@ class VisualStudioLikeCompiler(Compiler, metaclass=abc.ABCMeta):
     std_warn_args = ['/W3']
     std_opt_args = ['/O2']
     ignore_libs = arglist.UNIXY_COMPILER_INTERNAL_LIBS + ['execinfo']
-    internal_libs = []  # type: T.List[str]
+    internal_libs = []
 
     crt_args = {
         'none': [],
