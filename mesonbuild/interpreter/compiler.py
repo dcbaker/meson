@@ -436,7 +436,7 @@ class CompilerHolder(ObjectHolder['Compiler']):
         element = args[0]
         extra_args = functools.partial(self._determine_args, kwargs['no_builtin_args'], kwargs['include_directories'], kwargs['args'])
         deps, msg = self._determine_dependencies(kwargs['dependencies'])
-        value, cached = self.compiler.get_define(element, kwargs['prefix'], self.environment,
+        value, cached = self.compiler.get_define(element, kwargs['prefix'],
                                                  extra_args=extra_args,
                                                  dependencies=deps)
         cached_msg = mlog.blue('(cached)') if cached else ''

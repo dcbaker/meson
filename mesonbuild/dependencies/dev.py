@@ -545,7 +545,7 @@ class ZlibSystemDependency(SystemDependency):
             else:
                 return
 
-        v, _ = self.clib_compiler.get_define('ZLIB_VERSION', '#include <zlib.h>', self.env, [], [self])
+        v, _ = self.clib_compiler.get_define('ZLIB_VERSION', '#include <zlib.h>', [], [self])
         self.version = v.strip('"')
 
 

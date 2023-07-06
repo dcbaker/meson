@@ -665,7 +665,7 @@ class CLikeCompiler(Compiler):
             raise mesonlib.EnvironmentException(f'Could not determine alignment of {typename}. Sorry. You might want to file a bug.')
         return align, res.cached
 
-    def get_define(self, dname: str, prefix: str, env: 'Environment',
+    def get_define(self, dname: str, prefix: str,
                    extra_args: T.Union[T.List[str], T.Callable[[CompileCheckMode], T.List[str]]],
                    dependencies: T.Optional[T.List['Dependency']],
                    disable_cache: bool = False) -> T.Tuple[str, bool]:
@@ -676,11 +676,11 @@ class CLikeCompiler(Compiler):
         # define {dname}
         #endif
         {delim}\n{dname}'''
-        args = self.build_wrapper_args(env, extra_args, dependencies,
+        args = self.build_wrapper_args(self.env, extra_args, dependencies,
                                        mode=CompileCheckMode.PREPROCESS).to_native()
-        func = functools.partial(self.cached_compile, code, env.coredata, extra_args=args, mode='preprocess')
+        func = functools.partial(self.cached_compile, code, self.env.coredata, extra_args=args, mode='preprocess')
         if disable_cache:
-            func = functools.partial(self.compile, code, extra_args=args, mode='preprocess', temp_dir=env.scratch_dir)
+            func = functools.partial(self.compile, code, extra_args=args, mode='preprocess', temp_dir=self.env.scratch_dir)
         with func() as p:
             cached = p.cached
             if p.returncode != 0:
