@@ -396,7 +396,7 @@ class VisualStudioLikeCompiler(Compiler, metaclass=abc.ABCMeta):
     def get_argument_syntax(self) -> str:
         return 'msvc'
 
-    def symbols_have_underscore_prefix(self, env: 'Environment') -> bool:
+    def symbols_have_underscore_prefix(self) -> bool:
         '''
         Check if the compiler prefixes an underscore to global C symbols.
 
@@ -406,12 +406,12 @@ class VisualStudioLikeCompiler(Compiler, metaclass=abc.ABCMeta):
         '''
         # Try to consult a hardcoded list of cases we know
         # absolutely have an underscore prefix
-        result = self._symbols_have_underscore_prefix_list(env)
+        result = self._symbols_have_underscore_prefix_list()
         if result is not None:
             return result
 
         # As a last resort, try search in a compiled binary
-        return self._symbols_have_underscore_prefix_searchbin(env)
+        return self._symbols_have_underscore_prefix_searchbin()
 
 
 class MSVCCompiler(VisualStudioLikeCompiler):
