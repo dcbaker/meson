@@ -552,20 +552,20 @@ class CLikeCompiler(Compiler):
         return low
 
     def compute_int(self, expression: str, low: T.Optional[int], high: T.Optional[int],
-                    guess: T.Optional[int], prefix: str, env: 'Environment', *,
+                    guess: T.Optional[int], prefix: str, *,
                     extra_args: T.Union[None, T.List[str], T.Callable[[CompileCheckMode], T.List[str]]],
                     dependencies: T.Optional[T.List['Dependency']] = None) -> int:
         if extra_args is None:
             extra_args = []
         if self.is_cross:
-            return self.cross_compute_int(expression, low, high, guess, prefix, env, extra_args, dependencies)
+            return self.cross_compute_int(expression, low, high, guess, prefix, self.env, extra_args, dependencies)
         t = f'''{prefix}
         #include<stdio.h>
         int main(void) {{
             printf("%ld\\n", (long)({expression}));
             return 0;
         }}'''
-        res = self.run(t, env, extra_args=extra_args,
+        res = self.run(t, self.env, extra_args=extra_args,
                        dependencies=dependencies)
         if not res.compiled:
             return -1

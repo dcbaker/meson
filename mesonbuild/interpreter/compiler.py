@@ -410,8 +410,7 @@ class CompilerHolder(ObjectHolder['Compiler']):
         extra_args = functools.partial(self._determine_args, kwargs['no_builtin_args'], kwargs['include_directories'], kwargs['args'])
         deps, msg = self._determine_dependencies(kwargs['dependencies'], compile_only=self.compiler.is_cross)
         res = self.compiler.compute_int(expression, kwargs['low'], kwargs['high'],
-                                        kwargs['guess'], kwargs['prefix'],
-                                        self.environment, extra_args=extra_args,
+                                        kwargs['guess'], kwargs['prefix'], extra_args=extra_args,
                                         dependencies=deps)
         mlog.log('Computing int of', mlog.bold(expression, True), msg, res)
         return res
