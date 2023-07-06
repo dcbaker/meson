@@ -384,7 +384,7 @@ class CompilerHolder(ObjectHolder['Compiler']):
         typename = args[0]
         extra_args = functools.partial(self._determine_args, kwargs['no_builtin_args'], kwargs['include_directories'], kwargs['args'])
         deps, msg = self._determine_dependencies(kwargs['dependencies'])
-        had, cached = self.compiler.has_type(typename, kwargs['prefix'], self.environment,
+        had, cached = self.compiler.has_type(typename, kwargs['prefix'],
                                              extra_args=extra_args, dependencies=deps)
         cached_msg = mlog.blue('(cached)') if cached else ''
         if had:

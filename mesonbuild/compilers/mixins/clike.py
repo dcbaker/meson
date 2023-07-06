@@ -892,14 +892,14 @@ class CLikeCompiler(Compiler):
         return self.compiles(t, self.env, extra_args=extra_args,
                              dependencies=dependencies)
 
-    def has_type(self, typename: str, prefix: str, env: 'Environment',
+    def has_type(self, typename: str, prefix: str,
                  extra_args: T.Union[T.List[str], T.Callable[[CompileCheckMode], T.List[str]]], *,
                  dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[bool, bool]:
         t = f'''{prefix}
         void bar(void) {{
             sizeof({typename});
         }}'''
-        return self.compiles(t, env, extra_args=extra_args,
+        return self.compiles(t, self.env, extra_args=extra_args,
                              dependencies=dependencies)
 
     def _symbols_have_underscore_prefix_searchbin(self, env: 'Environment') -> bool:
