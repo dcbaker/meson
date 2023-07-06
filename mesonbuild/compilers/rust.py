@@ -24,7 +24,6 @@ from .compilers import Compiler, rust_buildtype_args, clike_debug_args
 
 if T.TYPE_CHECKING:
     from ..coredata import MutableKeyedOptionDictType, KeyedOptionDictType
-    from ..envconfig import MachineInfo
     from ..environment import Environment  # noqa: F401
     from ..linkers.linkers import DynamicLinker
     from ..mesonlib import MachineChoice
@@ -56,11 +55,11 @@ class RustCompiler(Compiler):
     }
 
     def __init__(self, exelist: T.List[str], version: str, for_machine: MachineChoice,
-                 is_cross: bool, info: 'MachineInfo',
+                 is_cross: bool, env: Environment,
                  exe_wrapper: T.Optional['ExternalProgram'] = None,
                  full_version: T.Optional[str] = None,
                  linker: T.Optional['DynamicLinker'] = None):
-        super().__init__([], exelist, version, for_machine, info,
+        super().__init__([], exelist, version, for_machine, env,
                          is_cross=is_cross, full_version=full_version,
                          linker=linker)
         self.exe_wrapper = exe_wrapper

@@ -25,7 +25,6 @@ from .mixins.clang import ClangCompiler
 
 if T.TYPE_CHECKING:
     from ..programs import ExternalProgram
-    from ..envconfig import MachineInfo
     from ..environment import Environment
     from ..linkers.linkers import DynamicLinker
     from ..mesonlib import MachineChoice
@@ -36,11 +35,11 @@ class ObjCCompiler(CLikeCompiler, Compiler):
     language = 'objc'
 
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice,
-                 is_cross: bool, info: 'MachineInfo',
+                 is_cross: bool, env: Environment,
                  exe_wrap: T.Optional['ExternalProgram'],
                  linker: T.Optional['DynamicLinker'] = None,
                  full_version: T.Optional[str] = None):
-        Compiler.__init__(self, ccache, exelist, version, for_machine, info,
+        Compiler.__init__(self, ccache, exelist, version, for_machine, env,
                           is_cross=is_cross, full_version=full_version,
                           linker=linker)
         CLikeCompiler.__init__(self, exe_wrap)
@@ -56,13 +55,13 @@ class ObjCCompiler(CLikeCompiler, Compiler):
 
 class GnuObjCCompiler(GnuCompiler, ObjCCompiler):
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice,
-                 is_cross: bool, info: 'MachineInfo',
+                 is_cross: bool, env: Environment,
                  exe_wrapper: T.Optional['ExternalProgram'] = None,
                  defines: T.Optional[T.Dict[str, str]] = None,
                  linker: T.Optional['DynamicLinker'] = None,
                  full_version: T.Optional[str] = None):
         ObjCCompiler.__init__(self, ccache, exelist, version, for_machine, is_cross,
-                              info, exe_wrapper, linker=linker, full_version=full_version)
+                              env, exe_wrapper, linker=linker, full_version=full_version)
         GnuCompiler.__init__(self, defines)
         default_warn_args = ['-Wall', '-Winvalid-pch']
         self.warn_args = {'0': [],
@@ -76,13 +75,13 @@ class GnuObjCCompiler(GnuCompiler, ObjCCompiler):
 
 class ClangObjCCompiler(ClangCompiler, ObjCCompiler):
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str, for_machine: MachineChoice,
-                 is_cross: bool, info: 'MachineInfo',
+                 is_cross: bool, env: Environment,
                  exe_wrapper: T.Optional['ExternalProgram'] = None,
                  defines: T.Optional[T.Dict[str, str]] = None,
                  linker: T.Optional['DynamicLinker'] = None,
                  full_version: T.Optional[str] = None):
         ObjCCompiler.__init__(self, ccache, exelist, version, for_machine, is_cross,
-                              info, exe_wrapper, linker=linker, full_version=full_version)
+                              env, exe_wrapper, linker=linker, full_version=full_version)
         ClangCompiler.__init__(self, defines)
         default_warn_args = ['-Wall', '-Winvalid-pch']
         self.warn_args = {'0': [],

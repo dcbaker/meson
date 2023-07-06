@@ -518,7 +518,7 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     exelist_no_ccache: T.List[str]
     version: str
     for_machine: MachineChoice
-    info: MachineInfo
+    env: Environment
     linker: T.Optional[DynamicLinker] = None
     full_version: T.Optional[str] = None
     is_cross: bool = False
@@ -536,6 +536,10 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
         if not hasattr(self, 'can_compile_suffixes'):
             self.can_compile_suffixes = set(self.file_suffixes)
         self.default_suffix = self.file_suffixes[0]
+
+        info = self.env.machines[self.for_machine]
+        assert info is not None, 'for mypy'
+        self.info = info
 
     def __repr__(self) -> str:
         repr_str = "<{0}: v{1} `{2}`>"

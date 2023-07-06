@@ -541,12 +541,12 @@ class DCompiler(Compiler):
     language = 'd'
 
     def __init__(self, exelist: T.List[str], version: str, for_machine: MachineChoice,
-                 info: 'MachineInfo', arch: str, *,
+                 env: Environment, arch: str, *,
                  exe_wrapper: T.Optional['ExternalProgram'] = None,
                  linker: T.Optional['DynamicLinker'] = None,
                  full_version: T.Optional[str] = None,
                  is_cross: bool = False):
-        super().__init__([], exelist, version, for_machine, info, linker=linker,
+        super().__init__([], exelist, version, for_machine, env, linker=linker,
                          full_version=full_version, is_cross=is_cross)
         self.arch = arch
         self.exe_wrapper = exe_wrapper
@@ -795,12 +795,12 @@ class GnuDCompiler(GnuCompiler, DCompiler):
     id = 'gcc'
 
     def __init__(self, exelist: T.List[str], version: str, for_machine: MachineChoice,
-                 info: 'MachineInfo', arch: str, *,
+                 env: Environment, arch: str, *,
                  exe_wrapper: T.Optional['ExternalProgram'] = None,
                  linker: T.Optional['DynamicLinker'] = None,
                  full_version: T.Optional[str] = None,
                  is_cross: bool = False):
-        DCompiler.__init__(self, exelist, version, for_machine, info, arch,
+        DCompiler.__init__(self, exelist, version, for_machine, env, arch,
                            exe_wrapper=exe_wrapper, linker=linker,
                            full_version=full_version, is_cross=is_cross)
         GnuCompiler.__init__(self, {})
@@ -879,12 +879,12 @@ class LLVMDCompiler(DmdLikeCompilerMixin, DCompiler):
     id = 'llvm'
 
     def __init__(self, exelist: T.List[str], version: str, for_machine: MachineChoice,
-                 info: 'MachineInfo', arch: str, *,
+                 env: Environment, arch: str, *,
                  exe_wrapper: T.Optional['ExternalProgram'] = None,
                  linker: T.Optional['DynamicLinker'] = None,
                  full_version: T.Optional[str] = None,
                  is_cross: bool = False, version_output: T.Optional[str] = None):
-        DCompiler.__init__(self, exelist, version, for_machine, info, arch,
+        DCompiler.__init__(self, exelist, version, for_machine, env, arch,
                            exe_wrapper=exe_wrapper, linker=linker,
                            full_version=full_version, is_cross=is_cross)
         DmdLikeCompilerMixin.__init__(self, dmd_frontend_version=find_ldc_dmd_frontend_version(version_output))
@@ -946,12 +946,12 @@ class DmdDCompiler(DmdLikeCompilerMixin, DCompiler):
     id = 'dmd'
 
     def __init__(self, exelist: T.List[str], version: str, for_machine: MachineChoice,
-                 info: 'MachineInfo', arch: str, *,
+                 env: Environment, arch: str, *,
                  exe_wrapper: T.Optional['ExternalProgram'] = None,
                  linker: T.Optional['DynamicLinker'] = None,
                  full_version: T.Optional[str] = None,
                  is_cross: bool = False):
-        DCompiler.__init__(self, exelist, version, for_machine, info, arch,
+        DCompiler.__init__(self, exelist, version, for_machine, env, arch,
                            exe_wrapper=exe_wrapper, linker=linker,
                            full_version=full_version, is_cross=is_cross)
         DmdLikeCompilerMixin.__init__(self, version)

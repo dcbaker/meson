@@ -24,7 +24,6 @@ from .compilers import Compiler, mono_buildtype_args
 from .mixins.islinker import BasicLinkerIsCompilerMixin
 
 if T.TYPE_CHECKING:
-    from ..envconfig import MachineInfo
     from ..environment import Environment
     from ..mesonlib import MachineChoice
 
@@ -44,8 +43,8 @@ class CsCompiler(BasicLinkerIsCompilerMixin, Compiler):
     language = 'cs'
 
     def __init__(self, exelist: T.List[str], version: str, for_machine: MachineChoice,
-                 info: 'MachineInfo', runner: T.Optional[str] = None):
-        super().__init__([], exelist, version, for_machine, info)
+                 env: Environment, runner: T.Optional[str] = None):
+        super().__init__([], exelist, version, for_machine, env)
         self.runner = runner
 
     @classmethod
@@ -128,8 +127,8 @@ class MonoCompiler(CsCompiler):
     id = 'mono'
 
     def __init__(self, exelist: T.List[str], version: str, for_machine: MachineChoice,
-                 info: 'MachineInfo'):
-        super().__init__(exelist, version, for_machine, info, runner='mono')
+                 env: Environment):
+        super().__init__(exelist, version, for_machine, env, runner='mono')
 
     def rsp_file_syntax(self) -> 'RSPFileSyntax':
         return RSPFileSyntax.GCC

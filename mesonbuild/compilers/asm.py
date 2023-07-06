@@ -9,7 +9,6 @@ if T.TYPE_CHECKING:
     from ..environment import Environment
     from ..linkers.linkers import DynamicLinker
     from ..mesonlib import MachineChoice
-    from ..envconfig import MachineInfo
 
 nasm_optimization_args = {
     'plain': [],
@@ -36,10 +35,10 @@ class NasmCompiler(Compiler):
     }
 
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str,
-                 for_machine: 'MachineChoice', info: 'MachineInfo',
+                 for_machine: 'MachineChoice', env: Environment,
                  linker: T.Optional['DynamicLinker'] = None,
                  full_version: T.Optional[str] = None, is_cross: bool = False):
-        super().__init__(ccache, exelist, version, for_machine, info, linker, full_version, is_cross)
+        super().__init__(ccache, exelist, version, for_machine, env, linker, full_version, is_cross)
         if 'link' in self.linker.id:
             self.base_options.add(OptionKey('b_vscrt'))
 
@@ -289,10 +288,10 @@ class MetrowerksAsmCompiler(MetrowerksCompiler, Compiler):
     language = 'nasm'
 
     def __init__(self, ccache: T.List[str], exelist: T.List[str], version: str,
-                 for_machine: 'MachineChoice', info: 'MachineInfo',
+                 for_machine: 'MachineChoice', env: Environment,
                  linker: T.Optional['DynamicLinker'] = None,
                  full_version: T.Optional[str] = None, is_cross: bool = False):
-        Compiler.__init__(self, ccache, exelist, version, for_machine, info, linker, full_version, is_cross)
+        Compiler.__init__(self, ccache, exelist, version, for_machine, env, linker, full_version, is_cross)
         MetrowerksCompiler.__init__(self)
 
         self.warn_args = {'0': [], '1': [], '2': [], '3': [], 'everything': []}  # type: T.Dict[str, T.List[str]]

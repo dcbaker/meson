@@ -22,7 +22,6 @@ from ..mesonlib import EnvironmentException, version_compare, OptionKey
 from .compilers import Compiler, LibType
 
 if T.TYPE_CHECKING:
-    from ..envconfig import MachineInfo
     from ..environment import Environment
     from ..mesonlib import MachineChoice
 
@@ -32,8 +31,8 @@ class ValaCompiler(Compiler):
     id = 'valac'
 
     def __init__(self, exelist: T.List[str], version: str, for_machine: MachineChoice,
-                 is_cross: bool, info: 'MachineInfo'):
-        super().__init__([], exelist, version, for_machine, info, is_cross=is_cross)
+                 is_cross: bool, env: Environment):
+        super().__init__([], exelist, version, for_machine, env, is_cross=is_cross)
         self.version = version
         self.base_options = {OptionKey('b_colorout')}
 
