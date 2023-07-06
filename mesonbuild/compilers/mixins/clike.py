@@ -372,8 +372,7 @@ class CLikeCompiler(Compiler):
         return self.compiles(code, env, extra_args=extra_args,
                              dependencies=dependencies, mode='preprocess', disable_cache=disable_cache)
 
-    def has_header_symbol(self, hname: str, symbol: str, prefix: str,
-                          env: 'Environment', *,
+    def has_header_symbol(self, hname: str, symbol: str, prefix: str, *,
                           extra_args: T.Union[None, T.List[str], T.Callable[[CompileCheckMode], T.List[str]]] = None,
                           dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[bool, bool]:
         t = f'''{prefix}
@@ -385,7 +384,7 @@ class CLikeCompiler(Compiler):
             #endif
             return 0;
         }}'''
-        return self.compiles(t, env, extra_args=extra_args,
+        return self.compiles(t, self.env, extra_args=extra_args,
                              dependencies=dependencies)
 
     def _get_basic_compiler_args(self, env: 'Environment', mode: CompileCheckMode) -> T.Tuple[T.List[str], T.List[str]]:

@@ -585,8 +585,7 @@ class CudaCompiler(Compiler):
         else:
             mlog.debug('cudaGetDeviceCount() returned ' + stde)
 
-    def has_header_symbol(self, hname: str, symbol: str, prefix: str,
-                          env: 'Environment', *,
+    def has_header_symbol(self, hname: str, symbol: str, prefix: str, *,
                           extra_args: T.Union[None, T.List[str], T.Callable[[CompileCheckMode], T.List[str]]] = None,
                           dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[bool, bool]:
         if extra_args is None:
@@ -602,7 +601,7 @@ class CudaCompiler(Compiler):
             #endif
             return 0;
         }}'''
-        found, cached = self.compiles(t.format_map(fargs), env, extra_args=extra_args, dependencies=dependencies)
+        found, cached = self.compiles(t.format_map(fargs), self.env, extra_args=extra_args, dependencies=dependencies)
         if found:
             return True, cached
         # Check if it's a class or a template
@@ -612,7 +611,7 @@ class CudaCompiler(Compiler):
         int main(void) {{
             return 0;
         }}'''
-        return self.compiles(t.format_map(fargs), env, extra_args=extra_args, dependencies=dependencies)
+        return self.compiles(t.format_map(fargs), self.env, extra_args=extra_args, dependencies=dependencies)
 
     _CPP14_VERSION = '>=9.0'
     _CPP17_VERSION = '>=11.0'

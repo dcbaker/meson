@@ -81,8 +81,7 @@ class CCompiler(CLikeCompiler, Compiler):
         code = 'int main(void) { int class=0; return class; }\n'
         return self._sanity_check_impl(work_dir, environment, 'sanitycheckc.c', code)
 
-    def has_header_symbol(self, hname: str, symbol: str, prefix: str,
-                          env: 'Environment', *,
+    def has_header_symbol(self, hname: str, symbol: str, prefix: str, *,
                           extra_args: T.Union[None, T.List[str], T.Callable[['CompileCheckMode'], T.List[str]]] = None,
                           dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[bool, bool]:
         fargs = {'prefix': prefix, 'header': hname, 'symbol': symbol}
@@ -95,7 +94,7 @@ class CCompiler(CLikeCompiler, Compiler):
             #endif
             return 0;
         }}'''
-        return self.compiles(t.format(**fargs), env, extra_args=extra_args,
+        return self.compiles(t.format(**fargs), self.env, extra_args=extra_args,
                              dependencies=dependencies)
 
     def get_options(self) -> 'MutableKeyedOptionDictType':

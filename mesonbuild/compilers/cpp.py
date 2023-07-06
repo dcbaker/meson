@@ -98,12 +98,11 @@ class CPPCompiler(CLikeCompiler, Compiler):
         # too strict without this and always fails.
         return super().get_compiler_check_args(mode) + ['-fpermissive']
 
-    def has_header_symbol(self, hname: str, symbol: str, prefix: str,
-                          env: 'Environment', *,
+    def has_header_symbol(self, hname: str, symbol: str, prefix: str, *,
                           extra_args: T.Union[None, T.List[str], T.Callable[[CompileCheckMode], T.List[str]]] = None,
                           dependencies: T.Optional[T.List['Dependency']] = None) -> T.Tuple[bool, bool]:
         # Check if it's a C-like symbol
-        found, cached = super().has_header_symbol(hname, symbol, prefix, env,
+        found, cached = super().has_header_symbol(hname, symbol, prefix,
                                                   extra_args=extra_args,
                                                   dependencies=dependencies)
         if found:
@@ -115,7 +114,7 @@ class CPPCompiler(CLikeCompiler, Compiler):
         #include <{hname}>
         using {symbol};
         int main(void) {{ return 0; }}'''
-        return self.compiles(t, env, extra_args=extra_args,
+        return self.compiles(t, self.env, extra_args=extra_args,
                              dependencies=dependencies)
 
     def _test_cpp_std_arg(self, cpp_std_value: str) -> bool:
