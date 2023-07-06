@@ -331,7 +331,6 @@ class CompilerHolder(ObjectHolder['Compiler']):
         extra_args = functools.partial(self._determine_args, kwargs['no_builtin_args'], kwargs['include_directories'], kwargs['args'])
         deps, msg = self._determine_dependencies(kwargs['dependencies'])
         had, cached = self.compiler.has_members(typename, [membername], kwargs['prefix'],
-                                                self.environment,
                                                 extra_args=extra_args,
                                                 dependencies=deps)
         cached_msg = mlog.blue('(cached)') if cached else ''
@@ -350,7 +349,6 @@ class CompilerHolder(ObjectHolder['Compiler']):
         extra_args = functools.partial(self._determine_args, kwargs['no_builtin_args'], kwargs['include_directories'], kwargs['args'])
         deps, msg = self._determine_dependencies(kwargs['dependencies'])
         had, cached = self.compiler.has_members(typename, membernames, kwargs['prefix'],
-                                                self.environment,
                                                 extra_args=extra_args,
                                                 dependencies=deps)
         cached_msg = mlog.blue('(cached)') if cached else ''
