@@ -1401,7 +1401,8 @@ class BuildTarget(Target):
                 msg = f"Can't link non-PIC static library {t.name!r} into shared library {self.name!r}. "
                 msg += "Use the 'pic' option to static_library to build with PIC."
                 raise InvalidArguments(msg)
-            if self.for_machine is not t.for_machine:
+            # proc-macros are always for the build machine
+            if self.for_machine is not t.for_machine and getattr(t, 'rust_crate_type', 'lib') != 'proc-macro':
                 msg = f'Tried to mix libraries for machines {self.for_machine} and {t.for_machine} in target {self.name!r}'
                 if self.environment.is_cross_build():
                     raise InvalidArguments(msg + ' This is not possible in a cross build.')
