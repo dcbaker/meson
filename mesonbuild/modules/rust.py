@@ -15,18 +15,20 @@ from __future__ import annotations
 
 import os
 import typing as T
+from mesonbuild.interpreterbase.decorators import FeatureNew
+from mesonbuild.utils.core import MesonException
 
 from . import ExtensionModule, ModuleReturnValue, ModuleInfo
 from .. import mlog
-from ..build import BothLibraries, BuildTarget, CustomTargetIndex, Executable, ExtractedObjects, GeneratedList, CustomTarget, InvalidArguments, Jar, StructuredSources
+from ..build import BothLibraries, BuildTarget, CustomTargetIndex, Executable, ExtractedObjects, GeneratedList, CustomTarget, InvalidArguments, Jar, SharedLibrary, StructuredSources
 from ..compilers.compilers import are_asserts_disabled
-from ..interpreter.type_checking import DEPENDENCIES_KW, LINK_WITH_KW, TEST_KWS, OUTPUT_KW, INCLUDE_DIRECTORIES
+from ..interpreter.type_checking import DEPENDENCIES_KW, LINK_WITH_KW, SHARED_MOD_KWS, TEST_KWS, OUTPUT_KW, INCLUDE_DIRECTORIES
 from ..interpreterbase import ContainerTypeInfo, InterpreterException, KwargInfo, typed_kwargs, typed_pos_args, noPosargs
 from ..mesonlib import File
 
 if T.TYPE_CHECKING:
     from . import ModuleState
-    from ..build import IncludeDirs, LibTypes
+    from ..build import IncludeDirs, LibTypes, GeneratedTypes
     from ..dependencies import Dependency, ExternalLibrary
     from ..interpreter import Interpreter
     from ..interpreter import kwargs as _kwargs
@@ -64,6 +66,7 @@ class RustModule(ExtensionModule):
         self.methods.update({
             'test': self.test,
             'bindgen': self.bindgen,
+            'proc_macro': self.proc_macro,
         })
 
     @typed_pos_args('rust.test', str, BuildTarget)
@@ -266,6 +269,41 @@ class RustModule(ExtensionModule):
         )
 
         return ModuleReturnValue([target], [target])
+
+    @FeatureNew('rust.proc_macro', '1.3.0', "use `shared_module(rust_crate_type : 'proc-macro', native : true)`")
+    @typed_pos_args('rust.proc_macro', str, varargs=(str, File, CustomTarget, CustomTargetIndex, GeneratedList, StructuredSources, ExtractedObjects, BuildTarget))
+    @typed_kwargs('rust.proc_macro', *[k for k in SHARED_MOD_KWS if k.name not in {'native', 'rust_crate_type'}], allow_unknown=True)
+    def proc_macro(self, state: ModuleState, args: T.Tuple[str, T.Union[str, File, GeneratedTypes, StructuredSources, ExtractedObjects, BuildTarget]], kwargs: T.Dict) -> SharedLibrary:
+
+        # Do some error checking. Specifically because rust proc-macros *must*
+        # be for the build machine we need to ensure that:
+        #
+        # 1. There is a rust compiler for the build machine
+        # 2. (Currently not applicable) It is likley that gcc-rs and rustc do
+        #    not produce compatible proc-macro crates and we will need to handle that here
+        # 3. That the user is not cross compiling via `RUSTC="rustc --target
+        #    <foreign target>` since that will break the proc-macro by forcing it
+        #    to be compiled for the host machine
+        #
+        if 'rust' not in state._interpreter.compilers.build:
+            raise MesonException('proc-macro crates are always built for the build machine, but no rust compiler was found for the build machine')
+
+        rust_exe = state._interpreter.compilers.build['rust'].exelist_no_ccache
+        if '--target' in rust_exe:
+            mlog.warning(
+                'Rust compiler has `--target` in the command line.\n',
+                'If you are doing this to cross compile then building the proc-macro will fail.\n',
+                'Meson does not support such a configuration, and any issues opened will be closed.\n',
+                'Use a cross file or set RUSTC=... and RUSTC_FOR_BUILD=... when cross compiling.',
+                location=state.current_node,
+                once=True,
+            )
+
+        # Proc macros are always for the build machine
+        kwargs['native'] = True
+        kwargs['rust_crate_type'] = 'proc-macro'
+
+        return state._interpreter.build_target(state.current_node, args, kwargs, SharedLibrary)
 
 
 def initialize(interp: Interpreter) -> RustModule:
