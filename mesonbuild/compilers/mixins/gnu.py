@@ -503,6 +503,19 @@ class GnuLikeCompiler(Compiler, metaclass=abc.ABCMeta):
                     pass
         return result
 
+    @staticmethod
+    def __remove_system_dirs(dirs: T.List[str]) -> T.List[str]:
+        """Remove any directories that are not compiler specific
+
+        GCC sometimes reports things like /lib and /usr/lib as a search path.
+
+        :param dirs: a list of paths that the compiler returned
+        :return: a list of paths with common system directories removed
+        """
+        exclude = frozenset({'/lib', '/usr/lib', '/usr/local/lib',
+                             '/lib64', '/usr/lib64', '/usr/local/lib64'})
+        return [d for d in dirs if d not in exclude]
+
     def get_compiler_dirs(self, env: 'Environment', name: str) -> T.List[str]:
         '''
         Get dirs from the compiler, either `libraries:` or `programs:`
@@ -510,7 +523,7 @@ class GnuLikeCompiler(Compiler, metaclass=abc.ABCMeta):
         stdo = self._get_search_dirs(env)
         for line in stdo.split('\n'):
             if line.startswith(name + ':'):
-                return self._split_fetch_real_dirs(line.split('=', 1)[1])
+                return self.__remove_system_dirs(self._split_fetch_real_dirs(line.split('=', 1)[1]))
         return []
 
     def get_lto_compile_args(self, *, threads: int = 0, mode: str = 'default') -> T.List[str]:
