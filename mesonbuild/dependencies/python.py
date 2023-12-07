@@ -358,15 +358,11 @@ def python_factory(env: 'Environment', for_machine: 'MachineChoice',
     methods = process_method_kw({DependencyMethods.PKGCONFIG, DependencyMethods.SYSTEM}, kwargs)
     embed = kwargs.get('embed', False)
     candidates: T.List['DependencyGenerator'] = []
-    from_installation = installation is not None
-    # When not invoked through the python module, default installation.
-    if installation is None:
-        installation = BasicPythonExternalProgram('python3', mesonlib.python_command)
-        installation.sanity()
-    pkg_version = installation.info['variables'].get('LDVERSION') or installation.info['version']
 
-    if DependencyMethods.PKGCONFIG in methods:
-        if from_installation:
+    if installation is not None:
+        pkg_version = installation.info['variables'].get('LDVERSION') or installation.info['version']
+        if DependencyMethods.PKGCONFIG in methods:
+            pkg_version = installation.info['variables'].get('LDVERSION') or installation.info['version']
             pkg_libdir = installation.info['variables'].get('LIBPC')
             pkg_embed = '-embed' if embed and mesonlib.version_compare(installation.info['version'], '>=3.8') else ''
             pkg_name = f'python-{pkg_version}{pkg_embed}'
@@ -399,19 +395,20 @@ def python_factory(env: 'Environment', for_machine: 'MachineChoice',
             # e.g. relocated / cross compilation, but the presence of LIBPC indicates we should definitely look for something.
             if pkg_libdir is not None:
                 candidates.append(functools.partial(PythonPkgConfigDependency, pkg_name, env, kwargs, installation))
-        else:
+
+        if DependencyMethods.SYSTEM in methods:
+            candidates.append(functools.partial(PythonSystemDependency, 'python', env, kwargs, installation))
+
+        if DependencyMethods.EXTRAFRAMEWORK in methods:
+            nkwargs = kwargs.copy()
+            if mesonlib.version_compare(pkg_version, '>= 3'):
+                # There is a python in /System/Library/Frameworks, but that's python 2.x,
+                # Python 3 will always be in /Library
+                nkwargs['paths'] = ['/Library/Frameworks']
+            candidates.append(functools.partial(PythonFrameworkDependency, 'Python', env, nkwargs, installation))
+    else:
+        if DependencyMethods.PKGCONFIG in methods:
             candidates.append(functools.partial(PkgConfigDependency, 'python3', env, kwargs))
-
-    if DependencyMethods.SYSTEM in methods:
-        candidates.append(functools.partial(PythonSystemDependency, 'python', env, kwargs, installation))
-
-    if DependencyMethods.EXTRAFRAMEWORK in methods:
-        nkwargs = kwargs.copy()
-        if mesonlib.version_compare(pkg_version, '>= 3'):
-            # There is a python in /System/Library/Frameworks, but that's python 2.x,
-            # Python 3 will always be in /Library
-            nkwargs['paths'] = ['/Library/Frameworks']
-        candidates.append(functools.partial(PythonFrameworkDependency, 'Python', env, nkwargs, installation))
 
     return candidates
 
