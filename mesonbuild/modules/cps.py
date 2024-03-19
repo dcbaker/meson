@@ -174,11 +174,15 @@ class CPSModule(NewExtensionModule):
         if name in self._packages:
             # TODO: provide a better error message about where this was defined
             raise InvalidArguments(f'A CPS package called {name} already exists')
+
+        # TODO: license-files
+        # TODO: what to do about multiple licenses instead of SPDX?
+        license = state.build.dep_manifest[state.project_name].license
         self._packages[name] = Package(
             name,
             version,
             kwargs['description'],
-            state.build.dep_manifest[state.project_name].license,  # TODO: license-files?
+            license[0] if license else None,
         )
 
     @typed_pos_args('cps.create_component', str, (build.BuildTarget, build.CustomTarget, build.CustomTargetIndex))
