@@ -19,7 +19,7 @@ cps.create_component(
   arguments : ['-DFOO', '-UBAR', '-fi-am-awesome'],
 )
 
-shared = shared_library('shared', 'lib.cpp')
+shared = shared_library('shared', 'shlib.cpp', link_with : static)
 cps.create_component(
   'meson-test', shared,
   include_directories : ['include/meson-test'],

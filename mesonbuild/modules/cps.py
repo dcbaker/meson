@@ -83,6 +83,7 @@ class CPSModule(NewExtensionModule):
     INFO = ModuleInfo('cps', added='1.5.0')
 
     _packages: T.Dict[str, Package] = {}
+    _target_map: T.Dict[str, T.Tuple[str, str]] = {}
 
     def __init__(self) -> None:
         super().__init__()
@@ -126,6 +127,15 @@ class CPSModule(NewExtensionModule):
                     'definitions': defines,
                     'compile_flags': arguments,
                 }
+
+                for t in comp.target.get_transitive_link_deps(whole_targets=False):
+                    if t not in self._target_map:
+                        raise NotImplementedError('TODO: make a private component for this')
+                    rpkg, rcomp = self._target_map[t]
+                    if rpkg != package.name:
+                        raise NotImplementedError('TODO: cross package requirements')
+                    cdata.setdefault('requires', [])
+                    cdata['requires'].append(f':{rcomp}')
             else:
                 raise NotImplementedError(f'Have not implemented support for "{comp.target.typename}" yet')
 
@@ -212,6 +222,8 @@ class CPSModule(NewExtensionModule):
                 arguments[lang] = kwargs[lname]
 
         package.components[cname] = Component(target, includes, arguments, kwargs['default'])
+
+        self._target_map[target] = (pname, cname)
 
 
 def initialize(interp: Interpreter) -> CPSModule:
