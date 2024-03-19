@@ -31,6 +31,7 @@ class ModuleState:
         # Keep it private, it should be accessed only through methods.
         self._interpreter = interpreter
 
+        self.build = interpreter.build
         self.source_root = interpreter.environment.get_source_dir()
         self.build_to_src = relpath(interpreter.environment.get_source_dir(),
                                     interpreter.environment.get_build_dir())
