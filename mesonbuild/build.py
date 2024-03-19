@@ -1071,11 +1071,11 @@ class BuildTarget(Target):
         return self.get_transitive_link_deps()
 
     @lru_cache(maxsize=None)
-    def get_transitive_link_deps(self) -> ImmutableListProtocol[BuildTargetTypes]:
+    def get_transitive_link_deps(self, *, whole_targets: bool = False) -> ImmutableListProtocol[BuildTargetTypes]:
         result: T.List[BuildTargetTypes] = []
-        for i in itertools.chain(self.link_targets, self.link_whole_targets):
+        for i in itertools.chain(self.link_targets, self.link_whole_targets if whole_targets else []):
             result.append(i)
-            result.extend(i.get_all_link_deps())
+            result.extend(i.get_transitive_link_deps(whole_targets=whole_targets))
         return result
 
     def get_link_deps_mapping(self, prefix: str) -> T.Mapping[str, str]:
