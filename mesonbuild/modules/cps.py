@@ -14,6 +14,7 @@ from . import NewExtensionModule, ModuleInfo
 from .. import build
 from ..interpreter.type_checking import NoneType
 from ..interpreterbase import KwargInfo, typed_pos_args, typed_kwargs, InvalidArguments, ContainerTypeInfo
+from ..utils.universal import File, FileMode, OptionKey
 
 if T.TYPE_CHECKING:
     from typing_extensions import TypedDict
@@ -112,8 +113,13 @@ class CPSModule(NewExtensionModule):
 
     def postconf_hook(self, b: build.Build) -> None:
 
+        # TODO: need more than just a list of packages
+        package_requires: T.Set[str] = set()
+
         def make_component(comp: Component) -> T.Dict:
             cdata: T.Dict = {}
+            requires: T.List[str] = []
+
             if isinstance(comp.target, build.Executable):
                 cdata = {'type': 'executable'}
             elif isinstance(comp.target, (build.StaticLibrary, build.SharedLibrary)):
@@ -133,9 +139,14 @@ class CPSModule(NewExtensionModule):
                         raise NotImplementedError('TODO: make a private component for this')
                     rpkg, rcomp = self._target_map[t]
                     if rpkg != package.name:
-                        raise NotImplementedError('TODO: cross package requirements')
-                    cdata.setdefault('requires', [])
-                    cdata['requires'].append(f':{rcomp}')
+                        if rpkg not in self._packages:
+                            raise InvalidArguments(f'Tried to depend on a package "{rpkg}", which will not have a CPS package generated.')
+                        # TODO: validate that this component exists
+                        requires.append(f'{rpkg}:{rcomp}')
+                        package_requires.add(rpkg)
+                    else:
+                        # TODO: validate that this component exists
+                        requires.append(f':{rcomp}')
             else:
                 raise NotImplementedError(f'Have not implemented support for "{comp.target.typename}" yet')
 
@@ -144,9 +155,13 @@ class CPSModule(NewExtensionModule):
                 comp.target.get_install_dir()[0][0],
                 comp.target.get_outputs()[0],
             )
+            if requires:
+                cdata['requires'] = requires
             return cdata
 
         priv_dir = os.path.join(b.environment.build_dir, b.environment.private_dir)
+        libdir = b.environment.coredata.get_option(OptionKey('libdir'))
+        assert isinstance(libdir, str), 'for mypy'
 
         for package in self._packages.values():
             data = {
@@ -156,11 +171,22 @@ class CPSModule(NewExtensionModule):
                 'cps_version': '0.11.0',
                 'components': {n: make_component(c) for n, c in package.components.items()},
             }
+            if package_requires:
+                # TODO: set the values for these if we can determine them
+                data['requires'] = {k: None for k in package_requires}
             if package.description:
                 data['description'] = package.description
 
-            with open(os.path.join(priv_dir, f'{package.name}.cps'), 'w', encoding='utf-8') as f:
+            outfile = os.path.join(priv_dir, f'{package.name}.cps')
+            with open(outfile, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=4)
+
+            # TODO: platform agnostic install
+            # TODO: subproject
+            install_dir = os.path.join(libdir, 'cps', package.name, package.version)
+            bdata = build.Data(
+                [File.from_absolute_file(outfile)], install_dir, install_dir, FileMode(), '')
+            b.data.append(bdata)
 
     @typed_pos_args('cps.create_package', str, optargs=[str])
     @typed_kwargs(

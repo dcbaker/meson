@@ -24,3 +24,10 @@ cps.create_component(
   'meson-test', shared,
   include_directories : ['include/meson-test'],
 )
+
+shared_external = shared_library('shared2', 'shlib.cpp', link_with : static)
+cps.create_package('meson-test2', description : 'Another test CPS package')
+cps.create_component(
+  'meson-test2', shared,
+  include_directories : ['include/meson-test'],
+)

@@ -1246,7 +1246,7 @@ class Interpreter(InterpreterBase, HoldableObject):
                 ver_data = ver_data[0:1]
             if len(ver_data) != 1:
                 raise InterpreterException('Version file must contain exactly one line of text.')
-            self.project_version = ver_data[0]
+            self.project_version: str = ver_data[0]
         else:
             self.project_version = version
 
