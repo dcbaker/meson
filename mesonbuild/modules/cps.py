@@ -118,7 +118,6 @@ class CPSModule(NewExtensionModule):
 
         def make_component(comp: Component) -> T.Dict:
             cdata: T.Dict = {}
-            requires: T.List[str] = []
 
             if isinstance(comp.target, build.Executable):
                 cdata = {'type': 'executable'}
@@ -134,6 +133,7 @@ class CPSModule(NewExtensionModule):
                     'compile_flags': arguments,
                 }
 
+                requires: T.List[str] = []
                 for t in comp.target.get_transitive_link_deps(whole_targets=False):
                     if t not in self._target_map:
                         raise NotImplementedError('TODO: make a private component for this')
@@ -147,6 +147,8 @@ class CPSModule(NewExtensionModule):
                     else:
                         # TODO: validate that this component exists
                         requires.append(f':{rcomp}')
+                if requires:
+                    cdata['requires'] = requires
             else:
                 raise NotImplementedError(f'Have not implemented support for "{comp.target.typename}" yet')
 
@@ -155,8 +157,6 @@ class CPSModule(NewExtensionModule):
                 comp.target.get_install_dir()[0][0],
                 comp.target.get_outputs()[0],
             )
-            if requires:
-                cdata['requires'] = requires
             return cdata
 
         priv_dir = os.path.join(b.environment.build_dir, b.environment.private_dir)
