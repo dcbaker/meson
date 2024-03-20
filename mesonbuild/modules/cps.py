@@ -15,11 +15,7 @@ from . import NewExtensionModule, ModuleInfo
 from .. import build
 from ..interpreter.type_checking import NoneType
 from ..interpreterbase import (
-	ContainerTypeInfo,
-	KwargInfo,
-    ObjectHolder,
-    InvalidArguments,
-    typed_kwargs,
+    ContainerTypeInfo, KwargInfo, ObjectHolder, InvalidArguments, typed_kwargs,
     typed_pos_args,
 )
 from ..utils.universal import File, FileMode, HoldableObject, OptionKey
@@ -30,7 +26,6 @@ if T.TYPE_CHECKING:
     from . import ModuleState
     from ..build import BuildTargetTypes
     from ..interpreter import Interpreter
-    from ..interpreterbase.baseobjects import SubProject
 
     _KNOWN_LANGS = Literal['c', 'cpp', 'fortran']
 
