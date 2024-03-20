@@ -15,8 +15,8 @@ from . import NewExtensionModule, ModuleInfo
 from .. import build
 from ..interpreter.type_checking import NoneType
 from ..interpreterbase import (
-    ContainerTypeInfo, KwargInfo, ObjectHolder, InvalidArguments, typed_kwargs,
-    typed_pos_args,
+    ContainerTypeInfo, KwargInfo, ObjectHolder, InvalidArguments, noPosargs,
+    typed_kwargs, typed_pos_args,
 )
 from ..utils.universal import File, FileMode, HoldableObject, OptionKey
 
@@ -26,6 +26,7 @@ if T.TYPE_CHECKING:
     from . import ModuleState
     from ..build import BuildTargetTypes
     from ..interpreter import Interpreter
+    from ..interpreterbase import TYPE_var
 
     _KNOWN_LANGS = Literal['c', 'cpp', 'fortran']
 
@@ -52,7 +53,7 @@ if T.TYPE_CHECKING:
 @dataclasses.dataclass
 class Component:
 
-    target: BuildTargetTypes
+    target: T.Optional[BuildTargetTypes]
     includes: T.Dict[str, T.List[str]]
     arguments: T.Dict[str, T.List[str]]
     default: bool
@@ -93,6 +94,17 @@ class PackageHolder(ObjectHolder[Package]):
             'add_component': self.add_component
         })
 
+    @staticmethod
+    def _process_per_language(tmpl: str, kwargs: T.Dict[str, T.List[str]]) -> T.Dict[str, T.List[str]]:
+        processed: T.Dict[str, T.List[str]] = {}
+        if kwargs[tmpl]:
+            processed['*'] = kwargs[tmpl]
+        for lang in _SUPPORTED_LANGS:
+            lname = f'{lang}_{tmpl}'
+            if kwargs[lname]:  # type: ignore[literal-required]
+                processed[lang] = kwargs[lname]  # type: ignore[literal-required]
+        return processed
+
     @typed_pos_args('cps_package.add_component', (build.BuildTarget, build.CustomTarget, build.CustomTargetIndex))
     @typed_kwargs(
         'cps_package.add_component',
@@ -113,25 +125,32 @@ class PackageHolder(ObjectHolder[Package]):
 
         # TODO: warn about manually adding @prefix@ or absolute paths, also warn about -I forms
 
-        includes: T.Dict[str, T.List[str]] = {}
-        if kwargs['include_directories']:
-            includes['*'] = kwargs['include_directories']
-        for lang in _SUPPORTED_LANGS:
-            lname = f'{lang}_include_directories'
-            if kwargs[lname]:  # type: ignore[literal-required]
-                includes[lang] = kwargs[lname]  # type: ignore[literal-required]
-
-        arguments: T.Dict[str, T.List[str]] = {}
-        if kwargs['arguments']:
-            arguments['*'] = kwargs['arguments']
-        for lang in _SUPPORTED_LANGS:
-            lname = f'{lang}_arguments'
-            if kwargs[lname]:  # type: ignore[literal-required]
-                arguments[lang] = kwargs[lname]  # type: ignore[literal-required]
+        includes = self._process_per_language('include_directories', kwargs)
+        arguments = self._process_per_language('arguments', kwargs)
 
         self.held_object.components[cname] = Component(target, includes, arguments, kwargs['default'])
         # TODO: what if a target is in multiple packages?
         CPSModule.target_map[target] = (self.held_object.name, cname)
+
+    @noPosargs
+    @typed_kwargs(
+        'cps_package.add_interface',
+        KwargInfo('name', str, required=True),
+        KwargInfo('default', bool, default=False),
+        *_COMPILE_KWS,
+        *_INC_KWS,
+    )
+    def add_interface(self, args: T.List[TYPE_var], kwargs: CreateComponentKWs) -> None:
+        cname = kwargs['name']
+        if cname in self.held_object.components:
+            raise InvalidArguments(f'Component "{cname}" of package "{self.held_object.name}" is already defined!')
+
+        # TODO: warn about manually adding @prefix@ or absolute paths, also warn about -I forms
+
+        includes = self._process_per_language('include_directories', kwargs)
+        arguments = self._process_per_language('arguments', kwargs)
+
+        self.held_object.components[cname] = Component(None, includes, arguments, kwargs['default'])
 
 
 class CPSModule(NewExtensionModule):
@@ -175,12 +194,18 @@ class CPSModule(NewExtensionModule):
 
             if isinstance(comp.target, build.Executable):
                 cdata = {'type': 'executable'}
-            elif isinstance(comp.target, (build.StaticLibrary, build.SharedLibrary)):
+            elif isinstance(comp.target, build.StaticLibrary):
+                cdata = {'type': 'archive'}
+            elif isinstance(comp.target, build.SharedLibrary):
+                cdata = {'type': 'dylib'}
+            elif comp.target is not None:
+                raise NotImplementedError(f'Have not implemented support for "{comp.target.typename}" yet')
+
+            if not isinstance(comp.target, build.Executable):
                 defines, arguments = self.__split_arguments(comp.arguments)
 
                 # TODO: handle prefix correctly
                 cdata = {
-                    'type': 'archive' if isinstance(comp.target, build.StaticLibrary) else 'dylib',
                     # TODO: handle @prefix@ and absolute paths?
                     'includes': {k: [os.path.join('@prefix@', i) for i in v] for k, v in comp.includes.items()},
                     'definitions': defines,
@@ -188,23 +213,22 @@ class CPSModule(NewExtensionModule):
                 }
 
                 requires: T.List[str] = []
-                for t in comp.target.get_transitive_link_deps(whole_targets=False):
-                    if t not in self.target_map:
-                        raise NotImplementedError('TODO: make a private component for this')
-                    rpkg, rcomp = self.target_map[t]
-                    if rpkg != package.name:
-                        if rpkg not in self._packages:
-                            raise InvalidArguments(f'Tried to depend on a package "{rpkg}", which will not have a CPS package generated.')
-                        # TODO: validate that this component exists
-                        requires.append(f'{rpkg}:{rcomp}')
-                        package_requires.add(rpkg)
-                    else:
-                        # TODO: validate that this component exists
-                        requires.append(f':{rcomp}')
+                if comp.target is not None:
+                    for t in comp.target.get_transitive_link_deps(whole_targets=False):
+                        if t not in self.target_map:
+                            raise NotImplementedError('TODO: make a private component for this')
+                        rpkg, rcomp = self.target_map[t]
+                        if rpkg != package.name:
+                            if rpkg not in self._packages:
+                                raise InvalidArguments(f'Tried to depend on a package "{rpkg}", which will not have a CPS package generated.')
+                            # TODO: validate that this component exists
+                            requires.append(f'{rpkg}:{rcomp}')
+                            package_requires.add(rpkg)
+                        else:
+                            # TODO: validate that this component exists
+                            requires.append(f':{rcomp}')
                 if requires:
                     cdata['requires'] = requires
-            else:
-                raise NotImplementedError(f'Have not implemented support for "{comp.target.typename}" yet')
 
             install_dir = comp.target.get_install_dir()[0][0]
             # It shouldn't be possible for the first element to be False, only
@@ -212,7 +236,8 @@ class CPSModule(NewExtensionModule):
             # BuildTargets, and CustomTargets aren't yet supported.
             assert isinstance(install_dir, str), 'for mypy'
 
-            cdata['location'] = os.path.join('@prefix@', install_dir, comp.target.get_outputs()[0])
+            if comp.target is not None:
+                cdata['location'] = os.path.join('@prefix@', install_dir, comp.target.get_outputs()[0])
             return cdata
 
         priv_dir = os.path.join(b.environment.build_dir, b.environment.private_dir)
