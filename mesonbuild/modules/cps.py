@@ -6,6 +6,7 @@
 from __future__ import annotations
 import collections
 import dataclasses
+import itertools
 import json
 import os
 import typing as T
@@ -17,11 +18,13 @@ from ..interpreterbase import KwargInfo, typed_pos_args, typed_kwargs, InvalidAr
 from ..utils.universal import File, FileMode, OptionKey
 
 if T.TYPE_CHECKING:
-    from typing_extensions import TypedDict
+    from typing_extensions import Literal, TypedDict
 
     from . import ModuleState
     from ..build import BuildTargetTypes
     from ..interpreter import Interpreter
+
+    _KNOWN_LANGS = Literal['c', 'cpp', 'fortran']
 
     class CreatePackageKWs(TypedDict):
 
@@ -47,7 +50,7 @@ if T.TYPE_CHECKING:
 class Component:
 
     target: BuildTargetTypes
-    includes: T.Dict[str, build.IncludeDirs]
+    includes: T.Dict[str, T.List[str]]
     arguments: T.Dict[str, T.List[str]]
     default: bool
 
@@ -65,7 +68,7 @@ class Package:
 
 
 # languages that CPS specifically supports
-_SUPPORTED_LANGS: T.Sequence[str] = ['c', 'cpp', 'fortran']
+_SUPPORTED_LANGS: T.Sequence[_KNOWN_LANGS] = ['c', 'cpp', 'fortran']
 
 _COMPILE_KW: KwargInfo[T.List[str]] = KwargInfo(
     'arguments', ContainerTypeInfo(list, str), default=[], listify=True)
@@ -84,7 +87,7 @@ class CPSModule(NewExtensionModule):
     INFO = ModuleInfo('cps', added='1.5.0')
 
     _packages: T.Dict[str, Package] = {}
-    _target_map: T.Dict[str, T.Tuple[str, str]] = {}
+    _target_map: T.Dict[BuildTargetTypes, T.Tuple[str, str]] = {}
 
     def __init__(self) -> None:
         super().__init__()
@@ -98,7 +101,7 @@ class CPSModule(NewExtensionModule):
         defines: T.DefaultDict[str, T.List[str]] = collections.defaultdict(list)
         arguments: T.DefaultDict[str, T.List[str]] = collections.defaultdict(list)
 
-        for lang in ['*'] + _SUPPORTED_LANGS:
+        for lang in itertools.chain(['*'], _SUPPORTED_LANGS):
             if lang not in args:
                 continue
             for a in args[lang]:
@@ -152,11 +155,13 @@ class CPSModule(NewExtensionModule):
             else:
                 raise NotImplementedError(f'Have not implemented support for "{comp.target.typename}" yet')
 
-            cdata['location'] = os.path.join(
-                '@prefix@',
-                comp.target.get_install_dir()[0][0],
-                comp.target.get_outputs()[0],
-            )
+            install_dir = comp.target.get_install_dir()[0][0]
+            # It shouldn't be possible for the first element to be False, only
+            # for any after that, and then only for Vala. At least for
+            # BuildTargets, and CustomTargets aren't yet supported.
+            assert isinstance(install_dir, str), 'for mypy'
+
+            cdata['location'] = os.path.join('@prefix@', install_dir, comp.target.get_outputs()[0])
             return cdata
 
         priv_dir = os.path.join(b.environment.build_dir, b.environment.private_dir)
@@ -240,16 +245,16 @@ class CPSModule(NewExtensionModule):
             includes['*'] = kwargs['include_directories']
         for lang in _SUPPORTED_LANGS:
             lname = f'{lang}_include_directories'
-            if kwargs[lname]:
-                includes[lang] = kwargs[lname]
+            if kwargs[lname]:  # type: ignore[literal-required]
+                includes[lang] = kwargs[lname]  # type: ignore[literal-required]
 
         arguments: T.Dict[str, T.List[str]] = {}
         if kwargs['arguments']:
             arguments['*'] = kwargs['arguments']
         for lang in _SUPPORTED_LANGS:
             lname = f'{lang}_arguments'
-            if kwargs[lname]:
-                arguments[lang] = kwargs[lname]
+            if kwargs[lname]:  # type: ignore[literal-required]
+                arguments[lang] = kwargs[lname]  # type: ignore[literal-required]
 
         package.components[cname] = Component(target, includes, arguments, kwargs['default'])
 
