@@ -14,8 +14,15 @@ import typing as T
 from . import NewExtensionModule, ModuleInfo
 from .. import build
 from ..interpreter.type_checking import NoneType
-from ..interpreterbase import KwargInfo, typed_pos_args, typed_kwargs, InvalidArguments, ContainerTypeInfo
-from ..utils.universal import File, FileMode, OptionKey
+from ..interpreterbase import (
+	ContainerTypeInfo,
+	KwargInfo,
+    ObjectHolder,
+    InvalidArguments,
+    typed_kwargs,
+    typed_pos_args,
+)
+from ..utils.universal import File, FileMode, HoldableObject, OptionKey
 
 if T.TYPE_CHECKING:
     from typing_extensions import Literal, TypedDict
@@ -23,6 +30,7 @@ if T.TYPE_CHECKING:
     from . import ModuleState
     from ..build import BuildTargetTypes
     from ..interpreter import Interpreter
+    from ..interpreterbase.baseobjects import SubProject
 
     _KNOWN_LANGS = Literal['c', 'cpp', 'fortran']
 
@@ -56,7 +64,7 @@ class Component:
 
 
 @dataclasses.dataclass
-class Package:
+class Package(HoldableObject):
 
     """A Package with it's components and configurations."""
 
@@ -82,18 +90,66 @@ _INC_KWS: T.List[KwargInfo[T.List[str]]] = [
 _INC_KWS.append(_COMPILE_KW.evolve(name='include_directories'))
 
 
+class PackageHolder(ObjectHolder[Package]):
+
+    def __init__(self, obj: Package, interp: Interpreter) -> None:
+        super().__init__(obj, interp)
+        self.methods.update({
+            'add_component': self.add_component
+        })
+
+    @typed_pos_args('cps_package.add_component', (build.BuildTarget, build.CustomTarget, build.CustomTargetIndex))
+    @typed_kwargs(
+        'cps_package.add_component',
+        KwargInfo('name', (str, NoneType)),
+        KwargInfo('default', bool, default=False),
+        *_COMPILE_KWS,
+        *_INC_KWS,
+    )
+    def add_component(self, args: T.Tuple[BuildTargetTypes], kwargs: CreateComponentKWs) -> None:
+        # TODO: CustomTarget with more than 1 output
+        # TODO: BothLibrary
+
+        target = args[0]
+
+        cname = kwargs['name'] or target.name
+        if cname in self.held_object.components:
+            raise InvalidArguments(f'Component "{cname}" of package "{self.held_object.name}" is already defined!')
+
+        # TODO: warn about manually adding @prefix@ or absolute paths, also warn about -I forms
+
+        includes: T.Dict[str, T.List[str]] = {}
+        if kwargs['include_directories']:
+            includes['*'] = kwargs['include_directories']
+        for lang in _SUPPORTED_LANGS:
+            lname = f'{lang}_include_directories'
+            if kwargs[lname]:  # type: ignore[literal-required]
+                includes[lang] = kwargs[lname]  # type: ignore[literal-required]
+
+        arguments: T.Dict[str, T.List[str]] = {}
+        if kwargs['arguments']:
+            arguments['*'] = kwargs['arguments']
+        for lang in _SUPPORTED_LANGS:
+            lname = f'{lang}_arguments'
+            if kwargs[lname]:  # type: ignore[literal-required]
+                arguments[lang] = kwargs[lname]  # type: ignore[literal-required]
+
+        self.held_object.components[cname] = Component(target, includes, arguments, kwargs['default'])
+        # TODO: what if a target is in multiple packages?
+        CPSModule.target_map[target] = (self.held_object.name, cname)
+
+
 class CPSModule(NewExtensionModule):
 
     INFO = ModuleInfo('cps', added='1.5.0')
 
     _packages: T.Dict[str, Package] = {}
-    _target_map: T.Dict[BuildTargetTypes, T.Tuple[str, str]] = {}
+    target_map: T.Dict[BuildTargetTypes, T.Tuple[str, str]] = {}
 
     def __init__(self) -> None:
         super().__init__()
         self.methods.update({
             'create_package': self.create_package,
-            'create_component': self.create_component,
         })
 
     @staticmethod
@@ -138,9 +194,9 @@ class CPSModule(NewExtensionModule):
 
                 requires: T.List[str] = []
                 for t in comp.target.get_transitive_link_deps(whole_targets=False):
-                    if t not in self._target_map:
+                    if t not in self.target_map:
                         raise NotImplementedError('TODO: make a private component for this')
-                    rpkg, rcomp = self._target_map[t]
+                    rpkg, rcomp = self.target_map[t]
                     if rpkg != package.name:
                         if rpkg not in self._packages:
                             raise InvalidArguments(f'Tried to depend on a package "{rpkg}", which will not have a CPS package generated.')
@@ -198,7 +254,7 @@ class CPSModule(NewExtensionModule):
         'cps.create_package',
         KwargInfo('description', (str, NoneType)),
     )
-    def create_package(self, state: ModuleState, args: T.Tuple[str, T.Optional[str]], kwargs: CreatePackageKWs) -> None:
+    def create_package(self, state: ModuleState, args: T.Tuple[str, T.Optional[str]], kwargs: CreatePackageKWs) -> Package:
         name, version = args
         if version is None:
             version = state.project_version
@@ -209,57 +265,16 @@ class CPSModule(NewExtensionModule):
         # TODO: license-files
         # TODO: what to do about multiple licenses instead of SPDX?
         license = state.build.dep_manifest[state.project_name].license
-        self._packages[name] = Package(
+        p = self._packages[name] = Package(
             name,
             version,
             kwargs['description'],
             license[0] if license else None,
         )
 
-    @typed_pos_args('cps.create_component', str, (build.BuildTarget, build.CustomTarget, build.CustomTargetIndex))
-    @typed_kwargs(
-        'cps.create_component',
-        KwargInfo('name', (str, NoneType)),
-        KwargInfo('default', bool, default=False),
-        *_COMPILE_KWS,
-        *_INC_KWS,
-    )
-    def create_component(self, state: ModuleState, args: T.Tuple[str, BuildTargetTypes], kwargs: CreateComponentKWs) -> None:
-        # TODO: CustomTarget with more than 1 output
-        # TODO: BothLibrary
-
-        pname, target = args
-        try:
-            package = self._packages[pname]
-        except KeyError:
-            raise InvalidArguments(f'Tried to use a package "{pname}" that has not been defined.')
-
-        cname = kwargs['name'] or target.name
-        if cname in package.components:
-            raise InvalidArguments(f'Component "{cname}" of package "{pname}" is already defined!')
-
-        # TODO: warn about manually adding @prefix@ or absolute paths, also warn about -I forms
-
-        includes: T.Dict[str, T.List[str]] = {}
-        if kwargs['include_directories']:
-            includes['*'] = kwargs['include_directories']
-        for lang in _SUPPORTED_LANGS:
-            lname = f'{lang}_include_directories'
-            if kwargs[lname]:  # type: ignore[literal-required]
-                includes[lang] = kwargs[lname]  # type: ignore[literal-required]
-
-        arguments: T.Dict[str, T.List[str]] = {}
-        if kwargs['arguments']:
-            arguments['*'] = kwargs['arguments']
-        for lang in _SUPPORTED_LANGS:
-            lname = f'{lang}_arguments'
-            if kwargs[lname]:  # type: ignore[literal-required]
-                arguments[lang] = kwargs[lname]  # type: ignore[literal-required]
-
-        package.components[cname] = Component(target, includes, arguments, kwargs['default'])
-
-        self._target_map[target] = (pname, cname)
+        return p
 
 
 def initialize(interp: Interpreter) -> CPSModule:
+    interp.holder_map[Package] = PackageHolder
     return CPSModule()

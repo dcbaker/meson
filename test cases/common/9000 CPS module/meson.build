@@ -7,27 +7,21 @@ project(
 )
 
 cps = import('cps')
-cps.create_package('meson-test', description : 'A test CPS package')
+mt = cps.create_package('meson-test', description : 'A test CPS package')
 
 exe = executable('exe', 'main.cpp')
-cps.create_component('meson-test', exe, name : 'meson-test-builder')
+mt.add_component(exe, name : 'meson-test-builder')
 
 static = static_library('static', 'lib.cpp')
-cps.create_component(
-  'meson-test', static,
+mt.add_component(
+  static,
   include_directories : ['include/meson-test'],
   arguments : ['-DFOO', '-UBAR', '-fi-am-awesome'],
 )
 
 shared = shared_library('shared', 'shlib.cpp', link_with : static)
-cps.create_component(
-  'meson-test', shared,
-  include_directories : ['include/meson-test'],
-)
+mt.add_component(shared, include_directories : ['include/meson-test'])
 
 shared_external = shared_library('shared2', 'shlib.cpp', link_with : static)
-cps.create_package('meson-test2', description : 'Another test CPS package')
-cps.create_component(
-  'meson-test2', shared,
-  include_directories : ['include/meson-test'],
-)
+mt2 = cps.create_package('meson-test2', description : 'Another test CPS package')
+mt2.add_component(shared, include_directories : ['include/meson-test'])
