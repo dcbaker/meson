@@ -181,7 +181,9 @@ class CPSModule(NewExtensionModule):
                 cdata = {'type': 'archive'}
             elif isinstance(comp.target, build.SharedLibrary):
                 cdata = {'type': 'dylib'}
-            elif comp.target is not None:
+            elif comp.target is None:
+                cdata = {'type': 'interface'}
+            else:
                 raise NotImplementedError(f'Have not implemented support for "{comp.target.typename}" yet')
 
             if not isinstance(comp.target, build.Executable):
