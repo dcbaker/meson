@@ -232,7 +232,7 @@ class CPSModule(NewExtensionModule):
             data = {
                 'name': package.name,
                 'version': package.version,
-                'license': package.license[0],
+                'license': package.license,
                 'cps_version': '0.11.0',
                 'components': {n: make_component(c) for n, c in package.components.items()},
                 'default_components': [n for n, c in package.components.items() if c.default],
