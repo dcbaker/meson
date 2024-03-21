@@ -213,14 +213,15 @@ class CPSModule(NewExtensionModule):
                 if requires:
                     cdata['requires'] = requires
 
-            install_dir = comp.target.get_install_dir()[0][0]
-            # It shouldn't be possible for the first element to be False, only
-            # for any after that, and then only for Vala. At least for
-            # BuildTargets, and CustomTargets aren't yet supported.
-            assert isinstance(install_dir, str), 'for mypy'
-
             if comp.target is not None:
-                cdata['location'] = os.path.join('@prefix@', install_dir, comp.target.get_outputs()[0])
+                install_dir = comp.target.get_install_dir()[0][0]
+                # It shouldn't be possible for the first element to be False, only
+                # for any after that, and then only for Vala. At least for
+                # BuildTargets, and CustomTargets aren't yet supported.
+                assert isinstance(install_dir, str), 'for mypy'
+
+                if comp.target is not None:
+                    cdata['location'] = os.path.join('@prefix@', install_dir, comp.target.get_outputs()[0])
             return cdata
 
         priv_dir = os.path.join(b.environment.build_dir, b.environment.private_dir)
