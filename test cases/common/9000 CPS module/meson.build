@@ -20,8 +20,8 @@ mt.add_component(
 )
 
 shared = shared_library('shared', 'shlib.cpp', link_with : static)
-mt.add_component(shared, include_directories : ['include/meson-test'])
+mt.add_component(shared, include_directories : ['include/meson-test'], default : true)
 
 shared_external = shared_library('shared2', 'shlib.cpp', link_with : static)
 mt2 = cps.create_package('meson-test2', description : 'Another test CPS package')
-mt2.add_component(shared, include_directories : ['include/meson-test'])
+mt2.add_component(shared, include_directories : ['include/meson-test'], default : true)

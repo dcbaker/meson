@@ -105,7 +105,7 @@ class PackageHolder(ObjectHolder[Package]):
                 processed[lang] = kwargs[lname]  # type: ignore[literal-required]
         return processed
 
-    @typed_pos_args('cps_package.add_component', (build.BuildTarget, build.CustomTarget, build.CustomTargetIndex))
+    @typed_pos_args('cps_package.add_component', optargs=[(build.BuildTarget, build.CustomTarget, build.CustomTargetIndex)])
     @typed_kwargs(
         'cps_package.add_component',
         KwargInfo('name', (str, NoneType)),
@@ -113,11 +113,13 @@ class PackageHolder(ObjectHolder[Package]):
         *_COMPILE_KWS,
         *_INC_KWS,
     )
-    def add_component(self, args: T.Tuple[BuildTargetTypes], kwargs: CreateComponentKWs) -> None:
+    def add_component(self, args: T.Tuple[T.Optional[BuildTargetTypes]], kwargs: CreateComponentKWs) -> None:
         # TODO: CustomTarget with more than 1 output
         # TODO: BothLibrary
 
         target = args[0]
+        if target is None and kwargs['name'] is None:
+            raise InvalidArguments('A Component without a built target must specify a name')
 
         cname = kwargs['name'] or target.name
         if cname in self.held_object.components:
@@ -129,28 +131,9 @@ class PackageHolder(ObjectHolder[Package]):
         arguments = self._process_per_language('arguments', kwargs)
 
         self.held_object.components[cname] = Component(target, includes, arguments, kwargs['default'])
-        # TODO: what if a target is in multiple packages?
-        CPSModule.target_map[target] = (self.held_object.name, cname)
-
-    @noPosargs
-    @typed_kwargs(
-        'cps_package.add_interface',
-        KwargInfo('name', str, required=True),
-        KwargInfo('default', bool, default=False),
-        *_COMPILE_KWS,
-        *_INC_KWS,
-    )
-    def add_interface(self, args: T.List[TYPE_var], kwargs: CreateComponentKWs) -> None:
-        cname = kwargs['name']
-        if cname in self.held_object.components:
-            raise InvalidArguments(f'Component "{cname}" of package "{self.held_object.name}" is already defined!')
-
-        # TODO: warn about manually adding @prefix@ or absolute paths, also warn about -I forms
-
-        includes = self._process_per_language('include_directories', kwargs)
-        arguments = self._process_per_language('arguments', kwargs)
-
-        self.held_object.components[cname] = Component(None, includes, arguments, kwargs['default'])
+        if target is not None:
+            # TODO: what if a target is in multiple packages?
+            CPSModule.target_map[target] = (self.held_object.name, cname)
 
 
 class CPSModule(NewExtensionModule):
@@ -248,9 +231,10 @@ class CPSModule(NewExtensionModule):
             data = {
                 'name': package.name,
                 'version': package.version,
-                'license' : package.license[0],
+                'license': package.license[0],
                 'cps_version': '0.11.0',
                 'components': {n: make_component(c) for n, c in package.components.items()},
+                'default_components': [n for n, c in package.components.items() if c.default],
             }
             if package_requires:
                 # TODO: set the values for these if we can determine them
