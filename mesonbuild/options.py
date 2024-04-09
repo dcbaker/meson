@@ -774,6 +774,17 @@ class OptionStore:
                 return fallback
             raise
 
+    def delete_option(self, key: OptionKey) -> bool:
+        """Delete an option from the store
+
+        :param key: The key to delete
+        :return: True if an option was deleted, otherwise False
+        """
+        if key in self.d:
+            del self.d[key]
+            return True
+        return False
+
     def add_system_option(self, key: T.Union[OptionKey, str], valobj: AnyOptionType) -> None:
         key = self.ensure_key(key)
         if '.' in key.name:
@@ -890,6 +901,10 @@ class OptionStore:
 
     def is_module_option(self, key: OptionKey) -> bool:
         return key in self.module_options
+
+    def is_per_subproject_option(self, key: OptionKey) -> bool:
+        # TODO: implement this?
+        return True
 
     def target_option_value(
             self,

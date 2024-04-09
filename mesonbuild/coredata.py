@@ -9,6 +9,7 @@ import copy
 from . import mlog, options
 import pickle, os, uuid
 import sys
+import copy
 from itertools import chain
 from pathlib import PurePath
 from collections import OrderedDict, abc
@@ -56,6 +57,8 @@ if T.TYPE_CHECKING:
         """
 
         cmd_line_options: T.Dict[OptionKey, str]
+        add_subproject_options: T.List[str]
+        del_subproject_options: T.List[str]
         projectoptions: T.List[str]
         cross_file: T.List[str]
         native_file: T.List[str]
@@ -260,6 +263,7 @@ class CoreData:
         self.target_guids: T.Dict[str, str] = {}
         self.version = version
         self.optstore = options.OptionStore()
+        self.sp_option_overrides: 'MutableKeyedOptionDictType' = {}
         self.cross_files = self.__load_config_files(cmd_options, scratch_dir, 'cross')
         self.compilers: PerMachine[T.Dict[str, Compiler]] = PerMachine(OrderedDict(), OrderedDict())
 
@@ -444,17 +448,18 @@ class CoreData:
                 'Default project to execute in Visual Studio',
                 ''))
 
+    def get_and_clean(self, key: OptionKey, store: KeyedOptionDictType) -> ElementaryOptionValues:
+        # TODO: WrapMode?
+        return store.get_value_unsafe(key)
+
     def get_option(self, key: OptionKey) -> ElementaryOptionValues:
         try:
-            v = self.optstore.get_value_object(key)
-            return v.value
+            return self.sp_option_overrides[key].value
         except KeyError:
             pass
 
         try:
-            v = self.optstore.get_value_object(key.as_root())
-            if v.yielding:
-                return v.value
+            return self.optstore.get_value_unsafe(key.as_root())
         except KeyError:
             pass
 
@@ -684,6 +689,38 @@ class CoreData:
 
         return dirty
 
+    def create_sp_options(self, options: T.Optional[T.List[str]]) -> bool:
+        if options is None:
+            return False
+        dirty = False
+        for entry in options:
+            keystr, valstr = entry.split('=', 1)
+            if ':' not in keystr:
+                raise MesonException(f'Option to add override has no subproject: {entry}')
+            key = OptionKey.from_string(keystr)
+            if not self.optstore.is_per_subproject_option(key):
+                raise MesonException(f'Option {keystr} can not be set per subproject.')
+            if key in self.sp_option_overrides:
+                raise MesonException(f'Override {keystr} already exists.')
+            original_key = key.evolve(subproject='')
+            if original_key not in self.optstore:
+                raise MesonException('Tried to override a nonexisting key.')
+            new_opt = copy.deepcopy(self.optstore.get_value_object(original_key))
+            new_opt.set_value(valstr)
+            self.sp_option_overrides[key] = new_opt
+            dirty = True
+        return dirty
+
+    def remove_sp_options(self, options: T.Optional[T.List[str]]) -> bool:
+        dirty = False
+        if options is None:
+            return False
+        for entry in options:
+            key = OptionKey.from_string(entry)
+            # Deleting a non-existing key ok, I guess?
+            dirty = self.optstore.delete_option(key)
+        return dirty
+
     def set_default_options(self, default_options: T.MutableMapping[OptionKey, str], subproject: str, env: 'Environment') -> None:
         from .compilers import base_options
 
@@ -880,6 +917,10 @@ def register_builtin_arguments(parser: argparse.ArgumentParser) -> None:
         b.add_to_argparse(n.as_build(), parser, ' (just for build machine)')
     parser.add_argument('-D', action='append', dest='projectoptions', default=[], metavar="option",
                         help='Set the value of an option, can be used several times to set multiple options.')
+    parser.add_argument('-A', action='append', dest='add_subproject_options', metavar='options',
+                        help='Add a subproject option.')
+    parser.add_argument('-U', action='append', dest='del_subproject_options', metavar='options',
+                        help='Remove a subproject option.')
 
 def create_options_dict(options: T.List[str], subproject: str = '') -> T.Dict[OptionKey, str]:
     result: T.OrderedDict[OptionKey, str] = OrderedDict()

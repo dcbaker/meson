@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2018 The Meson development team
-# Copyright © 2024 Intel Corporation
+# Copyright © 2024-2025 Intel Corporation
 
 # This class contains the basic functionality needed to run any interpreter
 # or an interpreter-based tool
@@ -39,6 +39,8 @@ class IntrospectionHelper:
         self.native_file: T.List[str] = []
         self.cmd_line_options: T.Dict[OptionKey, str] = {}
         self.projectoptions: T.List[str] = []
+        self.add_subproject_options: T.List[str] = []
+        self.del_subproject_options: T.List[str] = []
 
     def __eq__(self, other: object) -> bool:
         return NotImplemented
