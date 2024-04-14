@@ -26,7 +26,7 @@ from .. import mesonlib
 from .. import mlog
 from ..compilers import LANGUAGES_USING_LDFLAGS, detect, lang_suffixes
 from ..mesonlib import (
-    File, MachineChoice, MesonException, OrderedSet,
+    File, MachineChoice, MesonException, MesonBugException, OrderedSet,
     ExecutableSerialisation, EnvironmentException,
     classify_unity_sources, get_compiler_for_source
 )
@@ -41,6 +41,7 @@ if T.TYPE_CHECKING:
     from ..interpreter import Interpreter, Test
     from ..linkers.linkers import StaticLinker
     from ..mesonlib import FileMode, FileOrString
+    from ..options import ElementaryOptionTypes
 
     from typing_extensions import TypedDict, NotRequired
 
@@ -424,8 +425,7 @@ class Backend:
         abs_files: T.List[str] = []
         result: T.List[mesonlib.File] = []
         compsrcs = classify_unity_sources(target.compilers.values(), unity_src)
-        unity_size = target.get_option(OptionKey('unity_size'))
-        assert isinstance(unity_size, int), 'for mypy'
+        unity_size = self.get_target_option(target, 'unity_size', int)
 
         def init_language_file(suffix: str, unity_file_number: int) -> T.TextIO:
             unity_src = self.get_unity_source_file(target, suffix, unity_file_number)
@@ -878,7 +878,8 @@ class Backend:
         object_suffix = machine.get_object_suffix()
         # For the TASKING compiler, in case of LTO or prelinking the object suffix has to be .mil
         if compiler.get_id() == 'tasking':
-            if target.get_option(OptionKey('b_lto')) or (isinstance(target, build.StaticLibrary) and target.prelink):
+            use_lto = self.get_target_option(target, 'b_lto', bool)
+            if use_lto or (isinstance(target, build.StaticLibrary) and target.prelink):
                 if not source.rsplit('.', 1)[1] in lang_suffixes['c']:
                     if isinstance(target, build.StaticLibrary) and not target.prelink:
                         raise EnvironmentException('Tried using MIL linking for a static library with a assembly file. This can only be done if the static library is prelinked or disable \'b_lto\'.')
@@ -925,11 +926,10 @@ class Backend:
         # With unity builds, sources don't map directly to objects,
         # we only support extracting all the objects in this mode,
         # so just return all object files.
-        if extobj.target.is_unity:
+        if self.is_unity(extobj.target):
             compsrcs = classify_unity_sources(extobj.target.compilers.values(), sources)
             sources = []
-            unity_size = extobj.target.get_option(OptionKey('unity_size'))
-            assert isinstance(unity_size, int), 'for mypy'
+            unity_size = self.get_target_option(extobj.target, 'unity_size', int)
 
             for comp, srcs in compsrcs.items():
                 if comp.language in LANGS_CANT_UNITY:
@@ -981,7 +981,7 @@ class Backend:
 
     def target_uses_pch(self, target: build.BuildTarget) -> bool:
         try:
-            return T.cast('bool', target.get_option(OptionKey('b_pch')))
+            return self.get_target_option(target, 'b_pch', bool)
         except (KeyError, AttributeError):
             return False
 
@@ -1015,23 +1015,21 @@ class Backend:
         # Add things like /NOLOGO or -pipe; usually can't be overridden
         commands += compiler.get_always_args()
         # warning_level is a string, but mypy can't determine that
-        commands += compiler.get_warn_args(T.cast('str', target.get_option(OptionKey('warning_level'))))
+        commands += compiler.get_warn_args(self.get_target_option(target, 'warning_level', str))
         # Add -Werror if werror=true is set in the build options set on the
         # command-line or default_options inside project(). This only sets the
         # action to be done for warnings if/when they are emitted, so it's ok
         # to set it after or get_warn_args().
-        if target.get_option(OptionKey('werror')):
+        if self.get_target_option(target, 'werror', bool):
             commands += compiler.get_werror_args()
         # Add compile args for c_* or cpp_* build options set on the
         # command-line or default_options inside project().
         commands += compiler.get_option_compile_args(copt_proxy)
 
-        optimization = target.get_option(OptionKey('optimization'))
-        assert isinstance(optimization, str), 'for mypy'
+        optimization = self.get_target_option(target, 'optimization', str)
         commands += compiler.get_optimization_args(optimization)
 
-        debug = target.get_option(OptionKey('debug'))
-        assert isinstance(debug, bool), 'for mypy'
+        debug = self.get_target_option(target, 'debug', bool)
         commands += compiler.get_debug_args(debug)
 
         # Add compile args added using add_project_arguments()
@@ -1755,8 +1753,7 @@ class Backend:
                 # TODO: Create GNUStrip/AppleStrip/etc. hierarchy for more
                 #       fine-grained stripping of static archives.
                 can_strip = not isinstance(t, build.StaticLibrary)
-                should_strip = can_strip and t.get_option(OptionKey('strip'))
-                assert isinstance(should_strip, bool), 'for mypy'
+                should_strip = can_strip and self.get_target_option(t, 'strip', bool)
                 # Install primary build output (library/executable/jar, etc)
                 # Done separately because of strip/aliases/rpath
                 if first_outdir is not False:
@@ -2092,3 +2089,22 @@ class Backend:
         all_sources = T.cast('_ALL_SOURCES_TYPE', target.sources) + T.cast('_ALL_SOURCES_TYPE', target.generated)
         return self.compiler_to_generator(target, target.compiler, all_sources,
                                           target.output_templ, target.depends)
+
+    def is_unity(self, target: build.BuildTarget) -> bool:
+        return target.is_unity
+
+    def get_target_option(
+            self,
+            target: build.BuildTarget,
+            name: T.Union[str, OptionKey],
+            type_: T.Type[ElementaryOptionTypes],
+            ) -> ElementaryOptionTypes:
+        if isinstance(name, str):
+            key = OptionKey(name)
+        elif isinstance(name, OptionKey):
+            key = name
+        else:
+            raise MesonBugException('Internal error: invalid option type.')
+        v = target.get_option(key)
+        assert isinstance(v, type_), 'for mypy'
+        return v
