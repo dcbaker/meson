@@ -17,8 +17,8 @@ from ...mesonlib import Popen_safe
 from ...options import OptionKey
 
 if T.TYPE_CHECKING:
+    from ...build import BuildTarget
     from ...environment import Environment
-    from ...coredata import KeyedOptionDictType
 
 
 class ElbrusCompiler(GnuLikeCompiler):
@@ -83,9 +83,15 @@ class ElbrusCompiler(GnuLikeCompiler):
         # Actually it's not supported for now, but probably will be supported in future
         return 'pch'
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
         args: T.List[str] = []
-        std = options.get_value(OptionKey(f'{self.language}_std', machine=self.for_machine), str)
+        key = self.form_compileropt_key('std')
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
             args.append('-std=' + std)
         return args

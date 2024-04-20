@@ -36,6 +36,7 @@ from .compilers import (
 )
 
 if T.TYPE_CHECKING:
+    from ..build import BuildTarget
     from ..coredata import MutableKeyedOptionDictType, KeyedOptionDictType
     from ..dependencies import Dependency
     from ..envconfig import MachineInfo
@@ -130,19 +131,28 @@ class ClangCCompiler(ClangCStds, ClangCompiler, CCompiler):
                 gnu_winlibs)
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        args = []
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
             args.append('-std=' + std)
         return args
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_link_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None,
+            ) -> T.List[str]:
         if self.info.is_windows() or self.info.is_cygwin():
-            # without a typedict mypy can't understand this.
             key = self.form_compileropt_key('winlibs')
-            return options.get_value(key, list).copy()
+            return env.coredata.optstore.target_option_value(target, key, subproject, list).copy()
         return []
 
 
@@ -215,15 +225,25 @@ class ArmclangCCompiler(ArmclangCompiler, CCompiler):
         std_opt.set_versions(['c90', 'c99', 'c11'], gnu=True)
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        args = []
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
             args.append('-std=' + std)
         return args
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_link_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None,
+            ) -> T.List[str]:
         return []
 
 
@@ -259,19 +279,28 @@ class GnuCCompiler(GnuCStds, GnuCompiler, CCompiler):
                 gnu_winlibs)
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None,
+            ) -> T.List[str]:
         args = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
             args.append('-std=' + std)
         return args
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_link_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None,
+            ) -> T.List[str]:
         if self.info.is_windows() or self.info.is_cygwin():
             key = self.form_compileropt_key('winlibs')
-            libs: T.List[str] = options.get_value(key, list).copy()
-            return libs
+            return env.coredata.optstore.target_option_value(target, key, subproject, list).copy()
         return []
 
     def get_pch_use_args(self, pch_dir: str, header: str) -> T.List[str]:
@@ -377,10 +406,15 @@ class IntelCCompiler(IntelGnuLikeCompiler, CCompiler):
         std_opt.set_versions(stds, gnu=True)
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        args = []
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
             args.append('-std=' + std)
         return args
@@ -404,10 +438,14 @@ class VisualStudioLikeCCompilerMixin(CompilerMixinBase):
             msvc_winlibs)
         return opts
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        # need a TypeDict to make this work
+    def get_option_link_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None,
+            ) -> T.List[str]:
         key = self.form_compileropt_key('winlibs')
-        return options.get_value(key, list).copy()
+        return env.coredata.optstore.target_option_value(target, key, subproject, list).copy()
 
 
 class VisualStudioCCompiler(MSVCCompiler, VisualStudioLikeCCompilerMixin, CCompiler):
@@ -437,12 +475,16 @@ class VisualStudioCCompiler(MSVCCompiler, VisualStudioLikeCCompilerMixin, CCompi
         std_opt.set_versions(stds, gnu=True, gnu_deprecated=True)
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None) -> T.List[str]:
         args = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         # As of MVSC 16.8, /std:c11 and /std:c17 are the only valid C standard options.
-        if std == 'c11':
+        if std in {'c11'}:
             args.append('/std:c11')
         elif std in {'c17', 'c18'}:
             args.append('/std:c17')
@@ -459,12 +501,18 @@ class ClangClCCompiler(ClangCStds, ClangClCompiler, VisualStudioLikeCCompilerMix
                            full_version=full_version)
         ClangClCompiler.__init__(self, target)
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
-        if std != "none":
-            return [f'/clang:-std={std}']
-        return []
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
+        if std != 'none':
+            args.append('/clang:-std=' + std)
+        return args
 
 
 class IntelClCCompiler(IntelVisualStudioLikeCompiler, VisualStudioLikeCCompilerMixin, CCompiler):
@@ -491,10 +539,15 @@ class IntelClCCompiler(IntelVisualStudioLikeCompiler, VisualStudioLikeCCompilerM
         std_opt.set_versions(['c89', 'c99', 'c11'])
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        args = []
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std == 'c89':
             mlog.log("ICL doesn't explicitly implement c89, setting the standard to 'none', which is close.", once=True)
         elif std != 'none':
@@ -525,10 +578,15 @@ class ArmCCompiler(ArmCompiler, CCompiler):
         std_opt.set_versions(['c89', 'c99', 'c11'])
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        args = []
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
             args.append('--' + std)
         return args
@@ -558,10 +616,15 @@ class CcrxCCompiler(CcrxCompiler, CCompiler):
     def get_no_stdinc_args(self) -> T.List[str]:
         return []
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        args = []
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std == 'c89':
             args.append('-lang=c')
         elif std == 'c99':
@@ -606,10 +669,15 @@ class Xc16CCompiler(Xc16Compiler, CCompiler):
     def get_no_stdinc_args(self) -> T.List[str]:
         return []
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        args = []
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
             args.append('-ansi')
             args.append('-std=' + std)
@@ -649,7 +717,12 @@ class CompCertCCompiler(CompCertCompiler, CCompiler):
         std_opt.set_versions(['c89', 'c99'])
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
         return []
 
     def get_no_optimization_args(self) -> T.List[str]:
@@ -690,10 +763,15 @@ class TICCompiler(TICompiler, CCompiler):
     def get_no_stdinc_args(self) -> T.List[str]:
         return []
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        args = []
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
             args.append('--' + std)
         return args
@@ -724,13 +802,17 @@ class MetrowerksCCompilerARM(MetrowerksCompiler, CCompiler):
         self._update_language_stds(opts, ['c99'])
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        args = []
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
-            args.append('-lang')
-            args.append(std)
+            args.extend(['-lang', std])
         return args
 
 class MetrowerksCCompilerEmbeddedPowerPC(MetrowerksCompiler, CCompiler):
@@ -752,10 +834,15 @@ class MetrowerksCCompilerEmbeddedPowerPC(MetrowerksCompiler, CCompiler):
         self._update_language_stds(opts, ['c99'])
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        args = []
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
             args.append('-lang ' + std)
         return args

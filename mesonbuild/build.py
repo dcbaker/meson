@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 from collections import defaultdict, OrderedDict
-from dataclasses import dataclass, field, InitVar
+from dataclasses import dataclass, field
 from functools import lru_cache
 import abc
 import copy
@@ -422,10 +422,6 @@ class ExtractedObjects(HoldableObject):
     recursive: bool = True
     pch: bool = False
 
-    def __post_init__(self) -> None:
-        if self.target.is_unity:
-            self.check_unity_compatible()
-
     def __repr__(self) -> str:
         r = '<{0} {1!r}: {2}>'
         return r.format(self.__class__.__name__, self.target.name, self.srclist)
@@ -526,7 +522,6 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
     install: bool = False
     build_always_stale: bool = False
     extra_files: T.List[File] = field(default_factory=list)
-    override_options: InitVar[T.Optional[T.Dict[OptionKey, str]]] = None
 
     @abc.abstractproperty
     def typename(self) -> str:
@@ -536,13 +531,7 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
     def type_suffix(self) -> str:
         pass
 
-    def __post_init__(self, overrides: T.Optional[T.Dict[OptionKey, str]]) -> None:
-        if overrides:
-            ovr = {k.evolve(machine=self.for_machine) if k.lang else k: v
-                   for k, v in overrides.items()}
-        else:
-            ovr = {}
-        self.options = coredata.OptionsView(self.environment.coredata.optstore, self.subproject, ovr)
+    def __post_init__(self) -> None:
         # XXX: this should happen in the interpreter
         if has_path_sep(self.name):
             # Fix failing test 53 when this becomes an error.
@@ -657,7 +646,8 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
             # set, use the value of 'install' if it's enabled.
             self.build_by_default = True
 
-        self.set_option_overrides(self.parse_overrides(kwargs))
+        # TODO: These should be stored as values types not as strings
+        self.raw_options = self.parse_overrides(kwargs)
 
     def is_compiler_option_hack(self, key):
         # FIXME this method must be deleted when OptionsView goes away.
@@ -669,19 +659,17 @@ class Target(HoldableObject, metaclass=abc.ABCMeta):
         prefix = key.name.split('_')[0]
         return prefix in all_languages
 
-    def set_option_overrides(self, option_overrides: T.Dict[OptionKey, str]) -> None:
-        self.options.overrides = {}
-        for k, v in option_overrides.items():
-            if self.is_compiler_option_hack(k):
-                self.options.overrides[k.evolve(machine=self.for_machine)] = v
-            else:
-                self.options.overrides[k] = v
+    def get_override(self, name: T.Union[OptionKey, str], fallback: T.Optional[str] = None) -> T.Optional[str]:
+        if isinstance(name, str):
+            name = OptionKey(name)
+        return self.raw_options.get(name, fallback)
 
-    def get_options(self) -> coredata.OptionsView:
-        return self.options
-
-    def get_option(self, key: OptionKey) -> ElementaryOptionValues:
-        return self.options.get_value_unsafe(key)
+    def set_override(self, name: T.Union[OptionKey, str], value: ElementaryOptionValues) -> None:
+        if isinstance(name, str):
+            name = OptionKey(name)
+        assert name in self.raw_options, 'this is a programming error'
+        # XXX: using `repr()` here is an abuse
+        self.raw_options[name] = repr(value)
 
     @staticmethod
     def parse_overrides(kwargs: T.Dict[str, T.Any]) -> T.Dict[OptionKey, str]:
@@ -783,7 +771,7 @@ class BuildTarget(Target):
         # 2. Compiled objects created by and extracted from another target
         self.process_objectlist(objects)
         self.process_kwargs(kwargs)
-        self.missing_languages = self.process_compilers()
+        self.missing_languages = self.process_compilers(environment)
 
         # self.link_targets and self.link_whole_targets contains libraries from
         # dependencies (see add_deps()). They have not been processed yet because
@@ -831,12 +819,6 @@ class BuildTarget(Target):
 
     def __str__(self):
         return f"{self.name}"
-
-    # FIXME: this entire method needs to be removed.
-    @property
-    def is_unity(self) -> bool:
-        unity_opt = self.get_option(OptionKey('unity'))
-        return unity_opt == 'on' or (unity_opt == 'subprojects' and self.subproject != '')
 
     def validate_install(self):
         if self.for_machine is MachineChoice.BUILD and self.install:
@@ -943,7 +925,7 @@ class BuildTarget(Target):
                                             key=lambda t: sort_clink(t[0])))
         self.post_init()
 
-    def process_compilers(self) -> T.List[str]:
+    def process_compilers(self, env: environment.Environment) -> T.List[str]:
         '''
         Populate self.compilers, which is the list of compilers that this
         target will use for compiling all its sources.
@@ -1021,7 +1003,7 @@ class BuildTarget(Target):
             self.compilers['c'] = self.all_compilers['c']
         if 'cython' in self.compilers:
             key = OptionKey('cython_language', machine=self.for_machine)
-            value = self.get_option(key)
+            value = env.coredata.optstore.target_option_value(self, key, self.subproject, str)
 
             try:
                 self.compilers[value] = self.all_compilers[value]
@@ -2877,10 +2859,6 @@ class CompileTarget(BuildTarget):
 
     def type_suffix(self) -> str:
         return "@compile"
-
-    @property
-    def is_unity(self) -> bool:
-        return False
 
     def _add_output(self, f: File) -> None:
         plainname = os.path.basename(f.fname)

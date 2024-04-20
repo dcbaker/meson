@@ -15,7 +15,8 @@ from ..options import OptionKey
 from .compilers import Compiler, clike_debug_args
 
 if T.TYPE_CHECKING:
-    from ..coredata import MutableKeyedOptionDictType, KeyedOptionDictType
+    from ..build import BuildTarget
+    from ..coredata import MutableKeyedOptionDictType
     from ..envconfig import MachineInfo
     from ..environment import Environment  # noqa: F401
     from ..linkers.linkers import DynamicLinker
@@ -250,11 +251,15 @@ class RustCompiler(Compiler):
         # nothing here. Dependencies are linked and all required metadata is
         # provided by the linker flags.
         return []
-
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        args = []
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
             args.append('--edition=' + std)
         return args

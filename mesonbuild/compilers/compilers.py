@@ -256,46 +256,52 @@ BASE_OPTIONS: T.Mapping[OptionKey, BaseOption] = {
 
 base_options = {key: T.cast('options.AnyOptionType', base_opt.init_option(key)) for key, base_opt in BASE_OPTIONS.items()}
 
-def option_enabled(boptions: T.Set[OptionKey], options: 'KeyedOptionDictType',
-                   option: OptionKey) -> bool:
+def option_enabled(boptions: T.Set[OptionKey],
+                   target: BuildTarget,
+                   env: Environment,
+                   option: T.Union[str, OptionKey]) -> bool:
+    if isinstance(option, str):
+        option = OptionKey(option)
     try:
         if option not in boptions:
             return False
-        return options.get_value(option, bool)  # could also be str?
+        return env.coredata.optstore.target_option_value(target, option, target.subproject, bool)  # could also be str?
     except KeyError:
+
         return False
 
 
-def are_asserts_disabled(options: KeyedOptionDictType) -> bool:
+def are_asserts_disabled(target: T.Optional[BuildTarget], env: Environment, subproject: T.Optional[str] = None) -> bool:
     """Should debug assertions be disabled
 
-    :param options: OptionDictionary
+    :param target: a target to check for
+    :param env: the environment
     :return: whether to disable assertions or not
     """
-    return (options.get_value('b_ndebug', str) == 'true' or
-            (options.get_value('b_ndebug', str) == 'if-release' and
-             options.get_value('buildtype', str) in {'release', 'plain'}))
+    return (env.coredata.optstore.target_option_value(target, 'b_ndebug', subproject, str) == 'true' or
+            (env.coredata.optstore.target_option_value(target, 'b_ndebug', subproject, str) == 'if-release' and
+             env.coredata.optstore.target_option_value(target, 'buildtype', subproject, str) in {'release', 'plain'}))
 
-
-def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', env: 'Environment') -> T.List[str]:
+def get_base_compile_args(target: BuildTarget, compiler: Compiler, env: Environment) -> T.List[str]:
     args: T.List[str] = []
     try:
-        if options.get_value(OptionKey('b_lto'), bool):
+        if env.coredata.optstore.target_option_value(target, 'b_lto', target.subproject, bool):
+            # TODO: this may need to be target, but then we need to plumb in a default
             args.extend(compiler.get_lto_compile_args(
-                threads=options.get_value(OptionKey('b_lto_threads'), int, 0),
-                mode=options.get_value(OptionKey('b_lto_mode'), str, 'default')))
+                threads=env.coredata.optstore.get_value(OptionKey('b_lto_threads'), int, 0),
+                mode=env.coredata.optstore.get_value(OptionKey('b_lto_mode'), str, 'default')))
     except (KeyError, AttributeError):
         pass
     try:
-        args += compiler.get_colorout_args(options.get_value(OptionKey('b_colorout'), str))
-    except (KeyError, AttributeError):
+        args += compiler.get_colorout_args(env.coredata.optstore.target_option_value(target, 'b_colorout', target.subproject, str))
+    except KeyError:
         pass
     try:
-        args += compiler.sanitizer_compile_args(options.get_value(OptionKey('b_sanitize'), str))
-    except (KeyError, AttributeError):
+        args += compiler.sanitizer_compile_args(env.coredata.optstore.target_option_value(target, 'b_sanitize', target.subproject, str))
+    except KeyError:
         pass
     try:
-        pgo_val = options.get_value(OptionKey('b_pgo'), str)
+        pgo_val = env.coredata.optstore.target_option_value(target, 'b_pgo', target.subproject, str)
         if pgo_val == 'generate':
             args.extend(compiler.get_profile_generate_args())
         elif pgo_val == 'use':
@@ -303,21 +309,21 @@ def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', 
     except (KeyError, AttributeError):
         pass
     try:
-        if options.get_value(OptionKey('b_coverage'), bool):
+        if env.coredata.optstore.target_option_value(target, 'b_coverage', target.subproject, bool):
             args += compiler.get_coverage_args()
     except (KeyError, AttributeError):
         pass
     try:
-        args += compiler.get_assert_args(are_asserts_disabled(options), env)
-    except (KeyError, AttributeError):
+        args += compiler.get_assert_args(are_asserts_disabled(target, env, target.subproject), env)
+    except KeyError:
         pass
     # This does not need a try...except
-    if option_enabled(compiler.base_options, options, OptionKey('b_bitcode')):
+    if option_enabled(compiler.base_options, target, env, 'b_bitcode'):
         args.append('-fembed-bitcode')
     try:
+        crt_val = env.coredata.optstore.target_option_value(target, 'b_vscrt', target.subproject, str)
+        buildtype = env.coredata.optstore.target_option_value(target, 'buildtype', target.subproject, str)
         try:
-            crt_val = options.get_value(OptionKey('b_vscrt'), str)
-            buildtype = options.get_value(OptionKey('buildtype'), str)
             args += compiler.get_crt_compile_args(crt_val, buildtype)
         except AttributeError:
             pass
@@ -325,31 +331,34 @@ def get_base_compile_args(options: 'KeyedOptionDictType', compiler: 'Compiler', 
         pass
     return args
 
-def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
-                       is_shared_module: bool, build_dir: str) -> T.List[str]:
+def get_base_link_args(target: BuildTarget,
+                       linker: Compiler,
+                       env: Environment) -> T.List[str]:
     args: T.List[str] = []
+    build_dir = env.get_build_dir()
     try:
-        if options.get_value('b_lto', bool):
-            if options.get_value('werror', bool):
+        if env.coredata.optstore.target_option_value(target, 'b_lto', target.subproject, bool):
+            if env.coredata.optstore.target_option_value(target, 'werror', target.subproject, bool):
                 args.extend(linker.get_werror_args())
 
             thinlto_cache_dir = None
-            if options.get_value(OptionKey('b_thinlto_cache'), bool, False):
-                thinlto_cache_dir = options.get_value(OptionKey('b_thinlto_cache_dir'), str, '')
+            # TODO: Probably need a get_option_for_target with defaults?
+            if env.coredata.optstore.get_value(OptionKey('b_thinlto_cache'), bool, False):
+                thinlto_cache_dir = env.coredata.optstore.get_value(OptionKey('b_thinlto_cache_dir'), str, '')
                 if thinlto_cache_dir == '':
                     thinlto_cache_dir = os.path.join(build_dir, 'meson-private', 'thinlto-cache')
             args.extend(linker.get_lto_link_args(
-                threads=options.get_value(OptionKey('b_lto_threads'), int, 0),
-                mode=options.get_value(OptionKey('b_lto_mode'), str, 'default'),
+                threads=env.coredata.optstore.get_value(OptionKey('b_lto_threads'), int, 0),
+                mode=env.coredata.optstore.get_value(OptionKey('b_lto_mode'), str, 'default'),
                 thinlto_cache_dir=thinlto_cache_dir))
     except (KeyError, AttributeError):
         pass
     try:
-        args += linker.sanitizer_link_args(options.get_value('b_sanitize', str))
-    except (KeyError, AttributeError):
+        args += linker.sanitizer_link_args(env.coredata.optstore.target_option_value(target, 'b_sanitize', target.subproject, str))
+    except KeyError:
         pass
     try:
-        pgo_val = options.get_value('b_pgo', str)
+        pgo_val = env.coredata.optstore.target_option_value(target, 'b_pgo', target.subproject, str)
         if pgo_val == 'generate':
             args.extend(linker.get_profile_generate_args())
         elif pgo_val == 'use':
@@ -357,16 +366,16 @@ def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
     except (KeyError, AttributeError):
         pass
     try:
-        if options.get_value('b_coverage', bool):
+        if env.coredata.optstore.target_option_value(target, 'b_coverage', target.subproject, bool):
             args += linker.get_coverage_link_args()
     except (KeyError, AttributeError):
         pass
 
-    as_needed = option_enabled(linker.base_options, options, OptionKey('b_asneeded'))
-    bitcode = option_enabled(linker.base_options, options, OptionKey('b_bitcode'))
+    as_needed = option_enabled(linker.base_options, target, env, 'b_asneeded')
+    bitcode = option_enabled(linker.base_options, target, env, 'b_bitcode')
     # Shared modules cannot be built with bitcode_bundle because
     # -bitcode_bundle is incompatible with -undefined and -bundle
-    if bitcode and not is_shared_module:
+    if bitcode and target.typename != 'shared_module':
         args.extend(linker.bitcode_args())
     elif as_needed:
         # -Wl,-dead_strip_dylibs is incompatible with bitcode
@@ -375,17 +384,18 @@ def get_base_link_args(options: 'KeyedOptionDictType', linker: 'Compiler',
     # Apple's ld (the only one that supports bitcode) does not like -undefined
     # arguments or -headerpad_max_install_names when bitcode is enabled
     if not bitcode:
+        from ..build import SharedModule
         args.extend(linker.headerpad_args())
-        if (not is_shared_module and
-                option_enabled(linker.base_options, options, OptionKey('b_lundef'))):
+        if (not isinstance(target, SharedModule) and
+                option_enabled(linker.base_options, target, env, 'b_lundef')):
             args.extend(linker.no_undefined_link_args())
         else:
             args.extend(linker.get_allow_undefined_link_args())
 
     try:
+        crt_val = env.coredata.optstore.target_option_value(target, 'b_vscrt', target.subproject, str)
+        buildtype = env.coredata.optstore.target_option_value(target, 'buildtype', target.subproject, str)
         try:
-            crt_val = options.get_value(OptionKey('b_vscrt'), str)
-            buildtype = options.get_value(OptionKey('buildtype'), str)
             args += linker.get_crt_link_args(crt_val, buildtype)
         except AttributeError:
             pass
@@ -584,11 +594,16 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def get_options(self) -> 'MutableKeyedOptionDictType':
         return {}
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
         return []
 
-    def get_option_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        return self.linker.get_option_args(options)
+    def get_option_link_args(self, target: T.Optional[BuildTarget], env: Environment, subproject: T.Optional[str] = None) -> T.List[str]:
+        return self.linker.get_option_link_args(target, env, subproject)
 
     def check_header(self, hname: str, prefix: str, env: 'Environment', *,
                      extra_args: T.Union[None, T.List[str], T.Callable[[CompileCheckMode], T.List[str]]] = None,
@@ -880,8 +895,8 @@ class Compiler(HoldableObject, metaclass=abc.ABCMeta):
     def get_std_shared_lib_link_args(self) -> T.List[str]:
         return self.linker.get_std_shared_lib_args()
 
-    def get_std_shared_module_link_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
-        return self.linker.get_std_shared_module_args(options)
+    def get_std_shared_module_link_args(self, target: BuildTarget) -> T.List[str]:
+        return self.linker.get_std_shared_module_args(target)
 
     def get_link_whole_for(self, args: T.List[str]) -> T.List[str]:
         return self.linker.get_link_whole_for(args)

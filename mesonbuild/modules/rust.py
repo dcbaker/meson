@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright © 2020-2024 Intel Corporation
+# Copyright © 2020-2025 Intel Corporation
 
 from __future__ import annotations
 import itertools
@@ -238,7 +238,7 @@ class RustModule(ExtensionModule):
             # bindgen always uses clang, so it's safe to hardcode -I here
             clang_args.extend([f'-I{x}' for x in i.to_string_list(
                 state.environment.get_source_dir(), state.environment.get_build_dir())])
-        if are_asserts_disabled(state.environment.coredata.optstore):
+        if are_asserts_disabled(None, state.environment, state.subproject):
             clang_args.append('-DNDEBUG')
 
         for de in kwargs['dependencies']:

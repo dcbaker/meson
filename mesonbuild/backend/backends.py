@@ -1007,7 +1007,6 @@ class Backend:
         # starting from hard-coded defaults followed by build options and so on.
         commands = compiler.compiler_args()
 
-        copt_proxy = target.get_options()
         # First, the trivial ones that are impossible to override.
         #
         # Add -nostdinc/-nostdinc++ if needed; can't be overridden
@@ -1024,7 +1023,7 @@ class Backend:
             commands += compiler.get_werror_args()
         # Add compile args for c_* or cpp_* build options set on the
         # command-line or default_options inside project().
-        commands += compiler.get_option_compile_args(copt_proxy)
+        commands += compiler.get_option_compile_args(target, self.environment)
 
         optimization = self.get_target_option(target, 'optimization', str)
         commands += compiler.get_optimization_args(optimization)
@@ -2091,7 +2090,14 @@ class Backend:
                                           target.output_templ, target.depends)
 
     def is_unity(self, target: build.BuildTarget) -> bool:
-        return target.is_unity
+        val = self.get_target_option(target, 'unity', str)
+        if val == 'on':
+            return True
+        if val == 'off':
+            return False
+        if val == 'subprojects':
+            return target.subproject != ''
+        raise MesonBugException('Invalid option type for "unity"')
 
     def get_target_option(
             self,
@@ -2105,6 +2111,4 @@ class Backend:
             key = name
         else:
             raise MesonBugException('Internal error: invalid option type.')
-        v = target.get_option(key)
-        assert isinstance(v, type_), 'for mypy'
-        return v
+        return self.environment.coredata.optstore.target_option_value(target, key, target.subproject, type_)

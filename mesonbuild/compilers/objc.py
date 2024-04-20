@@ -16,6 +16,7 @@ from .mixins.gnu import GnuCompiler, GnuCStds, gnu_common_warning_args, gnu_objc
 
 if T.TYPE_CHECKING:
     from .. import coredata
+    from ..build import BuildTarget
     from ..envconfig import MachineInfo
     from ..environment import Environment
     from ..linkers.linkers import DynamicLinker
@@ -75,9 +76,15 @@ class GnuObjCCompiler(GnuCStds, GnuCompiler, ObjCCompiler):
                                          self.supported_warn_args(gnu_common_warning_args) +
                                          self.supported_warn_args(gnu_objc_warning_args))}
 
-    def get_option_compile_args(self, options: 'coredata.KeyedOptionDictType') -> T.List[str]:
-        args = []
-        std = options.get_value(self.form_compileropt_key('std'), str)
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
+        key = self.form_compileropt_key('std')
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
             args.append('-std=' + std)
         return args
@@ -109,9 +116,15 @@ class ClangObjCCompiler(ClangCStds, ClangCompiler, ObjCCompiler):
             return 'c_std'
         return super().make_option_name(key)
 
-    def get_option_compile_args(self, options: 'coredata.KeyedOptionDictType') -> T.List[str]:
-        args = []
-        std = options.get_value(self.form_compileropt_key('std'), str)
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
+        args: T.List[str] = []
+        key = self.form_compileropt_key('std')
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
             args.append('-std=' + std)
         return args

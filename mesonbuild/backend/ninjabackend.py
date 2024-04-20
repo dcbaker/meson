@@ -1805,7 +1805,7 @@ class NinjaBackend(backends.Backend):
         args += cython.get_always_args()
         args += cython.get_debug_args(self.get_target_option(target, 'debug', bool))
         args += cython.get_optimization_args(self.get_target_option(target, 'optimization', str))
-        args += cython.get_option_compile_args(target.get_options())
+        args += cython.get_option_compile_args(target, self.environment, target.subproject)
         args += self.build.get_global_args(cython, target.for_machine)
         args += self.build.get_project_args(cython, target.subproject, target.for_machine)
         args += target.get_extra_args('cython')
@@ -1933,10 +1933,9 @@ class NinjaBackend(backends.Backend):
         # Rust compiler takes only the main file as input and
         # figures out what other files are needed via import
         # statements and magic.
-        base_proxy = target.get_options()
         args = rustc.compiler_args()
         # Compiler args for compiling this target
-        args += compilers.get_base_compile_args(base_proxy, rustc, self.environment)
+        args += compilers.get_base_compile_args(target, rustc, self.environment)
         self.generate_generator_list_rules(target)
 
         # dependencies need to cause a relink, they're not just for ordering
@@ -2886,7 +2885,6 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         return commands
 
     def _generate_single_compile_base_args(self, target: build.BuildTarget, compiler: 'Compiler') -> 'CompilerArgs':
-        base_proxy = target.get_options()
         # Create an empty commands list, and start adding arguments from
         # various sources in the order in which they must override each other
         commands = compiler.compiler_args()
@@ -2895,7 +2893,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         # Add compiler args for compiling this target derived from 'base' build
         # options passed on the command-line, in default_options, etc.
         # These have the lowest priority.
-        commands += compilers.get_base_compile_args(base_proxy,
+        commands += compilers.get_base_compile_args(target,
                                                     compiler, self.environment)
         return commands
 
@@ -3306,7 +3304,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
                 commands += linker.gen_vs_module_defs_args(target.vs_module_defs.rel_to_builddir(self.build_to_src))
         elif isinstance(target, build.SharedLibrary):
             if isinstance(target, build.SharedModule):
-                commands += linker.get_std_shared_module_link_args(target.get_options())
+                commands += linker.get_std_shared_module_link_args(target)
             else:
                 commands += linker.get_std_shared_lib_link_args()
             # All shared libraries are PIC
@@ -3505,12 +3503,11 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         # options passed on the command-line, in default_options, etc.
         # These have the lowest priority.
         if isinstance(target, build.StaticLibrary):
-            commands += linker.get_base_link_args(target.get_options())
+            commands += linker.get_base_link_args(target, linker, self.environment)
         else:
-            commands += compilers.get_base_link_args(target.get_options(),
+            commands += compilers.get_base_link_args(target,
                                                      linker,
-                                                     isinstance(target, build.SharedModule),
-                                                     self.environment.get_build_dir())
+                                                     self.environment)
         # Add -nostdlib if needed; can't be overridden
         commands += self.get_no_stdlib_link_args(target, linker)
         # Add things like /NOLOGO; usually can't be overridden
@@ -3589,7 +3586,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             #
             # We shouldn't check whether we are making a static library, because
             # in the LTO case we do use a real compiler here.
-            commands += linker.get_option_link_args(target.get_options())
+            commands += linker.get_option_link_args(target, self.environment)
 
         dep_targets = []
         dep_targets.extend(self.guess_external_link_dependencies(linker, target, commands, internal))

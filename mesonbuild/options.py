@@ -31,6 +31,8 @@ from . import mlog
 if T.TYPE_CHECKING:
     from typing_extensions import Literal, TypeAlias, TypedDict
 
+    from .build import BuildTarget
+
     DeprecatedType: TypeAlias = T.Union[bool, str, T.Dict[str, str], T.List[str]]
     AnyOptionType: TypeAlias = T.Union[
         'UserBooleanOption', 'UserComboOption', 'UserFeatureOption',
@@ -54,7 +56,6 @@ _T = T.TypeVar('_T')
 backendlist = ['ninja', 'vs', 'vs2010', 'vs2012', 'vs2013', 'vs2015', 'vs2017', 'vs2019', 'vs2022', 'xcode', 'none']
 genvslitelist = ['vs2022']
 buildtypelist = ['plain', 'debug', 'debugoptimized', 'release', 'minsize', 'custom']
-
 
 # This is copied from coredata. There is no way to share this, because this
 # is used in the OptionKey constructor, and the coredata lists are
@@ -889,3 +890,82 @@ class OptionStore:
 
     def is_module_option(self, key: OptionKey) -> bool:
         return key in self.module_options
+
+    def target_option_value(
+            self,
+            target: T.Optional[BuildTarget],
+            key: T.Union[str, OptionKey],
+            subproject: T.Optional[str],
+            type_: T.Type[ElementaryOptionTypes],
+            ) -> ElementaryOptionTypes:
+        """Get the value for a BuildTarget or the default.
+
+        :param target: The BuildTarget, if there is one
+        :param key: The key to get the option for
+        :param subproject: The subproject to use. Only used if the Target is None
+        :param type_: The type to get
+        :return: The value as the given type
+        """
+        if isinstance(key, str):
+            key = OptionKey(key)
+
+        if target is None:
+            return self.get_value(key.evolve(subproject=subproject), type_)
+
+        opt = self._get_option_impl(key.evolve(subproject=target.subproject))
+        override = target.get_override(key.name, None)
+        if override is not None:
+            # XXX: validation needs to be done before we get here, otherwise we
+            # can't tell the user where things went wrong
+            val = opt.validate_value(override)
+        else:
+            val = opt.value
+        assert isinstance(val, type_), 'for mypy'
+        return val
+
+    def _get_option_impl(
+            self,
+            key: OptionKey,
+            ) -> AnyOptionType:
+        # FIXME: This is fundamentally the same algorithm than interpreter.get_option_internal().
+        # We should try to share the code somehow.
+        key = key.evolve(subproject=key.subproject)
+        if not self.is_project_option(key):
+            opt = self.get(key)
+            if opt is None or opt.yielding:
+                opt = self.get_value_object(key.as_root())
+        else:
+            opt = self.get_value_object(key)
+            if opt.yielding:
+                opt = self.get(key.as_root(), opt)
+
+        assert opt is not None, 'for mypy'
+        return opt
+
+    def target_set_value(
+            self,
+            target: T.Optional[BuildTarget],
+            key: T.Union[str, OptionKey],
+            subproject: T.Optional[str],
+            value: ElementaryOptionValues,
+            ) -> None:
+        """Get the value for a BuildTarget or the default.
+
+        :param target: The BuildTarget, if there is one
+        :param key: The key to get the option for
+        :param subproject: The subproject to use. Only used if the Target is None
+        """
+        if isinstance(key, str):
+            key = OptionKey(key)
+
+        if target is None:
+            self.set_value(key.evolve(subproject=subproject), value)
+            return
+
+        opt = self._get_option_impl(key.evolve(subproject=subproject))
+        if target.get_override(key.name) is not None:
+            # XXX: validation needs to be done before we get here, otherwise we
+            # can't tell the user where things went wrong
+            target.set_override(key, value)
+        else:
+            val = opt

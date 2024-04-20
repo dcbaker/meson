@@ -11,6 +11,7 @@ from ..mesonlib import EnvironmentException, version_compare
 from .compilers import Compiler
 
 if T.TYPE_CHECKING:
+    from ..build import BuildTarget
     from ..coredata import MutableKeyedOptionDictType, KeyedOptionDictType
     from ..environment import Environment
 
@@ -85,13 +86,20 @@ class CythonCompiler(Compiler):
 
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
         args: T.List[str] = []
         key = self.form_compileropt_key('version')
-        version = options.get_value(key, str)
+        version = env.coredata.optstore.target_option_value(target, key, subproject, str)
         args.append(f'-{version}')
+
         key = self.form_compileropt_key('language')
-        lang = options.get_value(key, str)
+        lang = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if lang == 'cpp':
             args.append('--cplus')
         return args
+

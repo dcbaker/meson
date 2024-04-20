@@ -27,6 +27,7 @@ from mesonbuild.mesonlib import (
 )
 
 if T.TYPE_CHECKING:
+    from ..build import BuildTarget
     from ..coredata import MutableKeyedOptionDictType, KeyedOptionDictType
     from ..dependencies import Dependency
     from ..envconfig import MachineInfo
@@ -284,10 +285,15 @@ class GnuFortranCompiler(GnuCompiler, FortranCompiler):
         self._update_language_stds(opts, fortran_stds)
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         if std != 'none':
             args.append('-std=' + std)
         return args
@@ -418,10 +424,15 @@ class IntelFortranCompiler(IntelGnuLikeCompiler, FortranCompiler):
         self._update_language_stds(opts, ['none', 'legacy', 'f95', 'f2003', 'f2008', 'f2018'])
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         stds = {'legacy': 'none', 'f95': 'f95', 'f2003': 'f03', 'f2008': 'f08', 'f2018': 'f18'}
         if std != 'none':
             args.append('-stand=' + stds[std])
@@ -472,13 +483,18 @@ class IntelClFortranCompiler(IntelVisualStudioLikeCompiler, FortranCompiler):
         self._update_language_stds(opts, ['none', 'legacy', 'f95', 'f2003', 'f2008', 'f2018'])
         return opts
 
-    def get_option_compile_args(self, options: 'KeyedOptionDictType') -> T.List[str]:
+    def get_option_compile_args(
+            self,
+            target: T.Optional[BuildTarget],
+            env: Environment,
+            subproject: T.Optional[str] = None
+            ) -> T.List[str]:
         args: T.List[str] = []
         key = self.form_compileropt_key('std')
-        std = options.get_value(key, str)
+        std = env.coredata.optstore.target_option_value(target, key, subproject, str)
         stds = {'legacy': 'none', 'f95': 'f95', 'f2003': 'f03', 'f2008': 'f08', 'f2018': 'f18'}
         if std != 'none':
-            args.append('/stand:' + stds[std])
+            args.append('/stand=' + stds[std])
         return args
 
     def get_werror_args(self) -> T.List[str]:

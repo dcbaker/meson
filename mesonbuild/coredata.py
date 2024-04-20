@@ -43,6 +43,7 @@ if T.TYPE_CHECKING:
     from .cmake.traceparser import CMakeCacheEntry
     from .interpreterbase import SubProject
     from .options import ElementaryOptionTypes, ElementaryOptionValues
+    from .build import BuildTarget
 
     class SharedCMDOptions(Protocol):
 

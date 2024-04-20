@@ -294,6 +294,7 @@ COMMAND_KW: KwargInfo[T.List[T.Union[str, BuildTarget, CustomTarget, CustomTarge
 )
 
 def _override_options_convertor(raw: T.Union[str, T.List[str], T.Dict[str, ElementaryOptionValues]]) -> T.Dict[OptionKey, ElementaryOptionValues]:
+    # TODO: options should be returned a T.Dict[str, str], so the OptStore can do the OptionKey conversion
     if isinstance(raw, str):
         raw = [raw]
     if isinstance(raw, list):
