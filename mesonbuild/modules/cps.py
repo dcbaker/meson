@@ -18,7 +18,8 @@ from ..interpreterbase import (
     ContainerTypeInfo, KwargInfo, ObjectHolder, InvalidArguments, noPosargs,
     typed_kwargs, typed_pos_args,
 )
-from ..utils.universal import File, FileMode, HoldableObject, OptionKey
+from ..utils.core import HoldableObject
+from ..utils.universal import File, FileMode, OptionKey
 
 if T.TYPE_CHECKING:
     from typing_extensions import Literal, TypedDict
@@ -101,8 +102,8 @@ class PackageHolder(ObjectHolder[Package]):
             processed['*'] = kwargs[tmpl]
         for lang in _SUPPORTED_LANGS:
             lname = f'{lang}_{tmpl}'
-            if kwargs[lname]:  # type: ignore[literal-required]
-                processed[lang] = kwargs[lname]  # type: ignore[literal-required]
+            if kwargs[lname]:
+                processed[lang] = kwargs[lname]
         return processed
 
     @typed_pos_args('cps_package.add_component', optargs=[(build.BuildTarget, build.CustomTarget, build.CustomTargetIndex)])
