@@ -8,7 +8,15 @@ import pathlib
 import typing as T
 
 if T.TYPE_CHECKING:
+    from typing_extensions import Protocol
+
     import argparse
+
+    class Arguments(Protocol):
+
+        mesonargs: T.List[str]
+        intermediaries: bool
+
 
 from ..mesonlib import get_meson_command
 
@@ -37,7 +45,7 @@ INTERMEDIATE_EXTENSIONS = ('.gch',
                            )
 
 class ReproTester:
-    def __init__(self, options: T.Any):
+    def __init__(self, options: Arguments):
         self.args = options.mesonargs
         self.meson = get_meson_command()[:]
         self.builddir = pathlib.Path('buildrepro')
@@ -114,7 +122,7 @@ class ReproTester:
         self.check_contents('buildrepro', 'buildrepro.1st', True)
         self.check_contents('buildrepro.1st', 'buildrepro', False)
 
-def run(options: T.Any) -> None:
+def run(options: Arguments) -> None:
     rt = ReproTester(options)
     try:
         sys.exit(rt.run())
