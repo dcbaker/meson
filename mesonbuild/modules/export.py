@@ -5,10 +5,8 @@ from __future__ import annotations
 import dataclasses
 import typing as T
 
-from mesonbuild.interpreter import Interpreter
-
 from . import ExtensionModule, ModuleInfo
-from ..build import BuildTarget, InvalidArguments
+from ..build import Build, BuildTarget, InvalidArguments
 from ..interpreterbase import ObjectHolder
 from ..interpreterbase.decorators import typed_pos_args, noKwargs
 from ..utils.core import HoldableObject
@@ -17,6 +15,16 @@ if T.TYPE_CHECKING:
     from . import ModuleState
     from ..interpreter import Interpreter
     from ..interpreterbase import TYPE_kwargs
+
+
+@dataclasses.dataclass
+class ExportEntry:
+
+    name: str
+    target: BuildTarget
+
+    def generate_pc(self, package: str, b: Build) -> None:
+        pass
 
 
 @dataclasses.dataclass
@@ -29,8 +37,12 @@ class ExportSet(HoldableObject):
     """
 
     name: str
-    targets: T.Dict[str, BuildTarget] = dataclasses.field(
-        default_factory=dict, init=False)
+    entries: T.List[ExportEntry] = dataclasses.field(
+        default_factory=list, init=False)
+
+    def generate(self, b: Build) -> None:
+        for entry in self.entries:
+            entry.generate_pc(self.name, b)
 
 
 class ExportSetHolder(ObjectHolder[ExportSet]):
@@ -45,9 +57,9 @@ class ExportSetHolder(ObjectHolder[ExportSet]):
     @noKwargs
     def export_method(self, args: T.Tuple[str, BuildTarget], kwargs: TYPE_kwargs) -> None:
         name, target = args
-        if name in self.held_object.targets:
-            raise InvalidArguments(f'Already added an export target named {name}')
-        self.held_object.targets[name] = target
+        if any(e.name == name for e in self.held_object.entries):
+            raise InvalidArguments(f'Trying to add a second entry with name {name}')
+        self.held_object.entries.append(ExportEntry(name, target))
 
 
 class ExportModule(ExtensionModule):
@@ -72,6 +84,15 @@ class ExportModule(ExtensionModule):
         ex = ExportSet(name)
         self.exports[name] = ex
         return ex
+
+    def postconf_hook(self, b: Build) -> None:
+        """Generate the actual export files, and create install data for them.
+
+        :param b: the Build object
+        """
+        for entries in self.exports.values():
+            entries.generate(b)
+
 
 
 def initialize(interp: Interpreter) -> ExportModule:
