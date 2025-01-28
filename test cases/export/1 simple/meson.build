@@ -6,6 +6,6 @@ project('simple-export', 'c', meson_version : '>= 1.8')
 lib = library('foo', 'foo.c')
 
 export = import('export')
-foo_ex = export.create_set('foo')
+foo_pkg = export.create_package()
 
-foo_ex.export('foo', lib)
+foo_pkg.export('core', lib, default : true)

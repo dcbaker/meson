@@ -57,6 +57,7 @@ modules = [
     'mesonbuild/msubprojects.py',
     'mesonbuild/modules/__init__.py',
     'mesonbuild/modules/cuda.py',
+    'mesonbuild/modules/export.py',
     'mesonbuild/modules/external_project.py',
     'mesonbuild/modules/fs.py',
     'mesonbuild/modules/gnome.py',
