@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2012-2021 The Meson development team
-# Copyright © 2023-2024 Intel Corporation
+# Copyright © 2023-2025 Intel Corporation
 
 from __future__ import annotations
 
@@ -452,7 +452,7 @@ class Interpreter(InterpreterBase, HoldableObject):
 
         '''
             Build a mapping of `HoldableObject` base classes to their
-            corresponding `ObjectHolder`s. The difference to `self.holder_map`
+            corresponding `ObjectHolder`s. The difference to `self
             is that the keys here define an upper bound instead of requiring an
             exact match.
 
