@@ -2050,8 +2050,6 @@ class Executable(BuildTarget):
         self.win_subsystem = kwargs.get('win_subsystem') or 'console'
         # Check for export_dynamic
         self.export_dynamic = kwargs.get('export_dynamic', False)
-        if not isinstance(self.export_dynamic, bool):
-            raise InvalidArguments('"export_dynamic" keyword argument must be a boolean')
         self.implib_name = kwargs.get('implib')
         # Only linkwithable if using export_dynamic
         self.is_linkwithable = self.export_dynamic
