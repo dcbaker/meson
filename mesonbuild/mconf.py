@@ -334,7 +334,7 @@ class Conf:
             mlog.log(f'{m[0]:21}{m[1]:10}{m[2]:10}')
 
 def has_option_flags(options: CMDOptions) -> bool:
-    return bool(options.cmd_line_options) or bool(options.del_subproject_options)
+    return any(bool(o) for o in [options.cmd_line_options, options.del_subproject_options, options.add_subproject_options])
 
 def is_print_only(options: CMDOptions) -> bool:
     if has_option_flags(options):

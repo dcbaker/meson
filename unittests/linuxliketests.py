@@ -1875,9 +1875,9 @@ class LinuxlikeTests(BasePlatformTests):
                 return
         self.assertTrue(False, f'Source {src} not found in compdb')
 
-    def test_persp_options(self):
+    def test_persp_options(self) -> None:
         testdir = os.path.join(self.unit_test_dir, '123 persp options')
-        self.init(testdir, extra_args='-Doptimization=1')
+        self.init(testdir, extra_args=['-Doptimization=1'])
         compdb = self.get_compdb()
         mainsrc = 'toplevel.c'
         sub1src = 'sub1.c'
@@ -1887,24 +1887,32 @@ class LinuxlikeTests(BasePlatformTests):
         self.check_has_flag(compdb, sub2src, '-O1')
 
         # Set subproject option to O2
+        self.setconf(['-Asub2:optimization=2'])
+        self.reconfigure(testdir)
         compdb = self.get_compdb()
         self.check_has_flag(compdb, mainsrc, '-O1')
         self.check_has_flag(compdb, sub1src, '-O1')
         self.check_has_flag(compdb, sub2src, '-O2')
 
         # Set top level option to O3
+        self.setconf(['-A:optimization=2'])
+        self.reconfigure(testdir)
         compdb = self.get_compdb()
         self.check_has_flag(compdb, mainsrc, '-O3')
         self.check_has_flag(compdb, sub1src, '-O1')
         self.check_has_flag(compdb, sub2src, '-O2')
 
         # UnsetSet subproject
+        self.setconf(['-Usub2:optimization'])
+        self.reconfigure(testdir)
         compdb = self.get_compdb()
         self.check_has_flag(compdb, mainsrc, '-O3')
         self.check_has_flag(compdb, sub1src, '-O1')
         self.check_has_flag(compdb, sub2src, '-O1')
 
         # Set global value
+        self.setconf(['-Doptimization=2'])
+        self.reconfigure(testdir)
         compdb = self.get_compdb()
         self.check_has_flag(compdb, mainsrc, '-O3')
         self.check_has_flag(compdb, sub1src, '-O2')

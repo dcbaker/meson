@@ -1,4 +1,4 @@
-project('toplevel', 'c')
+project('toplevel', 'c', meson_version : '>=1.8')
 
 round = get_option('round')
 opt = get_option('optimization')

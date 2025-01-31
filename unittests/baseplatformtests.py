@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2016-2021 The Meson development team
-# Copyright © 2024 Intel Corporation
+# Copyright © 2024-2025 Intel Corporation
 
 from __future__ import annotations
 from pathlib import PurePath
@@ -186,15 +186,83 @@ class BasePlatformTests(TestCase):
             raise subprocess.CalledProcessError(proc.returncode, command, output=proc.stdout)
         return proc.stdout
 
-    def init(self, srcdir, *,
-             extra_args=None,
-             default_args=True,
-             inprocess=False,
-             override_envvars: T.Optional[T.Mapping[str, str]] = None,
-             workdir=None,
-             allow_fail: bool = False) -> str:
+    def reconfigure(
+            self,
+            srcdir: str,
+            *,
+            extra_args: T.Optional[T.List[str]] = None,
+            inprocess: bool = False,
+            workdir: T.Optional[str] = None,
+            allow_fail: bool = False
+            ) -> T.Optional[str]:
+        """Call `meson setup --reconfigure`
+
+        :param srcdir: The locations of the source
+        :param extra_args: Extra arguments to pass to `meson setup`
+        :param inprocess: Whether to run meson setup as a supprocess (False) or inside the test process (True)
+        :param allow_fail: If set to true initialization is allowed to fail.
+            When it does the log will be returned instead of stdout.
+        :return: the value of stdout on success, or the meson log on failure
+            when :param allow_fail: is true
+        """
+        self.assertPathExists(srcdir)
+        if extra_args is None:
+            extra_args = []
+        build_and_src_dir_args = [self.builddir, srcdir]
+        args = ['--reconfigure']
+        self.privatedir = os.path.join(self.builddir, 'meson-private')
+        if inprocess:
+            try:
+                returncode, out, err = run_configure_inprocess(['setup'] + self.meson_args + args + extra_args + build_and_src_dir_args)
+            except Exception:
+                if not allow_fail:
+                    self._print_meson_log()
+                    raise
+                out = self._get_meson_log()  # Best we can do here
+                err = ''  # type checkers can't figure out that on this path returncode will always be 0
+                returncode = 0
+            finally:
+                # Close log file to satisfy Windows file locking
+                mesonbuild.mlog.shutdown()
+                mesonbuild.mlog._logger.log_dir = None
+                mesonbuild.mlog._logger.log_file = None
+
+            if returncode != 0:
+                self._print_meson_log()
+                print('Stdout:\n')
+                print(out)
+                print('Stderr:\n')
+                print(err)
+                if not allow_fail:
+                    raise RuntimeError('Configure failed')
+        else:
+            try:
+                out = self._run(self.setup_command + args + extra_args + build_and_src_dir_args, workdir=workdir)
+            except Exception:
+                if not allow_fail:
+                    self._print_meson_log()
+                    raise
+                out = self._get_meson_log()  # best we can do here
+        return out
+
+    def init(
+            self,
+            srcdir: str,
+            *,
+            extra_args: T.Optional[T.Union[str, T.List[str]]] = None,
+            default_args: bool = True,
+            inprocess: bool = False,
+            override_envvars: T.Optional[T.Mapping[str, str]] = None,
+            workdir: T.Optional[str] = None,
+            allow_fail: bool = False
+            ) -> str:
         """Call `meson setup`
 
+        :param srcdir: The locations of the source
+        :param extra_args: Extra arguments to pass to `meson setup`
+        :param inprocess: Whether to run meson setup as a supprocess (False) or inside the test process (True)
+        :param override_envvars: Environment variables to override
+        :param workdir: A scratch directory to do work in.
         :param allow_fail: If set to true initialization is allowed to fail.
             When it does the log will be returned instead of stdout.
         :return: the value of stdout on success, or the meson log on failure
@@ -219,7 +287,7 @@ class BasePlatformTests(TestCase):
         if inprocess:
             try:
                 returncode, out, err = run_configure_inprocess(['setup'] + self.meson_args + args + extra_args + build_and_src_dir_args, override_envvars)
-            except Exception as e:
+            except Exception:
                 if not allow_fail:
                     self._print_meson_log()
                     raise
@@ -293,7 +361,12 @@ class BasePlatformTests(TestCase):
         '''
         return self.build(target=target, override_envvars=override_envvars)
 
-    def setconf(self, arg: T.Sequence[str], will_build: bool = True) -> None:
+    def setconf(self, arg: T.Sequence[str]) -> None:
+        """Set one or more configurations options
+
+        :param arg: A string or list of strings to be passed to `meson configure`
+        :param reconfigure: run `meson setup --reconfigure`, defaults to False
+        """
         if isinstance(arg, str):
             arg = [arg]
         else:
@@ -363,7 +436,7 @@ class BasePlatformTests(TestCase):
             cmds = [l[len(prefix):].split() for l in log if l.startswith(prefix)]
             return cmds
 
-    def introspect(self, args):
+    def introspect(self, args: T.Union[str, T.List[str]]) -> T.Dict[str, T.Any]:
         if isinstance(args, str):
             args = [args]
         out = subprocess.check_output(self.mintro_command + args + [self.builddir],
