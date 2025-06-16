@@ -319,6 +319,7 @@ foo_h = foo_lib.vala_header()
 This header can now be used like any other generated header to create an
 order-only dependency.
 
+
 ### Depending on VAPI header
 
 *(since 1.9.0)*
@@ -328,6 +329,16 @@ Given the previous example,
 ```meson
 foo_lib = shared_library(...)
 foo_vapi = foo_lib.vala_vapi()
+```
+
+
+### Depending on generated GIR
+
+*(since 1.9.0)*
+
+```meson
+foo_lib = shared_library(..., vala_gir : 'foo.gir')
+foo_vapi = foo_lib.vala_gir()
 ```
 
 
