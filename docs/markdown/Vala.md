@@ -319,6 +319,17 @@ foo_h = foo_lib.vala_header()
 This header can now be used like any other generated header to create an
 order-only dependency.
 
+### Depending on VAPI header
+
+*(since 1.9.0)*
+
+Given the previous example,
+
+```meson
+foo_lib = shared_library(...)
+foo_vapi = foo_lib.vala_vapi()
+```
+
 
 ### GObject Introspection and language bindings
 
