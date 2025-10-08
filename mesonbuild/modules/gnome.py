@@ -1037,8 +1037,7 @@ class GnomeModule(ExtensionModule):
             rspable=rspable,
         )
 
-    @staticmethod
-    def _make_typelib_target(state: 'ModuleState', typelib_output: str,
+    def _make_typelib_target(self, state: 'ModuleState', typelib_output: str,
                              typelib_cmd: T.Sequence[T.Union[str, Executable, ExternalProgram, CustomTarget]],
                              generated_files: T.Sequence[T.Union[str, mesonlib.File, CustomTarget, CustomTargetIndex, GeneratedList]],
                              kwargs: _MakeTypeLibTargetKWs) -> TypelibTarget:
@@ -1051,6 +1050,8 @@ class GnomeModule(ExtensionModule):
             install_dir = os.path.join(state.environment.get_libdir(), 'girepository-1.0')
         elif install_dir is False:
             install = False
+
+        self._devenv_prepend('GI_TYPELIB_PATH', os.path.join(state.environment.get_build_dir(), state.subdir))
 
         return TypelibTarget(
             typelib_output,
@@ -1272,8 +1273,6 @@ class GnomeModule(ExtensionModule):
             typelib_cmd += ["--includedir=" + incdir]
 
         typelib_target = self._make_typelib_target(state, typelib_output, typelib_cmd, generated_files, kwargs)
-
-        self._devenv_prepend('GI_TYPELIB_PATH', os.path.join(state.environment.get_build_dir(), state.subdir))
 
         rv = [scan_target, typelib_target]
 
