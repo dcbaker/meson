@@ -1038,8 +1038,8 @@ class GnomeModule(ExtensionModule):
         )
 
     def _make_typelib_target(self, state: 'ModuleState', typelib_output: str,
-                             typelib_cmd: T.Sequence[T.Union[str, Executable, ExternalProgram, CustomTarget]],
-                             generated_files: T.Sequence[T.Union[str, mesonlib.File, CustomTarget, CustomTargetIndex, GeneratedList]],
+                             extra_args: T.List[str],
+                             sources: T.Sequence[build.GeneratedTypes],
                              kwargs: _MakeTypeLibTargetKWs) -> TypelibTarget:
         install = kwargs['install_typelib']
         if install is None:
@@ -1052,14 +1052,15 @@ class GnomeModule(ExtensionModule):
             install = False
 
         self._devenv_prepend('GI_TYPELIB_PATH', os.path.join(state.environment.get_build_dir(), state.subdir))
+        gicompiler = self._get_gir_dep(state)[2]
 
         return TypelibTarget(
             typelib_output,
             state.subdir,
             state.subproject,
             state.environment,
-            typelib_cmd,
-            generated_files,
+            [gicompiler, '@INPUT@', '--output', '@OUTPUT@'] + T.cast('T.List[T.Union[str, ToolType]]', extra_args),
+            sources,
             [typelib_output],
             install=install,
             install_dir=[install_dir],
@@ -1266,13 +1267,9 @@ class GnomeModule(ExtensionModule):
             scan_env_ldflags, kwargs)
 
         typelib_output = f'{ns}-{nsversion}.typelib'
-        typelib_cmd = [gicompiler, scan_target, '--output', '@OUTPUT@']
-        typelib_cmd += state.get_include_args(gir_inc_dirs, prefix='--includedir=')
-
-        for incdir in typelib_includes:
-            typelib_cmd += ["--includedir=" + incdir]
-
-        typelib_target = self._make_typelib_target(state, typelib_output, typelib_cmd, generated_files, kwargs)
+        typelib_extra_args = [f'--includedir={i}' for i in typelib_includes]
+        typelib_target = self._make_typelib_target(
+            state, typelib_output, typelib_extra_args, generated_files, kwargs)
 
         rv = [scan_target, typelib_target]
 
