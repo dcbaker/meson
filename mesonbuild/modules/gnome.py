@@ -201,6 +201,14 @@ if T.TYPE_CHECKING:
         vtail: T.Optional[str]
         depends: T.List[T.Union[BuildTarget, CustomTarget, CustomTargetIndex]]
 
+    class _MakeTypeLibTargetKWs(TypedDict):
+
+        build_by_default: bool
+        env: mesonlib.EnvironmentVariables
+        install: bool
+        install_typelib: T.Optional[bool]
+        install_dir_typelib: T.Union[str, None, Literal[False]]
+
     ToolType: TypeAlias = T.Union[Executable, ExternalProgram, OverrideProgram]
 
 
@@ -1025,7 +1033,7 @@ class GnomeModule(ExtensionModule):
     def _make_typelib_target(state: 'ModuleState', typelib_output: str,
                              typelib_cmd: T.Sequence[T.Union[str, Executable, ExternalProgram, CustomTarget]],
                              generated_files: T.Sequence[T.Union[str, mesonlib.File, CustomTarget, CustomTargetIndex, GeneratedList]],
-                             kwargs: T.Dict[str, T.Any]) -> TypelibTarget:
+                             kwargs: _MakeTypeLibTargetKWs) -> TypelibTarget:
         install = kwargs['install_typelib']
         if install is None:
             install = kwargs['install']
@@ -1256,7 +1264,7 @@ class GnomeModule(ExtensionModule):
         for incdir in typelib_includes:
             typelib_cmd += ["--includedir=" + incdir]
 
-        typelib_target = self._make_typelib_target(state, typelib_output, typelib_cmd, generated_files, T.cast('T.Dict[str, T.Any]', kwargs))
+        typelib_target = self._make_typelib_target(state, typelib_output, typelib_cmd, generated_files, kwargs)
 
         self._devenv_prepend('GI_TYPELIB_PATH', os.path.join(state.environment.get_build_dir(), state.subdir))
 
