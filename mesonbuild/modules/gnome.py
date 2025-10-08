@@ -209,6 +209,14 @@ if T.TYPE_CHECKING:
         install_typelib: T.Optional[bool]
         install_dir_typelib: T.Union[str, None, Literal[False]]
 
+    class _MakeGirTargetKWs(TypedDict):
+
+        build_by_default: bool
+        env: mesonlib.EnvironmentVariables
+        install: bool
+        install_gir: T.Optional[bool]
+        install_dir_gir: T.Union[str, None, Literal[False]]
+
     ToolType: TypeAlias = T.Union[Executable, ExternalProgram, OverrideProgram]
 
 
@@ -986,7 +994,7 @@ class GnomeModule(ExtensionModule):
             generated_files: T.Sequence[T.Union[str, mesonlib.File, CustomTarget, CustomTargetIndex, GeneratedList]],
             depends: T.Sequence[T.Union['FileOrString', build.BuildTarget, 'build.GeneratedTypes', build.StructuredSources]],
             env_flags: T.Sequence[str],
-            kwargs: T.Dict[str, T.Any]) -> GirTarget:
+            kwargs: _MakeGirTargetKWs) -> GirTarget:
         install = kwargs['install_gir']
         if install is None:
             install = kwargs['install']
@@ -1253,9 +1261,8 @@ class GnomeModule(ExtensionModule):
         generated_files = [f for f in libsources if isinstance(f, (GeneratedList, CustomTarget, CustomTargetIndex))]
 
         scan_target = self._make_gir_target(
-            state, girfile, scan_command, generated_files, depends, scan_env_ldflags,
-            # We have to cast here because mypy can't figure this out
-            T.cast('T.Dict[str, T.Any]', kwargs))
+            state, girfile, scan_command, generated_files, depends,
+            scan_env_ldflags, kwargs)
 
         typelib_output = f'{ns}-{nsversion}.typelib'
         typelib_cmd = [gicompiler, scan_target, '--output', '@OUTPUT@']
