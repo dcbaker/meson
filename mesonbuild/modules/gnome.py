@@ -84,6 +84,7 @@ if T.TYPE_CHECKING:
         build_by_default: bool
         dependencies: T.List[Dependency]
         doc_format: T.Optional[str]
+        env: mesonlib.EnvironmentVariables
         export_packages: T.List[str]
         extra_args: T.List[str]
         fatal_warnings: bool
@@ -92,8 +93,10 @@ if T.TYPE_CHECKING:
         include_directories: T.List[T.Union[build.IncludeDirs, str]]
         includes: T.List[T.Union[str, GirTarget]]
         install: bool
-        install_dir_gir: T.Optional[str]
-        install_dir_typelib: T.Optional[str]
+        install_gir: T.Optional[bool]
+        install_dir_gir: T.Union[str, None, Literal[False]]
+        install_typelib: T.Optional[bool]
+        install_dir_typelib: T.Union[str, None, Literal[False]]
         link_with: T.List[T.Union[build.SharedLibrary, build.StaticLibrary]]
         namespace: str
         nsversion: str
