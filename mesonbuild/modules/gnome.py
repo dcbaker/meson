@@ -37,7 +37,7 @@ from ..programs import OverrideProgram
 from ..scripts.gettext import read_linguas
 
 if T.TYPE_CHECKING:
-    from typing_extensions import Literal, TypeAlias, TypedDict
+    from typing_extensions import Literal, TypeAlias, TypedDict, Required
 
     from . import ModuleState
     from ..build import BuildTarget
@@ -201,11 +201,11 @@ if T.TYPE_CHECKING:
         vtail: T.Optional[str]
         depends: T.List[T.Union[BuildTarget, CustomTarget, CustomTargetIndex]]
 
-    class _MakeTypeLibTargetKWs(TypedDict):
+    class _MakeTypeLibTargetKWs(TypedDict, total=False):
 
         build_by_default: bool
         env: mesonlib.EnvironmentVariables
-        install: bool
+        install: Required[bool]
         install_typelib: T.Optional[bool]
         install_dir_typelib: T.Union[str, None, Literal[False]]
 
@@ -297,6 +297,7 @@ class GnomeModule(ExtensionModule):
             'mkenums_simple': self.mkenums_simple,
             'genmarshal': self.genmarshal,
             'generate_vapi': self.generate_vapi,
+            'generate_typelib': self.generate_typelib,
         })
 
     def _get_native_glib_version(self, state: 'ModuleState') -> str:
@@ -1039,13 +1040,13 @@ class GnomeModule(ExtensionModule):
 
     def _make_typelib_target(self, state: 'ModuleState', typelib_output: str,
                              extra_args: T.List[str],
-                             sources: T.Sequence[build.GeneratedTypes],
+                             sources: T.Sequence[T.Union[mesonlib.File, build.GeneratedTypes]],
                              kwargs: _MakeTypeLibTargetKWs) -> TypelibTarget:
-        install = kwargs['install_typelib']
+        install = kwargs.get('install_typelib')
         if install is None:
             install = kwargs['install']
 
-        install_dir = kwargs['install_dir_typelib']
+        install_dir = kwargs.get('install_dir_typelib')
         if install_dir is None:
             install_dir = os.path.join(state.environment.get_libdir(), 'girepository-1.0')
         elif install_dir is False:
@@ -1065,8 +1066,8 @@ class GnomeModule(ExtensionModule):
             install=install,
             install_dir=[install_dir],
             install_tag=['typelib'],
-            build_by_default=kwargs['build_by_default'],
-            env=kwargs['env'],
+            build_by_default=kwargs.get('build_by_default'),
+            env=kwargs.get('env'),
         )
 
     @staticmethod
@@ -1268,8 +1269,18 @@ class GnomeModule(ExtensionModule):
 
         typelib_output = f'{ns}-{nsversion}.typelib'
         typelib_extra_args = [f'--includedir={i}' for i in typelib_includes]
+
+        # Mypy doesn't consider a TypeDict with a Required field to match one
+        # with a NotRequired field
+        typelib_kwargs: _MakeTypeLibTargetKWs = {
+            'build_by_default': kwargs['build_by_default'],
+            'install': kwargs['install'],
+            'install_typelib': kwargs['install_typelib'],
+            'install_dir_typelib': kwargs['install_dir_typelib'],
+            'env': kwargs['env'],
+        }
         typelib_target = self._make_typelib_target(
-            state, typelib_output, typelib_extra_args, generated_files, kwargs)
+            state, typelib_output, typelib_extra_args, generated_files, typelib_kwargs)
 
         rv = [scan_target, typelib_target]
 
@@ -2309,6 +2320,21 @@ class GnomeModule(ExtensionModule):
         rv = InternalDependency(None, incs, [], [], link_with, [], sources, [], [], {}, [], [], [])
         created_values.append(rv)
         return ModuleReturnValue(rv, created_values)
+
+    @typed_pos_args('gnome.generate_typelib', (mesonlib.File, str))
+    @noKwargs
+    def generate_typelib(self, state: ModuleState, args: T.Tuple[mesonlib.FileOrString], kwargs: TYPE_kwargs) -> ModuleReturnValue:
+        gir_file = self.interpreter.source_strings_to_files([args[0]])[0]
+        if not gir_file.endswith('.gir'):
+            raise InvalidArguments(f'gnome.generate_typelib: Got invalid GIR file: {gir_file}')
+
+        # extract the namespace and namespace version from the GIR file
+        ns, nsver = os.path.splitext(gir_file.fname)[0].rsplit('-', 1)
+
+        ct = self._make_typelib_target(
+            state, f'{ns}-{nsver}.typelib', [], [gir_file], {'install': True})
+        return ModuleReturnValue(ct, [ct])
+
 
 def initialize(interp: 'Interpreter') -> GnomeModule:
     mod = GnomeModule(interp)
