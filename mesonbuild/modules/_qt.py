@@ -284,11 +284,11 @@ class QtBaseModule(ExtensionModule):
                 self._moc_supports_json = True
             else:
                 mlog.warning('moc dependencies will not work properly until you move to Qt >= 5.15', fatal=False)
-            if version_compare(qt.version, '>=5.14.0'):
-                self._rcc_supports_depfiles = True
-            else:
-                mlog.warning('rcc dependencies will not work properly until you move to Qt >= 5.14:',
-                             mlog.bold('https://bugreports.qt.io/browse/QTBUG-45460'), fatal=False)
+            #if version_compare(qt.version, '>=5.14.0'):
+                #self._rcc_supports_depfiles = True
+            #else:
+                #mlog.warning('rcc dependencies will not work properly until you move to Qt >= 5.14:',
+                             #mlog.bold('https://bugreports.qt.io/browse/QTBUG-45460'), fatal=False)
         else:
             suffix = f'-qt{self.qt_version}'
             self.tools['moc'] = NonExistingExternalProgram(name='moc' + suffix)
@@ -439,12 +439,31 @@ class QtBaseModule(ExtensionModule):
                 sources.extend(s.get_outputs())
         extra_args = kwargs['extra_args']
 
+        def process_deps(inputs: T.List[FileOrString]) -> T.List[File]:
+            """Process referenced files in an rcc file, and add appropriate
+            dependencies
+
+            If we have support for depfiles we only want to add a dependency on
+            generated file outputs; if we don't have that support we need to add
+            a dependency on static files *and* we need to add them to Build.def_files
+            so that Meson will reconfigure if they are changed/removed
+            """
+            deps: T.List[File] = []
+
+            for s in inputs:
+                for src in self._parse_qrc_deps(state, s):
+                    if src.is_built:
+                        deps.append(src)
+                    elif not self._rcc_supports_depfiles:
+                        deps.append(src)
+                        state.add_build_def_file(src.rel_to_builddir(state.build_to_src))
+
+            return deps
+
         # If a name was set generate a single .cpp file from all of the qrc
         # files, otherwise generate one .cpp file per qrc file.
         if name:
-            qrc_deps: T.List[File] = []
-            for s in sources:
-                qrc_deps.extend(self._parse_qrc_deps(state, s))
+            qrc_deps = process_deps(sources)
 
             res_target = build.CustomTarget(
                 name,
@@ -461,7 +480,7 @@ class QtBaseModule(ExtensionModule):
             targets.append(res_target)
         else:
             for rcc_file in sources:
-                qrc_deps = self._parse_qrc_deps(state, rcc_file)
+                qrc_deps = process_deps([rcc_file])
                 if isinstance(rcc_file, str):
                     basename = os.path.basename(rcc_file)
                 else:
