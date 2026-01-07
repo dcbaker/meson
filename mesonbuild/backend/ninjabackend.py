@@ -1231,7 +1231,10 @@ class NinjaBackend(backends.Backend):
         else:
             rulename = 'CUSTOM_COMMAND_DEP'
         elem = NinjaBuildElement(self.all_outputs, ofilenames, rulename, srcs)
-        elem.add_dep(deps)
+        if target.depfile is None:
+            elem.add_dep(deps)
+        else:
+            elem.add_orderdep(deps)
         for d in target.extra_depends:
             # Add a dependency on all the outputs of this target
             for output in d.get_outputs():
