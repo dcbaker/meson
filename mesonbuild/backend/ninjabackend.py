@@ -3028,7 +3028,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         # -Ipath will add to begin of array. And without reverse
         # flags will be added in reversed order.
         args: T.List[str] = []
-        for p in inc.rel_string_list(self.build_to_src, self.build_dir):
+        for p in inc.rel_string_list(self.build_to_src, self.build_dir, src_before_build=True, reverse=True):
             args.extend(compiler.get_include_args(p, inc.is_system))
         return args
 
@@ -3065,7 +3065,7 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         # Target include dirs should override internal deps include dirs.
         # This is handled in BuildTarget.process_kwargs()
         #
-        # Include dirs from internal deps should override include dirs from
+        # Include dirs from internal deps should overridegenerate_inc_dir include dirs from
         # external deps and must maintain the order in which they are specified.
         # Hence, we must reverse the list so that the order is preserved.
         for i in reversed(target.get_include_dirs()):

@@ -516,7 +516,8 @@ class IncludeDirs(HoldableObject):
     is_system: bool
     extra_build_dirs: T.List[str] = field(default_factory=list)
 
-    def abs_string_list(self, sourcedir: str, builddir: str) -> T.List[str]:
+    def abs_string_list(self, sourcedir: str, builddir: str,
+                        reverse: bool = False, src_before_build: bool = False) -> T.List[str]:
         """Convert IncludeDirs object to a list of absolute string paths.
 
         :param sourcedir: The absolute source directory
@@ -525,14 +526,18 @@ class IncludeDirs(HoldableObject):
         :returns: A list of strings (without compiler argument)
         """
         strlist: T.List[str] = []
-        for idir in self.incdirs:
-            strlist.append(os.path.join(sourcedir, self.curdir, idir))
-            strlist.append(os.path.join(builddir, self.curdir, idir))
-        for idir in self.extra_build_dirs:
+        itr = reversed if reverse else itr
+        for idir in itr(self.incdirs):
+            sl: T.List[str] = []
+            sl.append(os.path.join(sourcedir, self.curdir, idir))
+            sl.append(os.path.join(builddir, self.curdir, idir))
+            strlist.extend(reversed(sl) if src_before_build else sl)
+        for idir in itr(self.extra_build_dirs):
             strlist.append(os.path.join(builddir, self.curdir, idir))
         return strlist
 
-    def rel_string_list(self, build_to_src: str, build_root: T.Optional[str] = None) -> T.List[str]:
+    def rel_string_list(self, build_to_src: str, build_root: T.Optional[str] = None,
+                        reverse: bool = False, src_before_build: bool = False) -> T.List[str]:
         """Convert IncludeDirs object to a list of relative string paths.
 
         :param build_to_src: The relative path from the build dir to source dir
@@ -541,17 +546,20 @@ class IncludeDirs(HoldableObject):
         :return: A list if strings (without compiler argument)
         """
         strlist: T.List[str] = []
+        itr = reversed if reverse else iter
         for idirs, add_src in [(self.incdirs, True), (self.extra_build_dirs, False)]:
-            for idir in idirs:
+            for idir in itr(idirs):
                 bld_dir = os.path.normpath(os.path.join(self.curdir, idir))
                 if idir not in {'', '.'}:
                     expdir = bld_dir
                 else:
                     expdir = self.curdir
+                sl: T.List[str] = []
                 if build_root is None or os.path.isdir(os.path.join(build_root, expdir)):
-                    strlist.append(bld_dir)
+                    sl.append(bld_dir)
                 if add_src:
-                    strlist.append(os.path.normpath(os.path.join(build_to_src, expdir)))
+                    sl.append(os.path.normpath(os.path.join(build_to_src, expdir)))
+                strlist.extend(reversed(sl) if src_before_build else sl)
 
         return strlist
 
