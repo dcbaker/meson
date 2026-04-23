@@ -367,7 +367,7 @@ def platform_fix_name(fname: str, canonical_compiler: str, env: environment.Envi
         elif env.machines.host.is_cygwin():
             fname = re.sub(r'lib/\?lib(.*)\.so$', r'bin/cyg\1.dll', fname)
             fname = re.sub(r'lib/\?lib(.*)$', r'bin/cyg\1', fname)
-            fname = re.sub(r'\?lib(.*)\.dll$', r'cyg\1.dll', fname)
+            fname = re.sub(r'\?lib(.*)(\.dll|\?so)$', r'cyg\1\2', fname)
             fname = re.sub(r'/\?lib/', r'/bin/', fname)
         else:
             fname = re.sub(r'\?lib', 'lib', fname)
